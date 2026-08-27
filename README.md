@@ -10,7 +10,7 @@ This repository is currently the public distribution endpoint for Coddis release
 
 当前仓库仅作为 Coddis 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开文件，不是 Coddis 二进制的构建源码。
 
-The current preview release is `0.2.0`, supporting:
+The current preview Client and npm release is `0.2.1`, supporting:
 
 - macOS: Apple Silicon and Intel
 - Linux: `arm64` and `x86_64`
@@ -26,14 +26,25 @@ Windows is not currently supported.
 Recommended installation:
 
 ```bash
-npx coddis@0.2.0
+npx coddis@0.2.1
 ```
 
-The `coddis` npm package is a thin installer. It downloads only the archive for the current OS and CPU, verifies the exact SHA-256 embedded in that npm version, validates archive paths and the bundle manifest, and installs Coddis in the current user's home environment without `sudo`.
+The `coddis` npm package is a thin installer. It downloads only the archive for the current OS and CPU, verifies the exact SHA-256 embedded in that npm version, validates archive paths, modes, and the bundle manifest, and installs Coddis in the current user's home environment without `sudo`. The npm package exposes only `coddis-setup`; npm automatically infers that sole executable for the short `npx coddis@0.2.1` command, while the installed native Runtime exclusively owns the daily `coddis` command.
+
+An explicit global setup installation is also safe:
+
+```bash
+npm install --global coddis@0.2.1
+coddis-setup
+```
+
+After either setup form, use `coddis` directly for normal commands. Do not add Coddis as a dependency of an application repository.
+
+`v0.2.1` is a Client/npm-only correction. It restores the signed bundle's fixed modes under restrictive process umasks and separates the npm setup command from the native Runtime command. It does not change the Project, Session, or Server protocol. The compatible Hosted Server and separate Linux Server operator archives remain version `0.2.0`.
 
 `v0.2.0` replaces the original repository declaration, join request, approval, and owner-management flow with `coddis init`, `coddis status`, and `coddis connect <connection-code>`. Project bindings are local to each machine. Existing `0.1.1` declarations are preserved during verified migration and are never deleted, rewritten, or staged automatically.
 
-`v0.1.0` and `v0.1.1` remain available as immutable release history. No previous Tag, npm version, or asset was replaced.
+`v0.1.0`, `v0.1.1`, and `v0.2.0` remain available as immutable release history. No previous Tag, npm version, or asset was replaced.
 
 The Linux Server is distributed as a separate operator archive in the same GitHub Release and is not installed by the user-level npm command.
 
