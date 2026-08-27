@@ -10,7 +10,7 @@ This repository is currently the public distribution endpoint for Coddis release
 
 当前仓库仅作为 Coddis 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开文件，不是 Coddis 二进制的构建源码。
 
-The first preview release is `0.1.0`, supporting:
+The current preview release is `0.1.1`, supporting:
 
 - macOS: Apple Silicon and Intel
 - Linux: `arm64` and `x86_64`
@@ -21,13 +21,15 @@ Windows is not currently supported.
 
 ## Installation
 
-After the matching npm package has been published:
+Recommended installation:
 
 ```bash
-npx @coddis/setup@0.1.0
+npx coddis@0.1.1
 ```
 
-The setup package downloads only the archive for the current OS and CPU, verifies the exact SHA-256 embedded in that npm version, validates archive paths and the bundle manifest, and installs Coddis in the current user's home environment without `sudo`.
+The `coddis` npm package is a thin installer. It downloads only the archive for the current OS and CPU, verifies the exact SHA-256 embedded in that npm version, validates archive paths and the bundle manifest, and installs Coddis in the current user's home environment without `sudo`.
+
+GitHub-only `v0.1.0` remains available as immutable release history. Its planned scoped npm installer was not published because the corresponding npm Organization did not exist; `0.1.1` uses the unscoped `coddis` package instead. No `v0.1.0` Tag or asset was replaced.
 
 The Linux Server is distributed as a separate operator archive in the same GitHub Release and is not installed by the user-level npm command.
 
