@@ -10,11 +10,14 @@ This repository is currently the public distribution endpoint for Coddis release
 
 当前仓库仅作为 Coddis 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开文件，不是 Coddis 二进制的构建源码。
 
-The current preview Client and npm release is `0.2.2`, supporting:
+The current preview Client, npm, Server, and Hosted release is `0.3.0`, supporting:
 
 - macOS: Apple Silicon and Intel
 - Linux: `arm64` and `x86_64`
 - Codex and Claude Code user-level integration
+- Agent-driven discovery of relevant team Session context
+- Query and path-based Session search, with automatic recognition of symbols and error tokens
+- Hooks dedicated to automatic Session synchronization rather than automatic search
 - Hosted use and self-hosted Server Preview
 - Stable Project UIDs, short-lived Connection Codes, and approval-free peer membership
 - Self-hosted filesystem storage by default, with optional S3-compatible storage
@@ -32,16 +35,18 @@ coddis version
 
 The `coddis` npm package installs a stable lightweight launcher in npm's existing global bin directory. On first use, or when the npm package version changes, the launcher downloads only the archive for the current OS and CPU, verifies the exact SHA-256 embedded in that npm version, validates archive paths, modes, and the bundle manifest, and installs the native Runtime without `sudo`. It then continues the original command in the same terminal. When the matching Runtime is already active, the POSIX shell launcher directly `exec`s it; Node is not retained as a parent process for daily commands.
 
-No additional `~/.local/bin` export or new terminal is required, provided npm's own global bin directory is already in the current `PATH`. Use `coddis` directly for normal commands and do not add Coddis as a dependency of an application repository. `coddis-setup` remains available only as an explicit recovery and local-artifact entry point. `npx` is not part of the supported installation path for `0.2.2`.
+No additional `~/.local/bin` export or new terminal is required, provided npm's own global bin directory is already in the current `PATH`. Use `coddis` directly for normal commands and do not add Coddis as a dependency of an application repository. `coddis-setup` remains available only as an explicit recovery and local-artifact entry point. `npx` is not part of the supported installation path.
 
 To install, upgrade, or roll back to an exact published Client version:
 
 ```bash
-npm install --global coddis@0.2.2
+npm install --global coddis@0.3.0
 coddis version
 ```
 
 An existing `0.2.1` installation may have left a native Runtime symlink in its user-level bin directory. If npm's global prefix uses that exact same bin directory, npm safely stops with `EEXIST`; remove the path only after verifying that it is the Coddis-owned symlink to `current/bin/coddis`, then retry. Do not use `--force` to overwrite an unknown command. If the old Runtime bin precedes npm's bin in `PATH`, run the newly installed `coddis-setup` once to switch `current`; fresh installations do not need this step.
+
+`v0.3.0` makes team-context recall Agent-driven. Agents can decide when shared Session context is relevant, search it using a query plus optional repository-relative paths, inspect fixed Session versions, and pull or fork a Session when needed. Search recognizes symbols and error tokens directly from the query. Hooks remain responsible for Session synchronization and no longer initiate team searches from every user prompt or file operation. The Client, npm package, Hosted Server, and separate Linux Server operator archives are all version `0.3.0`.
 
 `v0.2.2` changes only the npm installation and launcher boundary. It does not change the Project, Session, or Server protocol. The compatible Hosted Server and separate Linux Server operator archives remain version `0.2.0`.
 
