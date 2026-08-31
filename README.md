@@ -10,13 +10,13 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
-Coconet `0.5.0` is the current release. `0.4.0` remains the first release under the new product identity, while historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
+Coconet `0.6.0` is the current release. `0.4.0` remains the first release under the new product identity, while historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
 
 The current release supports:
 
 - macOS: Apple Silicon and Intel
 - Linux: `arm64` and `x86_64`
-- Codex and Claude Code user-level integration
+- explicit Codex and Claude Code user-level integration, including multiple instances of the same Agent type
 - local-first automatic synchronization of project-scoped Agent Sessions
 - cumulative Session history that remains searchable after Agent context compaction
 - Agent-driven query and collaboration-root-relative path search
@@ -37,11 +37,21 @@ The recommended installation is:
 ```bash
 npm install --global coconet
 coconet version
+coconet agent add codex
 ```
 
 The npm package installs a stable lightweight launcher in npm's existing global bin directory. On first use, or when the npm package version changes, the launcher downloads only the archive for the current OS and CPU from this repository's matching immutable Release, verifies its pinned SHA-256 and bundle manifest, and installs the native Runtime without `sudo`. It continues the original command in the same terminal; no additional `PATH` export or new terminal is required when npm's own global bin directory is already available.
 
-Use `coconet` directly for normal commands. `coconet-setup` is an explicit recovery and local-artifact entry point; `npx` is not part of the supported installation path.
+Runtime installation does not inspect or modify Agent configuration. Add each Agent instance explicitly after installation. For example:
+
+```bash
+coconet agent add codex
+coconet agent add codex --command tcodex --config-root ~/.tcodex
+coconet agent add claude --command tclaude --config-root ~/.tclaude
+coconet agent list
+```
+
+Use `coconet` directly for normal commands. The setup layer is an internal launcher implementation, and `npx` is not part of the supported installation path.
 
 The Linux Server is distributed as a separate operator archive in the same GitHub Release and is not installed by the user-level npm command.
 
