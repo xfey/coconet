@@ -10,17 +10,20 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
-Coconet `0.4.1` is the current release. `0.4.0` remains the first release under the new product identity, while historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
+Coconet `0.5.0` is the current release. `0.4.0` remains the first release under the new product identity, while historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
 
 The current release supports:
 
 - macOS: Apple Silicon and Intel
 - Linux: `arm64` and `x86_64`
 - Codex and Claude Code user-level integration
-- automatic synchronization of project-scoped Agent Sessions
-- Agent-driven query and path-based team Session search
+- local-first automatic synchronization of project-scoped Agent Sessions
+- cumulative Session history that remains searchable after Agent context compaction
+- Agent-driven query and collaboration-root-relative path search
 - fixed-version Session reading, local pulling, and same-Agent forking
-- stable Project UIDs and short-lived approval-free Connection Codes
+- Git repositories and explicitly selected non-Git collaboration workspaces
+- stable Project UIDs and shorter, short-lived approval-free Connection Codes
+- one `disconnect` flow for remote Membership revocation and local binding cleanup
 - Hosted use and self-hosted Server deployment
 - self-hosted filesystem storage by default, with optional S3-compatible storage
 - explicit user-level uninstallation of Agent Plugins, Marketplace entries, Hook trust, caches, and the native Runtime, with optional local-data purge
@@ -29,7 +32,7 @@ Windows is not currently supported.
 
 ## Installation
 
-After the Coconet npm package is published, the recommended installation is:
+The recommended installation is:
 
 ```bash
 npm install --global coconet
