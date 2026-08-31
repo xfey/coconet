@@ -10,7 +10,7 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
-Coconet `0.4.0` is the first release under the new product identity. Historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
+Coconet `0.4.1` is the current release. `0.4.0` remains the first release under the new product identity, while historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
 
 The current release supports:
 
@@ -23,6 +23,7 @@ The current release supports:
 - stable Project UIDs and short-lived approval-free Connection Codes
 - Hosted use and self-hosted Server deployment
 - self-hosted filesystem storage by default, with optional S3-compatible storage
+- explicit user-level uninstallation of Agent Plugins, Marketplace entries, Hook trust, caches, and the native Runtime, with optional local-data purge
 
 Windows is not currently supported.
 
@@ -40,6 +41,17 @@ The npm package installs a stable lightweight launcher in npm's existing global 
 Use `coconet` directly for normal commands. `coconet-setup` is an explicit recovery and local-artifact entry point; `npx` is not part of the supported installation path.
 
 The Linux Server is distributed as a separate operator archive in the same GitHub Release and is not installed by the user-level npm command.
+
+## Uninstallation
+
+Remove Coconet-managed Agent integrations and the native Runtime before removing the stable npm launcher:
+
+```bash
+coconet uninstall
+npm uninstall --global coconet
+```
+
+The first command preserves local project bindings and credentials by default. Use `coconet uninstall --purge` to also remove Coconet-owned local state and credentials. It does not remove native Agent Sessions or call the Server to leave projects.
 
 ## Integrity and macOS trust
 
