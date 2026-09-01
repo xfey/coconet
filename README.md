@@ -10,7 +10,7 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
-Coconet `0.6.0` is the current release. `0.4.0` remains the first release under the new product identity, while historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
+Coconet `0.7.0` is the current release. `0.4.0` remains the first release under the new product identity, while historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
 
 The current release supports:
 
@@ -19,7 +19,8 @@ The current release supports:
 - explicit Codex and Claude Code user-level integration, including multiple instances of the same Agent type
 - local-first automatic synchronization of project-scoped Agent Sessions
 - cumulative Session history that remains searchable after Agent context compaction
-- Agent-driven query and collaboration-root-relative path search
+- Agent-driven browsing of recently synchronized team Sessions without inventing a search query
+- Agent-driven lexical query and collaboration-root-relative path search
 - fixed-version Session reading, local pulling, and same-Agent forking
 - Git repositories and explicitly selected non-Git collaboration workspaces
 - stable Project UIDs and shorter, short-lived approval-free Connection Codes
