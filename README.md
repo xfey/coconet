@@ -10,7 +10,7 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
-Coconet `0.10.0` is the current release. `0.4.0` remains the first release under the new product identity, while historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
+Coconet `0.11.0` is the current release. `0.4.0` remains the first release under the new product identity, while historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
 
 The current release supports:
 
@@ -25,6 +25,7 @@ The current release supports:
 - Agent-driven work discovery, fixed evidence reads, and same-Agent handoff with source lineage
 - fixed Activity history for checkpoints, Library collections, and registered Forks
 - linked Activity / DAG / Library views with exact-source links and stage-focused evidence
+- on-demand failure explanations in CLI and Dashboard, with bounded history and log correlation
 - a read-only project Dashboard at `https://api.coconet.space/dashboard/`
 - Agent-driven lexical query and collaboration-root-relative path search
 - fixed-version Session reading, local pulling, and same-Agent forking
