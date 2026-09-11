@@ -10,13 +10,13 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
-Coconet `0.11.0` is the current release. `0.4.0` remains the first release under the new product identity, while historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
+Coconet `0.11.1` is the current release. `0.4.0` remains the first release under the new product identity, while historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
 
 The current release supports:
 
 - macOS: Apple Silicon and Intel
 - Linux: `arm64` and `x86_64`
-- explicit Codex and Claude Code user-level integration, including multiple instances of the same Agent type
+- automatic default Codex and Claude Code setup, with optional additional Agent instances
 - local-first automatic synchronization of project-scoped Agent Sessions
 - cumulative Session history that remains searchable after Agent context compaction
 - Agent-driven browsing of recently synchronized team Sessions without inventing a search query
@@ -24,9 +24,9 @@ The current release supports:
 - a Session Library of user-selected immutable snapshots, with server-generated topic tags and browsing
 - Agent-driven work discovery, fixed evidence reads, and same-Agent handoff with source lineage
 - fixed Activity history for checkpoints, Library collections, and registered Forks
-- linked Activity / DAG / Library views with exact-source links and stage-focused evidence
-- on-demand failure explanations in CLI and Dashboard, with bounded history and log correlation
-- a read-only project Dashboard at `https://api.coconet.space/dashboard/`
+- a bilingual, draggable Work DAG canvas with ELK Layered routing and project Session Library shortcuts
+- on-demand failure explanations in the CLI and diagnostic API, with bounded history and log correlation
+- a project Dashboard with fixed-source conversation viewing and Library collection controls at `https://api.coconet.space/dashboard/`
 - Agent-driven lexical query and collaboration-root-relative path search
 - fixed-version Session reading, local pulling, and same-Agent forking
 - Git repositories and explicitly selected non-Git collaboration workspaces
@@ -46,15 +46,15 @@ The recommended installation is:
 ```bash
 npm install --global coconet
 coconet version
-coconet agent add codex
 ```
 
 The npm package installs a stable lightweight launcher in npm's existing global bin directory. On first use, or when the npm package version changes, the launcher downloads only the archive for the current OS and CPU from this repository's matching immutable Release, verifies its pinned SHA-256 and bundle manifest, and installs the native Runtime without `sudo`. It continues the original command in the same terminal; no additional `PATH` export or new terminal is required when npm's own global bin directory is already available.
 
-Runtime installation does not inspect or modify Agent configuration. Add each Agent instance explicitly after installation. For example:
+Runtime installation automatically registers the default `codex` and `claude` commands and configures their Coconet Plugins. Configuration roots follow `CODEX_HOME` / `CLAUDE_CONFIG_DIR`, falling back to `~/.codex` / `~/.claude`. Missing Agents are skipped, and one failed setup does not undo Runtime installation or block the other Agent. Start a new Agent session and accept its Hook trust prompt if shown. Installation alone does not connect a project or upload a conversation.
+
+Run `coconet agent list --verbose` to inspect setup, or `coconet agent add codex` / `coconet agent add claude` to retry. Defaults are added once; removing an integration is respected on later upgrades. To install only the Runtime, set `COCONET_SKIP_AGENT_SETUP=1` for its first launch. Additional instances can be registered explicitly:
 
 ```bash
-coconet agent add codex
 coconet agent add codex --command tcodex --config-root ~/.tcodex
 coconet agent add claude --command tclaude --config-root ~/.tclaude
 coconet agent list
@@ -76,9 +76,9 @@ coconet library list
 coconet account key
 ```
 
-Use your Account Key to sign in to the Dashboard. Keep that key private. A resumed Session carries the source conversation; it does not restore source code, dependencies, or the previous working tree. Library withdrawal and editing are deferred.
+Use your Account Key to sign in to the Dashboard. Keep that key private. A resumed Session carries the source conversation; it does not restore source code, dependencies, or the previous working tree. In the Dashboard, select a node and use the Library switch to add or remove its fixed source. Removing the Library entry preserves the original Session, version and DAG node. The Library menu is project-scoped; Chinese “星标会话” maps to English “Session Library”.
 
-Self-hosted operators enable semantic projection with an OpenAI-compatible inference endpoint. Without inference configuration, the existing Session synchronization, Search, Read, Pull, and Fork remain available. Upgrade Server before clients, back up metadata and deployment identity, and restore the matching database when rolling back across schema versions. Upgrade to current Agent host runtimes when transferring native histories between devices.
+Self-hosted operators enable semantic projection with an OpenAI-compatible inference endpoint. Without inference configuration, the existing Session synchronization, Search, Read, Pull, and Fork remain available. For Server upgrades, back up metadata and deployment identity, and restore the matching database when rolling back across schema versions. The 0.11.0 → 0.11.1 update keeps metadata schema 18; Hosted is already compatible with the new clients. Upgrade to current Agent host runtimes when transferring native histories between devices.
 
 ## Uninstallation
 
@@ -100,3 +100,5 @@ Each Release includes six platform archives, their per-archive `.sha256` files, 
 No open-source license currently applies to the Coconet binaries or private implementation. If source components are published here later, their applicable license and contribution boundary will be stated explicitly with those files.
 
 当前 Coconet 二进制及未公开实现不适用开源许可证。后续若在本仓库公开部分源码，会随对应文件明确标注许可证与贡献边界。
+
+Third-party components keep their own licenses. The Dashboard includes unchanged ELK 0.12.0 code under EPL-2.0; its source is available from [elkjs](https://github.com/kieler/elkjs/tree/ff5771d7165445c42c408bb8a090c8035272218c) and [Eclipse ELK](https://github.com/eclipse-elk/elk). The Server distributes its full license and attribution at `/dashboard/vendor/elk-LICENSE.md` and `/dashboard/vendor/README.md`.
