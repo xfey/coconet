@@ -10,10 +10,12 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
-Coconet `0.13.0` is the current release. `0.4.0` remains the first release under the new product identity, while historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
+Client, npm and Agent plugins `0.13.1` are the current release; Server and Hosted remain on `0.13.0`. `0.4.0` remains the first release under the new product identity, while historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
 
 The current release supports:
 
+- clear connection results, local upload status, and invitations with a local expiry time
+- concise Agent plugin setup summaries and retry commands that preserve custom instances
 - visible installation and upgrade progress, with command output kept separate
 - project status and a copyable teammate connection command directly after `coconet init`
 - one-hour Connection Codes with no per-code use quota
@@ -60,7 +62,7 @@ The launcher explains why setup is needed and shows a spinner with download prog
 
 Runtime installation automatically registers the default `codex` and `claude` commands and configures their Coconet Plugins. Configuration roots follow `CODEX_HOME` / `CLAUDE_CONFIG_DIR`, falling back to `~/.codex` / `~/.claude`. Missing Agents are skipped, and one failed setup does not undo Runtime installation or block the other Agent. Start a new Agent session and accept its Hook trust prompt if shown. Installation alone does not connect a project or upload a conversation.
 
-Run `coconet agent list --verbose` to inspect setup, or `coconet agent add codex` / `coconet agent add claude` to retry. Defaults are added once; removing an integration is respected on later upgrades. To install only the Runtime, set `COCONET_SKIP_AGENT_SETUP=1` for its first launch. Additional instances can be registered explicitly:
+Run `coconet agent list --verbose` to inspect setup and copy the retry command for the intended instance. Defaults can also be configured with `coconet agent add codex` / `coconet agent add claude`. Defaults are added once; removing an integration is respected on later upgrades. To install only the Runtime, set `COCONET_SKIP_AGENT_SETUP=1` for its first launch. Additional instances can be registered explicitly:
 
 ```bash
 coconet agent add codex --command tcodex --config-root ~/.tcodex
@@ -80,7 +82,9 @@ Run this in the project directory:
 coconet init
 ```
 
-Initialization shows project status and a complete `coconet connect <connection-code>` command to share with teammates. They run that command in their corresponding project directory. Use `coconet status` to refresh the sharing command. New codes expire in one hour and have no use counter; already issued codes retain their original expiry. Code expiry does not remove existing project members.
+Initialization starts with a clear connection result and local upload status, followed by a complete `coconet connect <connection-code>` command to share with teammates. They run that command in their corresponding project directory. Use `coconet status` to refresh the sharing command. New codes expire in one hour and have no use counter; already issued codes retain their original expiry. Code expiry does not remove existing project members. The invitation shows its local expiry time and time zone. Local upload status describes the queue on this device for that server; an empty queue does not prove that Hooks or server-side graph processing have completed.
+
+Human output uses light styling in interactive terminals and plain text when redirected or when `NO_COLOR` / `TERM=dumb` is set. Run `coconet --help` for a task-oriented command overview.
 
 ## Shared work and Session Library
 
