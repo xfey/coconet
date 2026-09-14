@@ -10,9 +10,13 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
-Coconet `0.12.0` is the current release. `0.4.0` remains the first release under the new product identity, while historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
+Coconet `0.13.0` is the current release. `0.4.0` remains the first release under the new product identity, while historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
 
 The current release supports:
+
+- visible installation and upgrade progress, with command output kept separate
+- project status and a copyable teammate connection command directly after `coconet init`
+- one-hour Connection Codes with no per-code use quota
 
 - goal-oriented DAG stages that keep related discussion, implementation, tests, documentation, and corrections together
 - historical Session overviews that preserve major contributions and avoid attributing verified inherited prefixes twice
@@ -52,6 +56,8 @@ coconet version
 
 The npm package installs a stable lightweight launcher in npm's existing global bin directory. On first use, or when the npm package version changes, the launcher downloads only the archive for the current OS and CPU from this repository's matching immutable Release, verifies its pinned SHA-256 and bundle manifest, and installs the native Runtime without `sudo`. It continues the original command in the same terminal; no additional `PATH` export or new terminal is required when npm's own global bin directory is already available.
 
+The launcher explains why setup is needed and shows a spinner with download progress in an interactive terminal. Redirected output uses plain stage lines. Setup feedback goes to stderr, preserving JSON and other command protocols on stdout. Matching installations start directly without setup feedback.
+
 Runtime installation automatically registers the default `codex` and `claude` commands and configures their Coconet Plugins. Configuration roots follow `CODEX_HOME` / `CLAUDE_CONFIG_DIR`, falling back to `~/.codex` / `~/.claude`. Missing Agents are skipped, and one failed setup does not undo Runtime installation or block the other Agent. Start a new Agent session and accept its Hook trust prompt if shown. Installation alone does not connect a project or upload a conversation.
 
 Run `coconet agent list --verbose` to inspect setup, or `coconet agent add codex` / `coconet agent add claude` to retry. Defaults are added once; removing an integration is respected on later upgrades. To install only the Runtime, set `COCONET_SKIP_AGENT_SETUP=1` for its first launch. Additional instances can be registered explicitly:
@@ -65,6 +71,16 @@ coconet agent list
 Use `coconet` directly for normal commands. The setup layer is an internal launcher implementation, and `npx` is not part of the supported installation path.
 
 The Linux Server is distributed as a separate operator archive in the same GitHub Release and is not installed by the user-level npm command.
+
+## Connect a project
+
+Run this in the project directory:
+
+```bash
+coconet init
+```
+
+Initialization shows project status and a complete `coconet connect <connection-code>` command to share with teammates. They run that command in their corresponding project directory. Use `coconet status` to refresh the sharing command. New codes expire in one hour and have no use counter; already issued codes retain their original expiry. Code expiry does not remove existing project members.
 
 ## Shared work and Session Library
 
@@ -80,7 +96,7 @@ coconet account key
 
 Use your Account Key to sign in to the Dashboard. Keep that key private. A resumed Session carries the source conversation; it does not restore source code, dependencies, or the previous working tree. In the Dashboard, select a node and use the Library switch to add or remove its fixed source. Removing the Library entry preserves the original Session, version and DAG node. The Library menu is project-scoped; Chinese “星标会话” maps to English “Session Library”.
 
-Self-hosted operators enable semantic projection with an OpenAI-compatible inference endpoint. Without inference configuration, the existing Session synchronization, Search, Read, Pull, and Fork remain available. For Server upgrades, back up metadata and deployment identity, and restore the matching database when rolling back across schema versions. The 0.11.0 → 0.11.1 update keeps metadata schema 18; Hosted is already compatible with the new clients. Upgrade to current Agent host runtimes when transferring native histories between devices.
+Self-hosted operators enable semantic projection with an OpenAI-compatible inference endpoint. Without inference configuration, the existing Session synchronization, Search, Read, Pull, and Fork remain available. For Server upgrades, back up metadata and deployment identity, and restore the matching database when rolling back across schema versions. The 0.13.0 Server migrates metadata schema 18 → 19 and removes Connection Code use counters. Previously exhausted codes stay invalid. Update the client and Server together; the token issuance response uses schema 2, while its request and HTTP route remain unchanged. Rolling back to a schema 18 Server requires restoring the pre-upgrade metadata snapshot. Upgrade to current Agent host runtimes when transferring native histories between devices.
 
 ## Uninstallation
 
