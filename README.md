@@ -10,14 +10,16 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
-Client, npm and Agent plugins `0.13.1` are the current release; Server and Hosted remain on `0.13.0`. `0.4.0` remains the first release under the new product identity, while historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
+Client, npm, Agent plugins, Server and Hosted are on `0.14.0`. `0.4.0` remains the first release under the new product identity, while historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
 
 The current release supports:
 
-- clear connection results, local upload status, and invitations with a local expiry time
+- GitHub account login on Hosted, with independent device credentials and browser sessions
+- browser-based project selection, invitations, profile editing and device management
+- OIDC or administrator-issued Account Keys for private deployments
 - concise Agent plugin setup summaries and retry commands that preserve custom instances
 - visible installation and upgrade progress, with command output kept separate
-- project status and a copyable teammate connection command directly after `coconet init`
+- account, project, local upload status and a Dashboard link directly after `coconet init`
 - one-hour Connection Codes with no per-code use quota
 
 - goal-oriented DAG stages that keep related discussion, implementation, tests, documentation, and corrections together
@@ -39,7 +41,7 @@ The current release supports:
 - fixed-version Session reading, local pulling, and same-Agent forking
 - Git repositories and explicitly selected non-Git collaboration workspaces
 - stable Project UIDs and shorter, short-lived approval-free Connection Codes
-- one `disconnect` flow for remote Membership revocation and local binding cleanup
+- local folder disconnection without changing project membership or other devices
 - Hosted use and self-hosted Server deployment
 - canonical Hosted API at `https://api.coconet.space`
 - self-hosted filesystem storage by default, with optional S3-compatible storage
@@ -82,7 +84,13 @@ Run this in the project directory:
 coconet init
 ```
 
-Initialization starts with a clear connection result and local upload status, followed by a complete `coconet connect <connection-code>` command to share with teammates. They run that command in their corresponding project directory. Use `coconet status` to refresh the sharing command. New codes expire in one hour and have no use counter; already issued codes retain their original expiry. Code expiry does not remove existing project members. The invitation shows its local expiry time and time zone. Local upload status describes the queue on this device for that server; an empty queue does not prove that Hooks or server-side graph processing have completed.
+Your browser opens to sign in, choose an existing project or create one, and approve sharing this folder's existing and future Sessions. After approval, the CLI shows the account, project, local upload status and Dashboard link. Run `coconet status` to check the connection without creating an invitation.
+
+Invite teammates from the Dashboard. They open the invitation link, sign in and accept, then run `coconet init` in their local project folder. Invitations expire in one hour and have no use counter. Joining in the browser does not upload local content; connecting a folder is a separate step.
+
+For SSH or remote terminals, use `coconet init --no-browser` and open the printed link on your own computer. Advanced workflows retain `init --project ID`, `init --new`, and `status --invite` / `connect <code>`. `coconet login` renews device access; `logout` signs out only this device, and `disconnect` unlinks only the current folder. Leave a project or revoke a device from Dashboard settings.
+
+Local upload status describes this device's queue for that server; an empty queue does not prove that Hooks or graph processing have completed.
 
 Human output uses light styling in interactive terminals and plain text when redirected or when `NO_COLOR` / `TERM=dumb` is set. Run `coconet --help` for a task-oriented command overview.
 
@@ -95,12 +103,17 @@ Ask your Agent to find related project work, read a selected source, or add the 
 ```bash
 coconet library add --session SESSION_ID --version VERSION
 coconet library list
-coconet account key
 ```
 
-Use your Account Key to sign in to the Dashboard. Keep that key private. A resumed Session carries the source conversation; it does not restore source code, dependencies, or the previous working tree. In the Dashboard, select a node and use the Library switch to add or remove its fixed source. Removing the Library entry preserves the original Session, version and DAG node. The Library menu is project-scoped; Chinese “星标会话” maps to English “Session Library”.
+Sign in to the Hosted Dashboard with GitHub. A resumed Session carries the source conversation; it does not restore source code, dependencies, or the previous working tree. In the Dashboard, select a node and use the Library switch to add or remove its fixed source. Removing the Library entry preserves the original Session, version and DAG node. The Library menu is project-scoped; Chinese “星标会话” maps to English “Session Library”.
 
-Self-hosted operators enable semantic projection with an OpenAI-compatible inference endpoint. Without inference configuration, the existing Session synchronization, Search, Read, Pull, and Fork remain available. For Server upgrades, back up metadata and deployment identity, and restore the matching database when rolling back across schema versions. The 0.13.0 Server migrates metadata schema 18 → 19 and removes Connection Code use counters. Previously exhausted codes stay invalid. Update the client and Server together; the token issuance response uses schema 2, while its request and HTTP route remain unchanged. Rolling back to a schema 18 Server requires restoring the pre-upgrade metadata snapshot. Upgrade to current Agent host runtimes when transferring native histories between devices.
+Self-hosted operators enable semantic projection with an OpenAI-compatible inference endpoint. Without inference configuration, the existing Session synchronization, Search, Read, Pull, and Fork remain available. For Server upgrades, back up metadata and deployment identity, and restore the matching database when rolling back across schema versions. Server 0.14.0 migrates metadata schema 19 → 20. Upgrade the Server before new clients. Existing projects and Sessions are preserved; signing in through GitHub creates a separate account from earlier Git-profile identities. Accounts are not automatically merged or granted old project membership. An existing member can invite the new account. Rolling back to a schema 19 Server requires the matching pre-upgrade metadata snapshot. Upgrade to current Agent host runtimes when transferring native histories between devices.
+
+## Private server login
+
+Set `COCONET_AUTH_PROVIDER=oidc` with `COCONET_AUTH_ISSUER`, `COCONET_AUTH_CLIENT_ID` and `COCONET_AUTH_CLIENT_SECRET`, or use the default `key` provider. OIDC requires HTTPS; its callback is your server origin followed by `/v1/auth/callback`. Provider secrets stay in the server environment. Private deployments keep their own accounts, projects and Dashboard; Hosted does not proxy private data.
+
+In Key mode, an operator issues an account with `coconet-server account create --config PATH --name NAME`; stop a bbolt server first. The user signs in to the private Dashboard with that key and approves the CLI. Run `coconet init --server https://your-server.example` to connect. GitHub can also be configured with `COCONET_AUTH_PROVIDER=github` and an OAuth App using the same callback path.
 
 ## Uninstallation
 
