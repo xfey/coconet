@@ -10,7 +10,7 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
-Coconet Client / npm remains at [0.15.1](https://github.com/xfey/coconet/releases/tag/v0.15.1), with Registry installation verified on macOS Apple Silicon and Linux x86_64. Server 0.15.2 updates the Dashboard without requiring a CLI update; see its [release](https://github.com/xfey/coconet/releases/tag/v0.15.2) for distribution availability. `0.4.0` remains the first release under the new product identity, while historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
+Coconet Client / npm remains at [0.15.1](https://github.com/xfey/coconet/releases/tag/v0.15.1), with Registry installation verified on macOS Apple Silicon and Linux x86_64. Server [0.15.2](https://github.com/xfey/coconet/releases/tag/v0.15.2) is published and deployed to Hosted, updating the Dashboard without requiring a CLI update. `0.4.0` remains the first release under the new product identity, while historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
 
 The current release supports:
 
