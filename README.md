@@ -10,7 +10,7 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
-Server / Dashboard [0.16.2](https://github.com/xfey/coconet/releases/tag/v0.16.2) introduces a restrained blue, neutral gray and white palette. Client / npm / Plugins remain [0.16.1](https://github.com/xfey/coconet/releases/tag/v0.16.1), including the cached Hook uninstall fix; npm `latest` remains 0.16.1. Hosted is running 0.16.2; refresh the Dashboard to use the new palette. Desktop/mobile browser acceptance and reproducible Server builds passed.
+Server / Dashboard [0.16.3](https://github.com/xfey/coconet/releases/tag/v0.16.3) keeps Library entries, navigation and button states neutral gray and white. Blue remains on selected DAG nodes and connections, the enabled Library switch and user conversation bubbles. Client / npm / Plugins remain [0.16.1](https://github.com/xfey/coconet/releases/tag/v0.16.1), including the cached Hook uninstall fix; npm `latest` remains 0.16.1. Hosted is running 0.16.3; refresh the Dashboard to use the updated styles. Desktop/mobile browser acceptance and reproducible Server builds passed.
 
 The current release supports:
 
@@ -140,7 +140,7 @@ From Client 0.16.1, cached Hook commands silently skip missing Plugin scripts af
 
 ## Integrity and macOS trust
 
-Full Client / Server releases include six platform archives, their per-archive `.sha256` files, a complete `SHA256SUMS`, and `release.json`. The Server-only 0.15.2 release contains two Linux Server archives, their checksums, `SHA256SUMS`, and `server-release.json`; existing Client releases and npm versions remain unchanged. macOS Runtime and Bootstrap binaries are signed with Developer ID, use hardened runtime and a secure timestamp, and are notarized by Apple. The bundled Node executable retains its upstream Node.js Foundation signature.
+Full Client / Server releases include six platform archives, their per-archive `.sha256` files, a complete `SHA256SUMS`, and `release.json`. Server-only releases, including 0.16.3, contain two Linux Server archives, their checksums, `SHA256SUMS`, and `server-release.json`; existing Client releases and npm versions remain unchanged. macOS Runtime and Bootstrap binaries are signed with Developer ID, use hardened runtime and a secure timestamp, and are notarized by Apple. The bundled Node executable retains its upstream Node.js Foundation signature.
 
 ## Source and licensing
 
