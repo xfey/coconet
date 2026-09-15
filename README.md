@@ -10,7 +10,7 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
-Coconet Client / npm remains at [0.15.1](https://github.com/xfey/coconet/releases/tag/v0.15.1), with Registry installation verified on macOS Apple Silicon and Linux x86_64. Server [0.15.2](https://github.com/xfey/coconet/releases/tag/v0.15.2) is published and deployed to Hosted, updating the Dashboard without requiring a CLI update. `0.4.0` remains the first release under the new product identity, while historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
+Coconet Client / npm / Server version [0.16.0](https://github.com/xfey/coconet/releases/tag/v0.16.0) adds project folder registration and consistent canvas notifications. `0.4.0` remains the first release under the new product identity, while historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
 
 The current release supports:
 
@@ -25,6 +25,9 @@ The current release supports:
 - project sharing, language and current-project settings in the bottom Dashboard toolbar
 - a dedicated plus button for creating or joining projects, and an account menu for profile, devices and sign-out
 - compact primary and secondary buttons, with grouped zoom controls
+- project settings that list members, devices and the working folders they have connected (latest registration, not live presence)
+- invitation loading, failure and retry feedback in both sharing entry points
+- canvas-relative notifications that avoid the details panel, and automatic centering when new nodes appear
 - one-hour Connection Codes with no per-code use quota
 
 - goal-oriented DAG stages that keep related discussion, implementation, tests, documentation, and corrections together
@@ -80,6 +83,8 @@ coconet agent list
 Use `coconet` directly for normal commands. The setup layer is an internal launcher implementation, and `npx` is not part of the supported installation path.
 
 The Linux Server is distributed as a separate operator archive in the same GitHub Release and is not installed by the user-level npm command.
+
+After upgrading, run `coconet status` in an existing connection to register its working folder in Project Settings. This shares its path with authorized project members; directory files are not uploaded.
 
 ## Connect a project
 
