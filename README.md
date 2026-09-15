@@ -10,7 +10,7 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
-Client archives, Agent plugins, Server, Hosted and npm `latest` are on `0.15.0`. Registry installation has been verified on macOS Apple Silicon and Linux x86-64. `0.4.0` remains the first release under the new product identity, while historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
+This documentation describes Coconet `0.15.1`. Check the GitHub Release and npm for distribution availability. `0.4.0` remains the first release under the new product identity, while historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
 
 The current release supports:
 
@@ -20,7 +20,9 @@ The current release supports:
 - OIDC or administrator-issued Account Keys for private deployments
 - concise Agent plugin setup summaries and retry commands that preserve custom instances
 - visible installation and upgrade progress, with command output kept separate
-- account, project, local upload status and a Dashboard link directly after `coconet connect`
+- automatic browser opening, a prominent verification code and direct navigation to the project after approval
+- concise connection confirmation, with account and upload details available through `coconet status`
+- project sharing and interface language settings in the bottom Dashboard toolbar
 - one-hour Connection Codes with no per-code use quota
 
 - goal-oriented DAG stages that keep related discussion, implementation, tests, documentation, and corrections together
@@ -85,9 +87,9 @@ Run this in the project directory:
 coconet connect
 ```
 
-Your browser opens to sign in and review the CLI device and effective folder. Choose an existing project or create one, then approve sharing the folder's existing and future Sessions. Use `coconet connect --path DIRECTORY` to select another folder. On macOS and supported Linux desktops, the page can ask the CLI to open the system folder chooser. Git subdirectories use the repository root, shown explicitly before approval. After approval, the CLI shows the account, project, local upload status and Dashboard link. Run `coconet status` to check the connection without creating an invitation.
+Your browser opens to sign in and review the CLI device and effective folder. Choose an existing project or create one, then approve sharing the folder's existing and future Sessions. Use `coconet connect --path DIRECTORY` to select another folder. On macOS and supported Linux desktops, the page can ask the CLI to open the system folder chooser. Git subdirectories use the repository root, shown explicitly before approval. After approval, the browser shows the selected project and the CLI confirms the connection. Match the verification code shown in the terminal and browser; no typing is needed. If the browser cannot open automatically, use the printed link. Run `coconet status` for account, upload status and the Dashboard link, or use `connect --verbose` for details.
 
-Invite teammates from the Dashboard. They open the invitation link, sign in and accept, then copy the provided `coconet connect --project ID` command and run it in their own working folder. Invitations expire in one hour and have no use counter. Joining in the browser does not upload local content; connecting a folder is a separate step.
+Use Share project in the bottom Dashboard toolbar to invite teammates. They open the invitation link, sign in and accept, then copy the provided `coconet connect --project ID` command and run it in their own working folder. Invitations expire in one hour and have no use counter. Joining in the browser does not upload local content; connecting a folder is a separate step.
 
 For SSH or remote terminals, use `coconet connect --no-browser` and open the printed link on your own computer. The folder always belongs to the machine running the CLI; use `--path` on the server to change a remote folder. `init` remains an alias of `connect`. `connect --project ID` preselects a project in the browser; `connect --new` and `status --invite` / `connect <code>` retain direct workflows. `coconet login` renews device access; `logout` signs out only this device, and `disconnect` unlinks only the current folder. Leave a project or revoke a device from Dashboard settings.
 
@@ -106,7 +108,7 @@ coconet library add --session SESSION_ID --version VERSION
 coconet library list
 ```
 
-Sign in to the Hosted Dashboard with GitHub. A resumed Session carries the source conversation; it does not restore source code, dependencies, or the previous working tree. In the Dashboard, select a node and use the Library switch to add or remove its fixed source. Removing the Library entry preserves the original Session, version and DAG node. The Library menu is project-scoped; Chinese “星标会话” maps to English “Session Library”.
+Sign in to the Hosted Dashboard with GitHub. A resumed Session carries the source conversation; it does not restore source code, dependencies, or the previous working tree. In the Dashboard, select a node and use the Library switch to add or remove its fixed source. Removing the Library entry preserves the original Session, version and DAG node. Interface language is available under Settings in the bottom toolbar; project and conversation text stays unchanged. The Library menu is project-scoped; Chinese “星标会话” maps to English “Session Library”.
 
 Self-hosted operators enable semantic projection with an OpenAI-compatible inference endpoint. Without inference configuration, the existing Session synchronization, Search, Read, Pull, and Fork remain available. For Server upgrades, back up metadata and deployment identity, and restore the matching database when rolling back across schema versions. Server 0.14.0 migrates metadata schema 19 → 20. Upgrade the Server before new clients. Existing projects and Sessions are preserved; signing in through GitHub creates a separate account from earlier Git-profile identities. Accounts are not automatically merged or granted old project membership. An existing member can invite the new account. Rolling back to a schema 19 Server requires the matching pre-upgrade metadata snapshot. Upgrade to current Agent host runtimes when transferring native histories between devices.
 
