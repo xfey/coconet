@@ -10,7 +10,7 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
-Client / npm / Server version [0.16.0](https://github.com/xfey/coconet/releases/tag/v0.16.0) adds project folder registration and consistent canvas notifications. Hosted and npm `latest` are both 0.16.0. Registry installation, first launch and repeat launch are verified on macOS Apple Silicon and Linux x86_64. `0.4.0` remains the first release under the new product identity, while historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
+Client / npm / Plugin version [0.16.1](https://github.com/xfey/coconet/releases/tag/v0.16.1) fixes cached Hook commands failing after uninstallation. Server and Hosted remain 0.16.0. npm publication is pending. `0.4.0` remains the first release under the new product identity, while historical `v0.1.0`–`v0.3.0` tags, Release assets, and npm versions remain immutable records of the former Coddis identity.
 
 The current release supports:
 
@@ -135,6 +135,8 @@ npm uninstall --global coconet
 ```
 
 The first command preserves local project bindings and credentials by default. Use `coconet uninstall --purge` to also remove Coconet-owned local state and credentials. It does not remove native Agent Sessions or call the Server to leave projects.
+
+From Client 0.16.1, cached Hook commands silently skip missing Plugin scripts after uninstall. Restart Agents to unload their Plugins; processes that cached commands from 0.16.0 or earlier still need a restart to avoid the old Hook error.
 
 ## Integrity and macOS trust
 
