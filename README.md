@@ -10,7 +10,7 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
-Server / Dashboard [0.16.9](https://github.com/xfey/coconet/releases/tag/v0.16.9) organizes the bottom toolbar into three groups: refresh, connected folders, sharing and settings; zoom out, zoom in and fit; and a separate question-mark help button. Dialog actions now align consistently to the right, and folder and settings dialogs omit repeated project headings. Sharing keeps its compact dialog and collapsed invitation link. Client / npm / Plugins remain [0.16.1](https://github.com/xfey/coconet/releases/tag/v0.16.1); npm `latest` remains 0.16.1. Hosted is running 0.16.9. Refresh the Dashboard to see the update; no client update is needed.
+Server / Dashboard [0.16.10](https://github.com/xfey/coconet/releases/tag/v0.16.10) moves the website to [coconet.space](https://coconet.space/), with a spacious dotted area on the left and a login panel on the right. The Hosted API remains at `https://api.coconet.space`; existing project connections and device credentials continue to work. Old Dashboard links redirect to the website. Sign in once on the new domain. Client / npm / Plugins remain [0.16.1](https://github.com/xfey/coconet/releases/tag/v0.16.1); no client update is needed.
 
 The current release supports:
 
@@ -44,13 +44,14 @@ The current release supports:
 - fixed Activity history for checkpoints, Library collections, and registered Forks
 - a bilingual, draggable Work DAG canvas with ELK Layered routing and project Session Library shortcuts
 - on-demand failure explanations in the CLI and diagnostic API, with bounded history and log correlation
-- a project Dashboard with fixed-source conversation viewing and Library collection controls at `https://api.coconet.space/dashboard/`
+- a project Dashboard with fixed-source conversation viewing and Library collection controls at `https://coconet.space/`
 - Agent-driven lexical query and collaboration-root-relative path search
 - fixed-version Session reading, local pulling, and same-Agent forking
 - Git repositories and explicitly selected non-Git collaboration workspaces
 - stable Project UIDs and shorter, short-lived approval-free Connection Codes
 - local folder disconnection without changing project membership or other devices
 - Hosted use and self-hosted Server deployment
+- the website and device approval pages at `https://coconet.space`
 - canonical Hosted API at `https://api.coconet.space`
 - self-hosted filesystem storage by default, with optional S3-compatible storage
 - explicit user-level uninstallation of Agent Plugins, Marketplace entries, Hook trust, caches, and the native Runtime, with optional local-data purge
