@@ -10,7 +10,7 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
-Server / Dashboard [0.16.5](https://github.com/xfey/coconet/releases/tag/v0.16.5) adds the Coconet logo beside the existing brand title in the project sidebar and login page. Client / npm / Plugins remain [0.16.1](https://github.com/xfey/coconet/releases/tag/v0.16.1); npm `latest` remains 0.16.1. Hosted is running 0.16.5. Refresh the Dashboard to see the update; no client update is needed.
+Server / Dashboard [0.16.6](https://github.com/xfey/coconet/releases/tag/v0.16.6) refines the logo proportions, uses Outfit 550 for the brand title, and shows the running Server version underneath. The 1,320-byte font subset is bundled with the Server and served with same-origin preloading and long-lived caching. Client / npm / Plugins remain [0.16.1](https://github.com/xfey/coconet/releases/tag/v0.16.1); npm `latest` remains 0.16.1. Hosted is running 0.16.6. Refresh the Dashboard to see the update; no client update is needed.
 
 The current release supports:
 
