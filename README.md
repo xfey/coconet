@@ -10,7 +10,7 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
-Server / Dashboard [0.16.10](https://github.com/xfey/coconet/releases/tag/v0.16.10) moves the website to [coconet.space](https://coconet.space/), with a spacious dotted area on the left and a login panel on the right. The Hosted API remains at `https://api.coconet.space`; existing project connections and device credentials continue to work. Old Dashboard links redirect to the website. Sign in once on the new domain. Client / npm / Plugins remain [0.16.1](https://github.com/xfey/coconet/releases/tag/v0.16.1); no client update is needed.
+Client / Server / npm / Plugins [0.17.0](https://github.com/xfey/coconet/releases/tag/v0.17.0) reduces synchronization and idle Dashboard work: new uploads use lossless gzip chunks, append-only Sessions can reuse verified prefixes, and committed graph or Library changes trigger Dashboard updates while keeping the current view. Search uses visible conversation text and bounded tool metadata; original Sessions remain intact for reading and handoff. Unreferenced upload snapshots and abandoned upload objects are cleaned up with retention safeguards. The website stays at [coconet.space](https://coconet.space/), and the Hosted API stays at `https://api.coconet.space`.
 
 The current release supports:
 
@@ -67,6 +67,8 @@ npm install --global coconet
 coconet version
 ```
 
+To upgrade, run `npm install --global coconet@0.17.0` and then `coconet version`. Upgrade devices that need to pull or fork newly compressed Sessions; older clients can still upload the previous format and read indexed text. Self-hosted operators should upgrade the Server first.
+
 The npm package installs a stable lightweight launcher in npm's existing global bin directory. On first use, or when the npm package version changes, the launcher downloads only the archive for the current OS and CPU from this repository's matching immutable Release, verifies its pinned SHA-256 and bundle manifest, and installs the native Runtime without `sudo`. It continues the original command in the same terminal; no additional `PATH` export or new terminal is required when npm's own global bin directory is already available.
 
 The launcher explains why setup is needed and shows a spinner with download progress in an interactive terminal. Redirected output uses plain stage lines. Setup feedback goes to stderr, preserving JSON and other command protocols on stdout. Matching installations start directly without setup feedback.
@@ -118,7 +120,7 @@ coconet library list
 
 Sign in to the Hosted Dashboard with GitHub. A resumed Session carries the source conversation; it does not restore source code, dependencies, or the previous working tree. In the Dashboard, select a node and use the Library switch to add or remove its fixed source. Removing the Library entry preserves the original Session, version and DAG node. Interface language is available under Settings in the bottom toolbar; project and conversation text stays unchanged. The Library menu is project-scoped; Chinese “星标会话” maps to English “Session Library”.
 
-Self-hosted operators enable semantic projection with an OpenAI-compatible inference endpoint. Without inference configuration, the existing Session synchronization, Search, Read, Pull, and Fork remain available. For Server upgrades, back up metadata and deployment identity, and restore the matching database when rolling back across schema versions. Server 0.14.0 migrates metadata schema 19 → 20. Upgrade the Server before new clients. Existing projects and Sessions are preserved; signing in through GitHub creates a separate account from earlier Git-profile identities. Accounts are not automatically merged or granted old project membership. An existing member can invite the new account. Rolling back to a schema 19 Server requires the matching pre-upgrade metadata snapshot. Upgrade to current Agent host runtimes when transferring native histories between devices.
+Self-hosted operators enable semantic projection with an OpenAI-compatible inference endpoint. Without inference configuration, the existing Session synchronization, Search, Read, Pull, and Fork remain available. For Server upgrades, back up metadata and deployment identity, and restore the matching database when rolling back across schema versions. Server 0.17.0 migrates metadata schema 21 → 22. Preserve the pre-upgrade database snapshot with its matching Server binary; rolling back only the binary is insufficient. Existing bbolt and S3-compatible storage can continue to be used. Safe orphan cleanup requires permission to delete the exact unreferenced object keys; committed Session Versions are retained. Server 0.14.0 migrates metadata schema 19 → 20. Upgrade the Server before new clients. Existing projects and Sessions are preserved; signing in through GitHub creates a separate account from earlier Git-profile identities. Accounts are not automatically merged or granted old project membership. An existing member can invite the new account. Rolling back to a schema 19 Server requires the matching pre-upgrade metadata snapshot. Upgrade to current Agent host runtimes when transferring native histories between devices.
 
 ## Private server login
 
