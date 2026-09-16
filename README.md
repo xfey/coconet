@@ -10,7 +10,7 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
-Server / Dashboard [0.16.7](https://github.com/xfey/coconet/releases/tag/v0.16.7) slightly thickens the logo strokes and matches their color to the Outfit 550 brand title. The logo remains 50 × 45 px, with approximately 0.3 px thicker strokes and a shared #242424 color. The 1,320-byte font subset is bundled with the Server. Client / npm / Plugins remain [0.16.1](https://github.com/xfey/coconet/releases/tag/v0.16.1); npm `latest` remains 0.16.1. Hosted is running 0.16.7. Refresh the Dashboard to see the update; no client update is needed.
+Server / Dashboard [0.16.8](https://github.com/xfey/coconet/releases/tag/v0.16.8) adds a dedicated Connected folders button to the toolbar and simplifies project sharing. Connected folders open in their own dialog; Settings retains language and project leave controls. Sharing uses a compact dialog with a collapsed invitation link, expiry time, and a direct copy button. Client / npm / Plugins remain [0.16.1](https://github.com/xfey/coconet/releases/tag/v0.16.1); npm `latest` remains 0.16.1. Hosted is running 0.16.8. Refresh the Dashboard to see the update; no client update is needed.
 
 The current release supports:
 
@@ -22,10 +22,10 @@ The current release supports:
 - visible installation and upgrade progress, with command output kept separate
 - automatic browser opening, a prominent verification code and direct navigation to the project after approval
 - concise connection confirmation, with account and upload details available through `coconet status`
-- project sharing, language and current-project settings in the bottom Dashboard toolbar
+- connected folders, project sharing, language and current-project settings in the bottom Dashboard toolbar
 - a dedicated plus button for creating or joining projects, and an account menu for profile, devices and sign-out
 - compact primary and secondary buttons, with grouped zoom controls
-- project settings that list members, devices and the working folders they have connected (latest registration, not live presence)
+- a dedicated Connected folders dialog that lists members, devices and their working folders (latest registration, not live presence)
 - invitation loading, failure and retry feedback in both sharing entry points
 - canvas-relative notifications that avoid the details panel, and automatic centering when new nodes appear
 - one-hour Connection Codes with no per-code use quota
@@ -84,7 +84,7 @@ Use `coconet` directly for normal commands. The setup layer is an internal launc
 
 The Linux Server is distributed as a separate operator archive in the same GitHub Release and is not installed by the user-level npm command.
 
-After upgrading, run `coconet status` in an existing connection to register its working folder in Project Settings. This shares its path with authorized project members; directory files are not uploaded.
+After upgrading, run `coconet status` in an existing connection to register its working folder in Connected folders. This shares its path with authorized project members; directory files are not uploaded.
 
 ## Connect a project
 
@@ -96,7 +96,7 @@ coconet connect
 
 Your browser opens to sign in and review the CLI device and effective folder. Choose an existing project or create one, then approve sharing the folder's existing and future Sessions. Use `coconet connect --path DIRECTORY` to select another folder. On macOS and supported Linux desktops, the page can ask the CLI to open the system folder chooser. Git subdirectories use the repository root, shown explicitly before approval. After approval, the browser shows the selected project and the CLI confirms the connection. Match the verification code shown in the terminal and browser; no typing is needed. If the browser cannot open automatically, use the printed link. Run `coconet status` for account, upload status and the Dashboard link, or use `connect --verbose` for details.
 
-Use Share project in the bottom Dashboard toolbar to invite teammates. Settings lists the current project's connected folders, with Connect my folder in that section and a separate leave action. Invitations are available through Share project. The plus button beside Projects only creates or joins projects. Click the user icon and name to manage your profile or sign out. They open the invitation link, sign in and accept, then copy the provided `coconet connect --project ID` command and run it in their own working folder. Invitations expire in one hour and have no use counter. Joining in the browser does not upload local content; connecting a folder is a separate step.
+Use Share project in the bottom Dashboard toolbar to invite teammates. The folder button in the bottom toolbar lists the current project's connected folders and offers Connect my folder. Settings contains language preferences and a separate leave action. Invitations are available through Share project, with the full link collapsed by default; copy it directly or expand it to view. The plus button beside Projects only creates or joins projects. Click the user icon and name to manage your profile or sign out. They open the invitation link, sign in and accept, then copy the provided `coconet connect --project ID` command and run it in their own working folder. Invitations expire in one hour and have no use counter. Joining in the browser does not upload local content; connecting a folder is a separate step.
 
 For SSH or remote terminals, use `coconet connect --no-browser` and open the printed link on your own computer. You can run connect on a signed-out device without a separate login command. Sign in through the printed link, then confirm the device and folder; an existing browser login skips the sign-in screen. A project ID only preselects a project and does not grant membership or bypass authorization. The folder always belongs to the machine running the CLI; use `--path` on the server to change a remote folder. `init` remains an alias of `connect`. `connect --project ID` preselects a project in the browser; `connect --new` and `status --invite` / `connect <code>` retain direct workflows. `coconet login` renews device access; `logout` signs out only this device, and `disconnect` unlinks only the current folder. Leave a project or revoke a device from Dashboard settings.
 
