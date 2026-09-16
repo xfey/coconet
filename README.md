@@ -10,7 +10,7 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
-Server / Dashboard [0.16.8](https://github.com/xfey/coconet/releases/tag/v0.16.8) adds a dedicated Connected folders button to the toolbar and simplifies project sharing. Connected folders open in their own dialog; Settings retains language and project leave controls. Sharing uses a compact dialog with a collapsed invitation link, expiry time, and a direct copy button. Client / npm / Plugins remain [0.16.1](https://github.com/xfey/coconet/releases/tag/v0.16.1); npm `latest` remains 0.16.1. Hosted is running 0.16.8. Refresh the Dashboard to see the update; no client update is needed.
+Server / Dashboard [0.16.9](https://github.com/xfey/coconet/releases/tag/v0.16.9) organizes the bottom toolbar into three groups: refresh, connected folders, sharing and settings; zoom out, zoom in and fit; and a separate question-mark help button. Dialog actions now align consistently to the right, and folder and settings dialogs omit repeated project headings. Sharing keeps its compact dialog and collapsed invitation link. Client / npm / Plugins remain [0.16.1](https://github.com/xfey/coconet/releases/tag/v0.16.1); npm `latest` remains 0.16.1. Hosted is running 0.16.9. Refresh the Dashboard to see the update; no client update is needed.
 
 The current release supports:
 
@@ -24,7 +24,7 @@ The current release supports:
 - concise connection confirmation, with account and upload details available through `coconet status`
 - connected folders, project sharing, language and current-project settings in the bottom Dashboard toolbar
 - a dedicated plus button for creating or joining projects, and an account menu for profile, devices and sign-out
-- compact primary and secondary buttons, with grouped zoom controls
+- compact primary and secondary buttons, consistent dialog actions and a three-group canvas toolbar
 - a dedicated Connected folders dialog that lists members, devices and their working folders (latest registration, not live presence)
 - invitation loading, failure and retry feedback in both sharing entry points
 - canvas-relative notifications that avoid the details panel, and automatic centering when new nodes appear
