@@ -10,11 +10,13 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
+Client / npm / Plugins [0.18.2](https://github.com/xfey/coconet/releases/tag/v0.18.2) fixes Agent setup stalls: bounded subprocess cleanup, live progress, per-Agent result persistence, and status queries that do not trigger plugin configuration. Failed setup does not undo Runtime installation. Hosted and Server remain on 0.18.1; existing data and connections are retained.
+
 Client / Server / npm / Plugins [0.18.1](https://github.com/xfey/coconet/releases/tag/v0.18.1) adds bounded automatic retries, a Dashboard processing-status panel with server retry, and explicit original-device history recovery. Current unresolved issues are separated from past failures. Retry an incomplete local history import from its connected folder with `coconet projection retry --history-batch BATCH_ID`; successful linked recovery clears the warning while preserving the original failure record. This update preserves existing Hosted data and uses the same metadata schema 24.
 
 Client / Server / npm / Plugins [0.18.0](https://github.com/xfey/coconet/releases/tag/v0.18.0) separates immutable conversation snapshots from Work DAG stages. Same-stage updates advance a node’s source, stage transitions retain the previous endpoint, and unreferenced snapshots can be reclaimed after a grace period and reference recheck. Discover work through DAG / Library metadata, then Pull a selected node’s compact conversation to read and search locally. Original artifacts are fetched explicitly for native Fork. Dashboard updates follow committed revisions without idle graph polling.
 
-The development Hosted deployment was reset for this release with its owner’s approval. Sign in again, create a project and reconnect your folder after upgrading; old server accounts, projects, Sessions and graphs are no longer available. Native conversation histories on your devices are unchanged. The website remains [coconet.space](https://coconet.space/), and the Hosted API remains `https://api.coconet.space`.
+The development Hosted deployment was reset for 0.18.0 with its owner’s approval. Sign in again, create a project and reconnect your folder after upgrading; old server accounts, projects, Sessions and graphs are no longer available. Native conversation histories on your devices are unchanged. The website remains [coconet.space](https://coconet.space/), and the Hosted API remains `https://api.coconet.space`.
 
 The current release supports:
 
@@ -71,7 +73,7 @@ npm install --global coconet
 coconet version
 ```
 
-To upgrade, run `npm install --global coconet@0.18.0` and then `coconet version`. Upgrade the Server, client and Plugins together, and start a new Agent session to load the updated tools. Legacy transcript Search / Recent / generic Read endpoints are retired. For the Hosted reset, use `coconet login` and reconnect your directory to a newly created project; stale local credentials or bindings do not preserve deleted server projects.
+To upgrade the client, run `npm install --global coconet@0.18.2` and then `coconet version`. Start a new Agent session to load the updated plugin. This patch works with Server 0.18.1 and preserves existing project connections. The historical development reset described above occurred with 0.18.0; upgrading from 0.18.1 does not require resetting data or reconnecting.
 
 The npm package installs a stable lightweight launcher in npm's existing global bin directory. On first use, or when the npm package version changes, the launcher downloads only the archive for the current OS and CPU from this repository's matching immutable Release, verifies its pinned SHA-256 and bundle manifest, and installs the native Runtime without `sudo`. It continues the original command in the same terminal; no additional `PATH` export or new terminal is required when npm's own global bin directory is already available.
 
