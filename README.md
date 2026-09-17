@@ -10,11 +10,13 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
-Server / Hosted [0.18.4](https://github.com/xfey/coconet/releases/tag/v0.18.4) adds a bilingual Install & connect guide to the Dashboard and sign-in page, a minimal text-only service connection indicator, and clearer processing-status dialogs. The server version is now shown in Settings. Current issues and retained failure history are separated, technical details can be expanded, and dialog controls follow consistent spacing, keyboard and mobile behavior. Existing accounts, projects, Sessions, configuration and deployment identity are preserved.
+Client / Server / npm / Plugins [0.18.5](https://github.com/xfey/coconet/releases/tag/v0.18.5) keeps Claude Sessions associated with their original connected project when an Agent changes directories or resumes in a worktree. Structured reads use the exact Session identity and isolated configuration root; unexpected empty reads or a changing transcript are retried without advancing successful sync state.
 
-Server / Hosted [0.18.4](https://github.com/xfey/coconet/releases/tag/v0.18.4) 为 Dashboard 与登录页增加中英文安装引导，品牌下方显示纯文本服务连接状态，版本号移至设置；处理状态弹窗统一留白、按钮与错误详情布局。此次更新保留已有账号、项目、会话和服务身份。
+Client / Server / npm / Plugins [0.18.5](https://github.com/xfey/coconet/releases/tag/v0.18.5) 修复 Claude 切换子目录或恢复会话后结构化内容未更新的问题：固定会话所属项目，以会话 ID 与独立配置根读取；异常空结果或读取期间发生变化的原文会重试，不会被当成同步成功。
 
-This is a Server-only release. Client / npm / Plugins remain at **0.18.3**; existing users only need to refresh the website. No client reinstall or data reset is needed.
+The Dashboard now uses “View runtime logs / 查看运行日志” and consistent button styles: black primary actions, red destructive actions, and white secondary actions. The bilingual installation guide, minimal connection indicator and Settings version display remain available. Upgrade the client with `npm install --global coconet` and refresh the website. Existing accounts, folder connections, projects and Sessions are preserved.
+
+Dashboard 统一“查看运行日志”的入口与弹窗文案，主要按钮使用黑底、危险操作使用红底、次要按钮使用白底。运行 `npm install --global coconet` 更新客户端，并刷新网页即可。现有账号、目录关联、项目与会话均保留，无需清理数据。
 
 Client / npm / Plugins [0.18.3](https://github.com/xfey/coconet/releases/tag/v0.18.3), originally paired with Server 0.18.2, preserves account identities during explicit development business resets. Existing folder connections are validated before history uploads; a deleted project gives clear disconnect/reconnect instructions, while authentication and network failures preserve local bindings. Archived projects do not enqueue history uploads.
 
