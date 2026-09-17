@@ -1,8 +1,8 @@
 # Coconet
 
-Coconet is team infrastructure for sharing, searching, reading, and handing off Coding Agent Sessions across Codex and Claude Code.
+Coconet is team infrastructure for understanding shared work and handing off Coding Agent Sessions across Codex and Claude Code.
 
-Coconet 是面向小团队 Coding Agent 协作的 Session 共享、检索、阅读与同类型接力基础设施。
+Coconet 是面向小团队 Coding Agent 协作的 工作 DAG、按需会话阅读与同类型接力基础设施。
 
 ## Distribution status
 
@@ -10,7 +10,9 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
-Client / Server / npm / Plugins [0.17.0](https://github.com/xfey/coconet/releases/tag/v0.17.0) reduces synchronization and idle Dashboard work: new uploads use lossless gzip chunks, append-only Sessions can reuse verified prefixes, and committed graph or Library changes trigger Dashboard updates while keeping the current view. Search uses visible conversation text and bounded tool metadata; original Sessions remain intact for reading and handoff. Unreferenced upload snapshots and abandoned upload objects are cleaned up with retention safeguards. The website stays at [coconet.space](https://coconet.space/), and the Hosted API stays at `https://api.coconet.space`.
+Client / Server / npm / Plugins [0.18.0](https://github.com/xfey/coconet/releases/tag/v0.18.0) separates immutable conversation snapshots from Work DAG stages. Same-stage updates advance a node’s source, stage transitions retain the previous endpoint, and unreferenced snapshots can be reclaimed after a grace period and reference recheck. Discover work through DAG / Library metadata, then Pull a selected node’s compact conversation to read and search locally. Original artifacts are fetched explicitly for native Fork. Dashboard updates follow committed revisions without idle graph polling.
+
+The development Hosted deployment was reset for this release with its owner’s approval. Sign in again, create a project and reconnect your folder after upgrading; old server accounts, projects, Sessions and graphs are no longer available. Native conversation histories on your devices are unchanged. The website remains [coconet.space](https://coconet.space/), and the Hosted API remains `https://api.coconet.space`.
 
 The current release supports:
 
@@ -36,8 +38,8 @@ The current release supports:
 - Linux: `arm64` and `x86_64`
 - automatic default Codex and Claude Code setup, with optional additional Agent instances
 - local-first automatic synchronization of project-scoped Agent Sessions
-- cumulative Session history that remains searchable after Agent context compaction
-- Agent-driven browsing of recently synchronized team Sessions without inventing a search query
+- self-contained compact conversation snapshots that retain cumulative visible history after context compaction
+- Agent-driven discovery through Work DAG nodes and Session Library metadata
 - project Work DAGs with current work, sealed checkpoints, outstanding items, and fixed evidence
 - a Session Library of user-selected immutable snapshots, with server-generated topic tags and browsing
 - Agent-driven work discovery, fixed evidence reads, and same-Agent handoff with source lineage
@@ -45,8 +47,8 @@ The current release supports:
 - a bilingual, draggable Work DAG canvas with ELK Layered routing and project Session Library shortcuts
 - on-demand failure explanations in the CLI and diagnostic API, with bounded history and log correlation
 - a project Dashboard with fixed-source conversation viewing and Library collection controls at `https://coconet.space/`
-- Agent-driven lexical query and collaboration-root-relative path search
-- fixed-version Session reading, local pulling, and same-Agent forking
+- metadata search over stage objectives, summaries, Library notes and tags
+- exact-node compact conversation Pull, local reading / search, and same-Agent Fork
 - Git repositories and explicitly selected non-Git collaboration workspaces
 - stable Project UIDs and shorter, short-lived approval-free Connection Codes
 - local folder disconnection without changing project membership or other devices
@@ -67,7 +69,7 @@ npm install --global coconet
 coconet version
 ```
 
-To upgrade, run `npm install --global coconet@0.17.0` and then `coconet version`. Upgrade devices that need to pull or fork newly compressed Sessions; older clients can still upload the previous format and read indexed text. Self-hosted operators should upgrade the Server first.
+To upgrade, run `npm install --global coconet@0.18.0` and then `coconet version`. Upgrade the Server, client and Plugins together, and start a new Agent session to load the updated tools. Legacy transcript Search / Recent / generic Read endpoints are retired. For the Hosted reset, use `coconet login` and reconnect your directory to a newly created project; stale local credentials or bindings do not preserve deleted server projects.
 
 The npm package installs a stable lightweight launcher in npm's existing global bin directory. On first use, or when the npm package version changes, the launcher downloads only the archive for the current OS and CPU from this repository's matching immutable Release, verifies its pinned SHA-256 and bundle manifest, and installs the native Runtime without `sudo`. It continues the original command in the same terminal; no additional `PATH` export or new terminal is required when npm's own global bin directory is already available.
 
@@ -118,9 +120,11 @@ coconet library add --session SESSION_ID --version VERSION
 coconet library list
 ```
 
-Sign in to the Hosted Dashboard with GitHub. A resumed Session carries the source conversation; it does not restore source code, dependencies, or the previous working tree. In the Dashboard, select a node and use the Library switch to add or remove its fixed source. Removing the Library entry preserves the original Session, version and DAG node. Interface language is available under Settings in the bottom toolbar; project and conversation text stays unchanged. The Library menu is project-scoped; Chinese “星标会话” maps to English “Session Library”.
+Sign in to the Hosted Dashboard with GitHub. A resumed Session carries the source conversation; it does not restore source code, dependencies, or the previous working tree. In the Dashboard, select a node and use the Library switch to add or remove its fixed source. Removing a Library entry keeps its DAG node; snapshot retention follows remaining node and other live references. Interface language is available under Settings in the bottom toolbar; project and conversation text stays unchanged. The Library menu is project-scoped; Chinese “星标会话” maps to English “Session Library”.
 
-Self-hosted operators enable semantic projection with an OpenAI-compatible inference endpoint. Without inference configuration, the existing Session synchronization, Search, Read, Pull, and Fork remain available. For Server upgrades, back up metadata and deployment identity, and restore the matching database when rolling back across schema versions. Server 0.17.0 migrates metadata schema 21 → 22. Preserve the pre-upgrade database snapshot with its matching Server binary; rolling back only the binary is insufficient. Existing bbolt and S3-compatible storage can continue to be used. Safe orphan cleanup requires permission to delete the exact unreferenced object keys; committed Session Versions are retained. Server 0.14.0 migrates metadata schema 19 → 20. Upgrade the Server before new clients. Existing projects and Sessions are preserved; signing in through GitHub creates a separate account from earlier Git-profile identities. Accounts are not automatically merged or granted old project membership. An existing member can invite the new account. Rolling back to a schema 19 Server requires the matching pre-upgrade metadata snapshot. Upgrade to current Agent host runtimes when transferring native histories between devices.
+Self-hosted operators enable semantic projection with an OpenAI-compatible inference endpoint. Synchronization can run without inference, but automatic Work DAG generation requires it. Version 0.18.0 uses metadata schema 24, with bbolt record storage and filesystem or S3 content objects. A separate database purchase is not required.
+
+Back up metadata, content objects and Deployment identity together before replacing a server. The offline bbolt `backup` command now creates a complete bundle; `restore` verifies its object closure. Rollback across schemas requires the matching database and binary. Automatic snapshot collection is opt-in via `COCONET_SNAPSHOT_GC=1`; it preserves latest snapshots, node sources, outstanding work and access leases, and uses a 24-hour grace period. `coconet-server gc --config PATH` previews candidates without changing metadata. The Hosted development instance enables this collector after its clean reset. A self-hosted reset is a separate destructive operator decision, not part of installation.
 
 ## Private server login
 
