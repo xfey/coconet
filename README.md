@@ -10,9 +10,15 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
-Client / npm / Plugins [0.18.3](https://github.com/xfey/coconet/releases/tag/v0.18.3), paired with Server 0.18.2, preserves account identities during explicit development business resets. Existing folder connections are validated before history uploads; a deleted project gives clear disconnect/reconnect instructions, while authentication and network failures preserve local bindings. Archived projects do not enqueue history uploads.
+Server / Hosted [0.18.4](https://github.com/xfey/coconet/releases/tag/v0.18.4) adds a bilingual Install & connect guide to the Dashboard and sign-in page, a minimal text-only service connection indicator, and clearer processing-status dialogs. The server version is now shown in Settings. Current issues and retained failure history are separated, technical details can be expanded, and dialog controls follow consistent spacing, keyboard and mobile behavior. Existing accounts, projects, Sessions, configuration and deployment identity are preserved.
 
-The Hosted development projects, Sessions and DAGs were reset for this release with the owner's approval. Accounts, GitHub/OIDC mappings and valid sign-in credentials are retained. Create or join a project again; if a folder still points at a deleted project, run `coconet disconnect` there, then `coconet connect`. Native conversation history is unchanged. Ordinary upgrades do not reset data.
+Server / Hosted [0.18.4](https://github.com/xfey/coconet/releases/tag/v0.18.4) 为 Dashboard 与登录页增加中英文安装引导，品牌下方显示纯文本服务连接状态，版本号移至设置；处理状态弹窗统一留白、按钮与错误详情布局。此次更新保留已有账号、项目、会话和服务身份。
+
+This is a Server-only release. Client / npm / Plugins remain at **0.18.3**; existing users only need to refresh the website. No client reinstall or data reset is needed.
+
+Client / npm / Plugins [0.18.3](https://github.com/xfey/coconet/releases/tag/v0.18.3), originally paired with Server 0.18.2, preserves account identities during explicit development business resets. Existing folder connections are validated before history uploads; a deleted project gives clear disconnect/reconnect instructions, while authentication and network failures preserve local bindings. Archived projects do not enqueue history uploads.
+
+The Hosted development projects, Sessions and DAGs were reset for the earlier 0.18.3 release with the owner's approval. Accounts, GitHub/OIDC mappings and valid sign-in credentials are retained. Create or join a project again; if a folder still points at a deleted project, run `coconet disconnect` there, then `coconet connect`. Native conversation history is unchanged. Ordinary upgrades do not reset data.
 
 Client / npm / Plugins [0.18.2](https://github.com/xfey/coconet/releases/tag/v0.18.2) fixes Agent setup stalls: bounded subprocess cleanup, live progress, per-Agent result persistence, and status queries that do not trigger plugin configuration. Failed setup does not undo Runtime installation. Hosted and Server remain on 0.18.1; existing data and connections are retained.
 
