@@ -10,6 +10,10 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
+Server / Hosted [0.19.0](https://github.com/xfey/coconet/releases/tag/v0.19.0) simplifies model inputs across work extraction, DAG updates, historical summaries, initial graph construction, history graph patches, Library checkpoints and topic tags. Unnecessary identity and diagnostic metadata stays outside model requests, while required graph references and conversation evidence remain. Client / npm / Plugins stay at 0.18.6; no client upgrade or data reset is required.
+
+Server / Hosted [0.19.0](https://github.com/xfey/coconet/releases/tag/v0.19.0) 统一精简工作提取、DAG 更新、历史概括、首次构图、历史补图、Library 检查点和主题标签的模型输入；剔除非必要的身份与诊断元数据，保留图决策所需引用和会话证据。Client / npm / Plugins 保持 0.18.6，无需升级客户端；现有账号、项目与会话保留，无需迁移或清空数据。已有结果不会批量重新生成。
+
 Server / Hosted [0.18.7](https://github.com/xfey/coconet/releases/tag/v0.18.7) gives device “Revoke access” and both “Copy command” buttons in Install & connect a white secondary style. Client / npm / Plugins remain at 0.18.6. Refresh the website to see the update; no client upgrade is needed.
 
 Server / Hosted [0.18.7](https://github.com/xfey/coconet/releases/tag/v0.18.7) 将用户页面的“撤销授权”和“安装与连接”的两个“复制命令”按钮改为白底。Client / npm / Plugins 保持 0.18.6，刷新网页即可，无需更新客户端。现有账号、项目与会话保留。
@@ -137,7 +141,7 @@ Human output uses light styling in interactive terminals and plain text when red
 
 ## Shared work and Session Library
 
-Automatic synchronization keeps project Sessions available. Adding a Session to the Library is an explicit selection of a fixed version for later reuse; later conversation changes do not rewrite that entry. Every collected entry has a sealed Work DAG checkpoint. The original Session artifact remains available for same-Agent resume and fork; topic labels use visible user and assistant text, while work summaries use bounded evidence that can include tool facts.
+Automatic synchronization keeps project Sessions available. Adding a Session to the Library is an explicit selection of a fixed version for later reuse; later conversation changes do not rewrite that entry. Every collected entry has a sealed Work DAG checkpoint. The original Session artifact remains available for same-Agent resume and fork; topic labels and work summaries primarily use visible user and assistant text. Summaries can describe reported results, but do not independently verify execution or restore omitted native tool logs.
 
 Ask your Agent to find related project work, read a selected source, or add the current Session to the Library. You can also collect an existing version directly:
 
