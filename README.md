@@ -10,9 +10,9 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
-Server / Hosted [0.19.0](https://github.com/xfey/coconet/releases/tag/v0.19.0) simplifies model inputs across work extraction, DAG updates, historical summaries, initial graph construction, history graph patches, Library checkpoints and topic tags. Unnecessary identity and diagnostic metadata stays outside model requests, while required graph references and conversation evidence remain. Client / npm / Plugins stay at 0.18.6; no client upgrade or data reset is required.
+Server / Hosted [0.19.0](https://github.com/xfey/coconet/releases/tag/v0.19.0) simplifies model inputs across work extraction, DAG updates, historical summaries, initial graph construction, history graph patches, Library checkpoints and topic tags. Unnecessary identity and diagnostic metadata stays outside model requests, while required graph references and conversation evidence remain. Client / npm / Plugins are also available at 0.19.0 to align version numbers, with the same functionality as 0.18.6. Upgrade with `npm install --global coconet@0.19.0`; existing connections and data are preserved. Start a new Agent session to load the matching Plugin. The 0.18.6 client remains compatible.
 
-Server / Hosted [0.19.0](https://github.com/xfey/coconet/releases/tag/v0.19.0) 统一精简工作提取、DAG 更新、历史概括、首次构图、历史补图、Library 检查点和主题标签的模型输入；剔除非必要的身份与诊断元数据，保留图决策所需引用和会话证据。Client / npm / Plugins 保持 0.18.6，无需升级客户端；现有账号、项目与会话保留，无需迁移或清空数据。已有结果不会批量重新生成。
+Server / Hosted [0.19.0](https://github.com/xfey/coconet/releases/tag/v0.19.0) 统一精简工作提取、DAG 更新、历史概括、首次构图、历史补图、Library 检查点和主题标签的模型输入；剔除非必要的身份与诊断元数据，保留图决策所需引用和会话证据。Client / npm / 双 Plugin 同步发布 0.19.0，仅对齐版本号，客户端功能与 0.18.6 相同。运行 `npm install --global coconet@0.19.0` 更新，再开启新 Agent 会话加载对应 Plugin。现有连接、账号、项目与会话保留，无需迁移或清空数据；已有结果不会批量重新生成，0.18.6 客户端仍可使用。
 
 Server / Hosted [0.18.7](https://github.com/xfey/coconet/releases/tag/v0.18.7) gives device “Revoke access” and both “Copy command” buttons in Install & connect a white secondary style. Client / npm / Plugins remain at 0.18.6. Refresh the website to see the update; no client upgrade is needed.
 
