@@ -10,6 +10,12 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
+Client / Server / npm / Plugins [0.18.6](https://github.com/xfey/coconet/releases/tag/v0.18.6) separates node descriptions into progress and conclusions, and the key approach. Both sections participate in DAG updates, Library, Activity and work discovery, with consistent Chinese and English display. Commitment extraction better distinguishes accepted work from unaccepted suggestions and excluded scope, while retaining cumulative stage outcomes.
+
+Client / Server / npm / Plugins [0.18.6](https://github.com/xfey/coconet/releases/tag/v0.18.6) 将节点说明分为“进展与结论”和“关键思路”，统一用于 DAG、Library、Activity、工作发现及双语展示。事项提取更明确地区分已接受工作、未确认建议与排除范围，并保留阶段累计成果。复杂连续返修仍可能拆出过多节点，摘要精简仍有改进空间。
+
+Existing nodes remain readable; this release requires no metadata migration or bulk regeneration. Update with `npm install --global coconet` and refresh the Dashboard. Start a new Agent session to load updated Plugins and the additional MCP description field. Existing connections and data are preserved.
+
 Client / Server / npm / Plugins [0.18.5](https://github.com/xfey/coconet/releases/tag/v0.18.5) keeps Claude Sessions associated with their original connected project when an Agent changes directories or resumes in a worktree. Structured reads use the exact Session identity and isolated configuration root; unexpected empty reads or a changing transcript are retried without advancing successful sync state.
 
 Client / Server / npm / Plugins [0.18.5](https://github.com/xfey/coconet/releases/tag/v0.18.5) 修复 Claude 切换子目录或恢复会话后结构化内容未更新的问题：固定会话所属项目，以会话 ID 与独立配置根读取；异常空结果或读取期间发生变化的原文会重试，不会被当成同步成功。
@@ -63,7 +69,7 @@ The current release supports:
 - a bilingual, draggable Work DAG canvas with ELK Layered routing and project Session Library shortcuts
 - on-demand failure explanations in the CLI and diagnostic API, with bounded history and log correlation
 - a project Dashboard with fixed-source conversation viewing and Library collection controls at `https://coconet.space/`
-- metadata search over stage objectives, summaries, Library notes and tags
+- metadata search over stage objectives, progress summaries, key approaches, Library notes and tags
 - exact-node compact conversation Pull, local reading / search, and same-Agent Fork
 - Git repositories and explicitly selected non-Git collaboration workspaces
 - stable Project UIDs and shorter, short-lived approval-free Connection Codes
@@ -85,7 +91,7 @@ npm install --global coconet
 coconet version
 ```
 
-To upgrade the client, run `npm install --global coconet@0.18.2` and then `coconet version`. Start a new Agent session to load the updated plugin. This patch works with Server 0.18.1 and preserves existing project connections. The historical development reset described above occurred with 0.18.0; upgrading from 0.18.1 does not require resetting data or reconnecting.
+To upgrade the client, run `npm install --global coconet` and then `coconet version`. Start a new Agent session to load the updated plugin. Normal upgrades preserve existing project connections and data; the historical development resets described above are separate operator actions.
 
 The npm package installs a stable lightweight launcher in npm's existing global bin directory. On first use, or when the npm package version changes, the launcher downloads only the archive for the current OS and CPU from this repository's matching immutable Release, verifies its pinned SHA-256 and bundle manifest, and installs the native Runtime without `sudo`. It continues the original command in the same terminal; no additional `PATH` export or new terminal is required when npm's own global bin directory is already available.
 
