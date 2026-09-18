@@ -10,6 +10,10 @@ This repository is the public distribution endpoint for Coconet releases. Produc
 
 当前仓库作为 Coconet 的公开分发入口，尚未发布产品实现源码。GitHub 自动生成的 “Source code” 压缩包只包含本仓库的公开发布说明，不是 Coconet 二进制的构建源码。
 
+Server / Hosted [0.18.7](https://github.com/xfey/coconet/releases/tag/v0.18.7) gives device “Revoke access” and both “Copy command” buttons in Install & connect a white secondary style. Client / npm / Plugins remain at 0.18.6. Refresh the website to see the update; no client upgrade is needed.
+
+Server / Hosted [0.18.7](https://github.com/xfey/coconet/releases/tag/v0.18.7) 将用户页面的“撤销授权”和“安装与连接”的两个“复制命令”按钮改为白底。Client / npm / Plugins 保持 0.18.6，刷新网页即可，无需更新客户端。现有账号、项目与会话保留。
+
 Client / Server / npm / Plugins [0.18.6](https://github.com/xfey/coconet/releases/tag/v0.18.6) separates node descriptions into progress and conclusions, and the key approach. Both sections participate in DAG updates, Library, Activity and work discovery, with consistent Chinese and English display. Commitment extraction better distinguishes accepted work from unaccepted suggestions and excluded scope, while retaining cumulative stage outcomes.
 
 Client / Server / npm / Plugins [0.18.6](https://github.com/xfey/coconet/releases/tag/v0.18.6) 将节点说明分为“进展与结论”和“关键思路”，统一用于 DAG、Library、Activity、工作发现及双语展示。事项提取更明确地区分已接受工作、未确认建议与排除范围，并保留阶段累计成果。复杂连续返修仍可能拆出过多节点，摘要精简仍有改进空间。
