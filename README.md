@@ -8,15 +8,15 @@ This repository distributes release documentation and binaries. Implementation s
 
 当前仓库仅分发文档与制品，尚未公开实现源码；GitHub 自动生成的源码压缩包仅包含公开文档。
 
-## 0.20.0: local DAG and Relay
+## 0.20.1: automatic local inference / 自动本地推理
 
-Client, Server, npm and both Plugins use version **0.20.0**. See [release notes](RELEASE_NOTES_v0.20.0.md).
+Client, Server, npm and both Plugins use version **0.20.1**. See [release notes](RELEASE_NOTES_v0.20.1.md).
 
-- Your device captures new conversation updates and runs two local model stages: work-stage decisions, then dependency decisions. Codex app-server or Claude print runs with a separately configured account, model and call budget.
+- Your device captures new conversation updates and runs two local model stages: work-stage decisions, then dependency decisions. Codex conversations use the source installation’s app-server; Claude conversations use its print mode. Both inherit the Agent’s login and default model, with no separate inference setup or call quota.
 - The Relay handles accounts, project permissions, ordered commits, retained content and published graph checkpoints. It does not run models.
 - The Dashboard shows the last published DAG even when producing devices are offline. It refreshes after published updates. It provides fixed-source commands for local reading, Library operations and same-Agent Fork.
 - Discover work through DAG / Library metadata, then pull the selected compact conversation for local reading and search. Original artifacts are fetched explicitly for native continuation.
-- Current and referenced snapshots are retained; eligible unreferenced versions can be reclaimed after reference checks and protection periods. Local processing archives support diagnosis and deterministic replay.
+- Current and referenced snapshots are retained; eligible unreferenced versions can be reclaimed after reference checks and protection periods. Verified cached conversations remain readable while the Relay is unavailable. Local processing archives support diagnosis and deterministic replay.
 
 设备捕获新对话更新，本地模型分两轮判断工作阶段与依赖；Relay 负责权限、持久化和分发，不调用模型。网页读取最近发布的图，即使生产设备离线仍可查看。先从 DAG 或 Library 找到工作，再按需拉取精简会话；明确接力时才拉取原始 Session。当前及被引用的快照保留，符合条件的无引用版本逐步回收，处理档案与日志供排查和重放。
 
@@ -29,7 +29,7 @@ Client, Server, npm and both Plugins use version **0.20.0**. See [release notes]
 Supported: macOS Apple Silicon / Intel and Linux arm64 / x86_64. Windows is not supported.
 
 ```sh
-npm install --global coconet@0.20.0
+npm install --global coconet@0.20.1
 coconet version
 ```
 
@@ -41,14 +41,12 @@ Run inside your work directory / 在工作目录内执行：
 
 ```sh
 coconet connect
-coconet inference login --provider codex
-coconet inference configure --provider codex --model YOUR_MODEL --max-calls 20
 coconet inference status
 ```
 
-Replace `YOUR_MODEL` with a model available to your account. For Claude use `--provider claude` on both inference commands. Inference uses an independent authentication profile. `--max-calls` limits attempts over a rolling 24-hour window, including failed attempts; it is not a monetary cap. Until configuration is complete, Coconet does not invoke a model. Existing history is not automatically imported.
+Coconet automatically uses the Agent installation that produced each new conversation, with its existing login and default model. No separate inference login, model selection or daily call limit is required. Background processing uses that Agent provider’s normal billing. Existing history is not automatically imported.
 
-将 `YOUR_MODEL` 替换为账号实际可用的模型。Claude 的两个推理命令均改用 `--provider claude`。推理认证目录独立，`--max-calls` 限制滚动 24 小时的尝试次数，失败也计入；该限制不是金额上限。未配置时不调用模型，已有历史不会自动导入。
+Coconet 自动使用产生该会话的 Agent 安装、现有登录和默认模型，无需另行配置推理账号、模型或每日调用上限。后台处理按 Agent 提供方的正常规则计费。连接目录不会自动导入旧历史。
 
 ```sh
 coconet inference pause
@@ -64,13 +62,15 @@ The browser confirms the account, device and directory before connecting to an e
 
 Hosted Dashboard: <https://coconet.space/>. Hosted API: `https://api.coconet.space`.
 
-## Upgrade from 0.19 / 从 0.19 升级
+## Upgrade / 升级
 
-Install 0.20.0, run `coconet connect` in each previously connected directory to explicitly switch its workflow, then configure local inference as above. Restart the Agent. Account, device and project identities are preserved; native conversation histories are unchanged.
+Install 0.20.1 and start a new Agent session. From 0.20.0, separate inference configuration is no longer used; `coconet inference status` reports automatic mode. Pausing and resuming remain available. Source Agent authentication and default model settings stay under the Agent’s control.
 
-The 0.19 server DAG is **not automatically migrated**. Old semantic / Session APIs now return `local_runtime_required`; old clients must upgrade. A project without a newly published graph appears empty. Explicit history import starts with `coconet history preview --agent codex` (or `claude`); inspect the preview and CLI guidance before selecting history and allocating a budget.
+升级到 0.20.1 后开启新 Agent 会话。旧的独立推理配置不再使用，`coconet inference status` 显示自动模式；仍可暂停和恢复。登录状态与默认模型由来源 Agent 自身管理。
 
-安装 0.20.0 后，在已关联目录重新执行 `coconet connect` 明确切换工作流，配置本地推理并重启 Agent。账号、设备、项目映射与原生历史保留；**旧服务端 DAG 不自动迁移**，尚未发布新图的项目会显示为空。旧客户端必须更新。历史导入从 `coconet history preview --agent codex` 或 `claude` 开始，先预览再明确选择和分配预算。
+When upgrading from 0.19 or reconnecting after a development-project reset, run `coconet connect` in the work directory. Old server-generated DAGs are not migrated. Native Agent history is preserved; historical import starts with `coconet history preview --agent codex` or `claude`, then an explicit selection.
+
+从 0.19 升级或开发项目重置后，在工作目录重新执行 `coconet connect`。旧服务端 DAG 不迁移，原生 Agent 历史保留；如需导入历史，先预览再明确选择。
 
 ## Additional Agent instances / 额外 Agent 实例
 
@@ -80,9 +80,9 @@ coconet agent add claude --command tclaude --config-root ~/.tclaude
 coconet agent list --verbose
 ```
 
-Normal product setup respects `CODEX_HOME` / `CLAUDE_CONFIG_DIR` and otherwise uses each Agent's default directory. Runtime-only installation can set `COCONET_SKIP_AGENT_SETUP=1` for first launch. Inference can select an installed wrapper with `coconet inference login --provider codex --command tcodex`, then the same `--command` on `inference configure`.
+Normal setup respects `CODEX_HOME` / `CLAUDE_CONFIG_DIR` and otherwise uses the Agent’s default directory. Register extra installations with the commands above. Coconet resolves inference from each captured conversation’s Agent type and configuration directory; ambiguous or unavailable installations produce a retryable diagnostic. `COCONET_SKIP_AGENT_SETUP=1` installs only the Runtime.
 
-常规产品安装遵循 Agent 配置目录环境变量。首次运行时设置 `COCONET_SKIP_AGENT_SETUP=1` 可只安装 Runtime。本地推理可通过 `--command` 显式选择已安装的包装器，登录和配置需保持一致。
+常规安装遵循 Agent 配置目录环境变量，额外安装通过上述命令登记。每段会话按来源 Agent 类型和配置目录确定后台调用；安装缺失或存在歧义时会记录可重试错误，不自动切换账号。首次运行设置 `COCONET_SKIP_AGENT_SETUP=1` 可只安装 Runtime。
 
 ## Self-hosted Relay / 自部署
 
