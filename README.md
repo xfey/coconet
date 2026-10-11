@@ -8,17 +8,18 @@ This repository distributes release documentation and binaries. Implementation s
 
 当前仓库仅分发文档与制品，尚未公开实现源码；GitHub 自动生成的源码压缩包仅包含公开文档。
 
-## 0.21.0: local Session replicas / 本地会话副本
+## 0.21.1: work dependency attribution / 工作依赖归属
 
-Client, Server, npm and both Plugins use version **0.21.0**. See [release notes](RELEASE_NOTES_v0.21.0.md).
+Client, Server, npm and both Plugins use version **0.21.1**. See [release notes](RELEASE_NOTES_v0.21.1.md).
 
+- Dependency decisions identify the specific earlier work result actually used. Bounded earlier dialogue helps resolve references; similar implementation techniques alone do not create a dependency. Ordinary repository code and documentation do not require missing collaboration nodes.
 - Your device captures new conversation updates and runs two local model stages: work-stage decisions, then dependency decisions. Codex conversations use the source installation’s app-server; Claude conversations use its print mode. Both inherit the Agent’s login and default model, with no separate inference setup or call quota.
 - The Relay handles accounts, project permissions, ordered commits, published graph checkpoints and temporary transfer coordination. Hosted Session content transfers directly through object storage, with a default 7-day window. The Relay does not run models.
 - The Dashboard shows the last published DAG even when producing devices are offline. It refreshes after published updates. It provides fixed-source commands for local reading, Library operations and same-Agent Fork.
 - Connected devices automatically retain the project’s current and referenced Session content. Search uses the local compact user/assistant text index, while selected original Sessions remain available for same-Agent continuation. Missing content can be requested from another authorized device that holds a replica.
 - Current and referenced snapshots are retained; eligible unreferenced versions can be reclaimed after reference checks and protection periods. Verified cached conversations remain readable while the Relay is unavailable. Local processing archives support diagnosis and deterministic replay.
 
-设备捕获新对话更新，本地模型分两轮判断工作阶段与依赖；Relay 负责权限、持久化和分发，不调用模型。网页读取最近发布的图，即使生产设备离线仍可查看。设备后台保存项目当前及被引用的会话副本，检索使用本地精简正文索引，接力读取固定版本的原始内容；云端内容缺失时，由持有副本的授权设备补传。托管服务通过对象存储临时中转正文，默认保留 7 天。当前及被引用的快照保留，符合条件的无引用版本逐步回收，处理档案与日志供排查和重放。
+本次更新改善工作依赖的来源归属，补充有限前文来理解指代，并区分普通仓库背景与明确采用的协作成果。设备捕获新对话更新，本地模型分两轮判断工作阶段与依赖；Relay 负责权限、持久化和分发，不调用模型。网页读取最近发布的图，即使生产设备离线仍可查看。设备后台保存项目当前及被引用的会话副本，检索使用本地精简正文索引，接力读取固定版本的原始内容；云端内容缺失时，由持有副本的授权设备补传。托管服务通过对象存储临时中转正文，默认保留 7 天。当前及被引用的快照保留，符合条件的无引用版本逐步回收，处理档案与日志供排查和重放。
 
 **This MVP is not end-to-end encrypted.** Server administrators can read uploaded payloads, and inference providers receive the selected model input. Encryption, old-DAG migration and ultra-long-conversation segmentation are deferred. Project content and commit-log quotas do not replace whole-server disk monitoring.
 
@@ -29,7 +30,7 @@ Client, Server, npm and both Plugins use version **0.21.0**. See [release notes]
 Supported: macOS Apple Silicon / Intel and Linux arm64 / x86_64. Windows is not supported.
 
 ```sh
-npm install --global coconet@0.21.0
+npm install --global coconet@0.21.1
 coconet version
 ```
 
@@ -64,9 +65,9 @@ Hosted Dashboard: <https://coconet.space/>. Hosted API: `https://api.coconet.spa
 
 ## Upgrade / 升级
 
-Install 0.21.0 and start a new Agent session. Hosted development projects were cleared for this storage cutover; reconnect your folder and create a new project. Separate inference configuration is no longer used; `coconet inference status` reports automatic mode. Pausing and resuming remain available. Source Agent authentication and default model settings stay under the Agent’s control.
+Install 0.21.1 and start a new Agent session. This update preserves existing projects, identities and folder connections. Previously accepted graph edges are not automatically rewritten. Separate inference configuration is no longer used; `coconet inference status` reports automatic mode. Pausing and resuming remain available. Source Agent authentication and default model settings stay under the Agent’s control.
 
-升级到 0.21.0 后开启新 Agent 会话。本次存储切换已清空托管开发项目，请重新连接目录并创建新项目；原生对话历史不会因此删除。旧的独立推理配置不再使用，`coconet inference status` 显示自动模式；仍可暂停和恢复。登录状态与默认模型由来源 Agent 自身管理。
+升级到 0.21.1 后开启新 Agent 会话。本次升级保留现有项目、身份与目录连接，已有图的连线不会自动重写。旧的独立推理配置不再使用，`coconet inference status` 显示自动模式；仍可暂停和恢复。登录状态与默认模型由来源 Agent 自身管理。
 
 When upgrading from 0.19 or reconnecting after a development-project reset, run `coconet connect` in the work directory. Old server-generated DAGs are not migrated. Native Agent history is preserved; historical import starts with `coconet history preview --agent codex` or `claude`, then an explicit selection.
 
