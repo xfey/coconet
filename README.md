@@ -8,20 +8,21 @@ This repository distributes release documentation and binaries. Implementation s
 
 当前仓库仅分发文档与制品，尚未公开实现源码；GitHub 自动生成的源码压缩包仅包含公开文档。
 
-## 0.22.1: clearer sharing and status / 共享与状态说明改进
+## 0.23.0: shared background tasks / 后台任务接管
 
-Client, Server, npm and both Plugins use version **0.22.1**. See [release notes](RELEASE_NOTES_v0.22.1.md).
+Client, Server, npm and both Plugins use version **0.23.0**. See [release notes](RELEASE_NOTES_v0.23.0.md).
 
-- Connecting a folder explains what project members can read, how existing-session updates are shared, and local model usage. Dashboard status separates missing updates, unpublished results and processed content without nodes; local diagnostics explain retries and recovery.
-- Shared metadata admission and low-disk protection bound new writes. Checkpoint-covered history is reclaimed after a grace period; updated clients recover offline work from verified checkpoints. Operator bundles include private online metadata backups, restore checks and bounded retention.
-- Dependency decisions identify the specific earlier work result actually used. Bounded earlier dialogue helps resolve references; similar implementation techniques alone do not create a dependency. Ordinary repository code and documentation do not require missing collaboration nodes.
-- Your device captures new conversation updates and runs two local model stages: work-stage decisions, then dependency decisions. Codex conversations use the source installation’s app-server; Claude conversations use its print mode. Both inherit the Agent’s login and default model, with no separate inference setup or call quota.
-- The Relay handles accounts, project permissions, ordered commits, published graph checkpoints and temporary transfer coordination. Hosted Session content transfers directly through object storage, with a default 7-day window. The Relay does not run models.
-- The Dashboard shows the last published DAG even when producing devices are offline. It refreshes after published updates. It provides fixed-source commands for local reading, Library operations and same-Agent Fork.
-- Connected devices automatically retain the project’s current and referenced Session content. Search uses the local compact user/assistant text index, while selected original Sessions remain available for same-Agent continuation. Missing content can be requested from another authorized device that holds a replica.
-- Current and referenced snapshots are retained; eligible unreferenced versions can be reclaimed after reference checks and protection periods. Verified cached conversations remain readable while the Relay is unavailable. Local processing archives support diagnosis and deterministic replay.
+- Each device normally processes its own conversations. Before starting its next task, it can help with an earlier failed or expired task, then continue its own work. No permanent project worker is selected.
+- The handoff carries the same fixed model request and evidence mapping. The helper uses its own Agent login and default model; original authorship remains unchanged. Server-validated claims prevent late duplicate results.
+- Temporary task inputs are bounded and removed on completion or expiry. The Relay coordinates tasks and ordered graph commits; it does not run models. Full processing outputs remain on the executing device.
+- Current-stage revisions are distinguished from external dependencies, so refining a node's own earlier work does not require an extra parent.
+- Devices retain the current and referenced Session replicas, search compact text locally, and use fixed sources for Pull and same-Agent Fork. Hosted object storage remains a temporary content relay.
 
-本次更新明确连接后的会话共享范围，并改进工作图状态及本地恢复指引。元数据预算、低磁盘保护、安全历史回收、离线追平和备份恢复功能继续保留。设备捕获新对话更新，本地模型分两轮判断工作阶段与依赖；Relay 负责权限、持久化和分发，不调用模型。网页读取最近发布的图，即使生产设备离线仍可查看。设备后台保存项目当前及被引用的会话副本，检索使用本地精简正文索引，接力读取固定版本的原始内容；云端内容缺失时，由持有副本的授权设备补传。托管服务通过对象存储临时中转正文，默认保留 7 天。当前及被引用的快照保留，符合条件的无引用版本逐步回收，处理档案与日志供排查和重放。
+每台设备继续处理自己的对话，在开始下一项工作前可先接管此前失败或领取超时的任务。接手方使用自己的 Agent 和默认模型，固定请求与证据映射保持一致，来源作者不变。服务器只协调任务和提交，不调用模型。任务输入有容量和期限上限，完整输出留在执行设备；会话副本、检索与原生接力仍在本地完成。同节点返修不再因引用自身旧成果而被误判为缺少外部依赖。
+
+**Upgrade the Server first, then all collaborating clients to 0.23.0.** Earlier clients cannot read the new processing commits. Existing accounts, projects, identities and folder connections are preserved. Fully unsynced content and updates that never registered a task cannot be taken over.
+
+**先升级服务器，再将参与协作的客户端全部升级到 0.23.0。** 旧客户端不能读取新的处理提交；账号、项目、稳定身份与目录关联保留。尚未同步或注册为任务的更新无法自动接管。
 
 **This MVP is not end-to-end encrypted.** Server administrators can read uploaded payloads, and inference providers receive the selected model input. Encryption, old-DAG migration and ultra-long-conversation segmentation are deferred. Project content and commit-log quotas do not replace whole-server disk monitoring.
 
@@ -32,7 +33,7 @@ Client, Server, npm and both Plugins use version **0.22.1**. See [release notes]
 Supported: macOS Apple Silicon / Intel and Linux arm64 / x86_64. Windows is not supported.
 
 ```sh
-npm install --global coconet@0.22.0
+npm install --global coconet@0.23.0
 coconet version
 ```
 
@@ -47,9 +48,9 @@ coconet connect
 coconet inference status
 ```
 
-Coconet automatically uses the Agent installation that produced each new conversation, with its existing login and default model. No separate inference login, model selection or daily call limit is required. Background processing uses that Agent provider’s normal billing. Existing history is not automatically imported.
+Coconet automatically uses the Agent installation that produced each new conversation, with its existing login and default model. No separate inference login, model selection or daily call limit is required. Background processing uses the executing Agent provider’s normal billing, including tasks taken over from other devices. Existing history is not automatically imported.
 
-Coconet 自动使用产生该会话的 Agent 安装、现有登录和默认模型，无需另行配置推理账号、模型或每日调用上限。后台处理按 Agent 提供方的正常规则计费。连接目录不会自动导入旧历史。
+Coconet 自动使用产生该会话的 Agent 安装、现有登录和默认模型，无需另行配置推理账号、模型或每日调用上限。后台处理（包括接管其他设备的任务）按执行方 Agent 提供方的正常规则计费。连接目录不会自动导入旧历史。
 
 ```sh
 coconet inference pause
@@ -59,6 +60,10 @@ coconet health --json
 coconet diagnostics list
 ```
 
+Pausing stops inference on this device only; already shared tasks may still be handled by other members.
+
+暂停只停止本设备推理，已共享的任务仍可由其他成员设备接手。
+
 The browser confirms the account, device and directory before connecting to an existing or new project. SSH users can run `coconet connect --no-browser` and open the printed link on their own computer. Use `--path /path/to/folder` to select another directory. Invitations are available from the Dashboard.
 
 网页会确认账号、设备和目录，然后选择已有项目或新建项目。SSH 用户可用 `--no-browser`，在自己的电脑打开终端链接；`--path` 指定远程目录，分享邀请可在网页获取。
@@ -67,9 +72,9 @@ Hosted Dashboard: <https://coconet.space/>. Hosted API: `https://api.coconet.spa
 
 ## Upgrade / 升级
 
-Install 0.22.1 and start a new Agent session. This update preserves existing projects, identities and folder connections. Upgrade every collaborating device before enabling history compaction. Clients older than 0.22 cannot recover from compacted history; update them to resume syncing. Previously accepted graph edges are not automatically rewritten. Separate inference configuration is no longer used; `coconet inference status` reports automatic mode. Pausing and resuming remain available. Source Agent authentication and default model settings stay under the Agent’s control.
+Upgrade the Server first, install 0.23.0 on every collaborating device and start a new Agent session. Earlier clients cannot read the new processing commits. This update preserves existing projects, identities and folder connections. Upgrade every collaborating device before enabling history compaction. Clients older than 0.22 cannot recover from compacted history; update them to resume syncing. Previously accepted graph edges are not automatically rewritten. Separate inference configuration is no longer used; `coconet inference status` reports automatic mode. Pausing and resuming remain available. Source Agent authentication and default model settings stay under the Agent’s control.
 
-升级到 0.22.1 后开启新 Agent 会话。本次升级保留现有项目、身份与目录连接，启用历史回收前应升级全部协作设备；0.22 之前的客户端无法从已回收历史恢复同步，需升级后继续。已有图的连线不会自动重写。旧的独立推理配置不再使用，`coconet inference status` 显示自动模式；仍可暂停和恢复。登录状态与默认模型由来源 Agent 自身管理。
+先升级服务器，再将全部协作设备升级到 0.23.0 后开启新 Agent 会话；旧客户端不能读取新格式的处理提交。本次升级保留现有项目、身份与目录连接，启用历史回收前应升级全部协作设备；0.22 之前的客户端无法从已回收历史恢复同步，需升级后继续。已有图的连线不会自动重写。旧的独立推理配置不再使用，`coconet inference status` 显示自动模式；仍可暂停和恢复。登录状态与默认模型由来源 Agent 自身管理。
 
 When upgrading from 0.19 or reconnecting after a development-project reset, run `coconet connect` in the work directory. Old server-generated DAGs are not migrated. Native Agent history is preserved; historical import starts with `coconet history preview --agent codex` or `claude`, then an explicit selection.
 
@@ -95,14 +100,14 @@ The default account database is local bbolt. Relay stores commits, checkpoints, 
 
 Linux Server 在同一 Release 单独分发，制品内含 systemd、Nginx 和环境变量示例。默认账号库为本机 bbolt，无需购买外部数据库。文件内容后端可用于开发；临时对象存储使用独立 COCONET_RELAY_S3_* 配置，不能直接替换已初始化 Relay 的后端。公网部署需配置 HTTPS、身份认证并监控磁盘容量。
 
-The operator bundle includes storage monitoring and backup scripts under `examples/operations/`. For bbolt with external Relay content and no legacy artifact inventory, a private Unix socket supports consistent online metadata snapshots with independent restore verification. File-content deployments still require stopping the service for a complete backup. See `STORAGE.md` in the bundle for installation, budgets and retention. Keep the database, object directories and completion manifest together and private; the manifest includes Deployment identity. Restore into a new directory before switching service configuration. For an external content backend this server backup contains metadata references, not Session bodies. Use `coconet storage export --file /absolute/project.tar` on a device to archive retained project content. Temporary object storage is not a permanent backup. External OAuth secrets, TLS and proxy configuration require separate backups.
+The operator bundle includes storage monitoring and backup scripts under `examples/operations/`. For bbolt with external Relay content and no legacy artifact inventory, a private Unix socket supports consistent online metadata snapshots with independent restore verification. File-content deployments still require stopping the service for a complete backup. See `STORAGE.md` in the bundle for installation, budgets and retention. Keep the database, object directories and completion manifest together and private; the manifest includes Deployment identity. Restore into a new directory before switching service configuration. For an external content backend this server backup contains metadata and temporary task inputs, not Session bodies. Use `coconet storage export --file /absolute/project.tar` on a device to archive retained project content. Temporary object storage is not a permanent backup. External OAuth secrets, TLS and proxy configuration require separate backups.
 
 ```sh
 coconet-server backup --config /srv/coconet/server.json --output /safe/backup/server.db
 coconet-server restore --input /safe/backup/server.db --data-dir /srv/coconet-restored
 ```
 
-制品的 `examples/operations/` 提供巡检、备份脚本与 `STORAGE.md` 部署说明。bbolt + 外部 Relay 内容且无旧 artifact 库存时，可通过私有 Unix socket 在线备份并独立恢复校验；文件正文后端仍需停服完整备份。同机备份不能抵御整机丢盘。账号库、对象目录和完成清单一起保管；清单含 Deployment 身份，不能公开。恢复到新目录后再切换服务；外部内容后端的服务端备份只保存元数据引用，项目正文应在设备上使用 `coconet storage export --file /absolute/project.tar` 归档。临时对象存储不是永久备份；OAuth 密钥、TLS 和代理配置需独立备份。
+制品的 `examples/operations/` 提供巡检、备份脚本与 `STORAGE.md` 部署说明。bbolt + 外部 Relay 内容且无旧 artifact 库存时，可通过私有 Unix socket 在线备份并独立恢复校验；文件正文后端仍需停服完整备份。同机备份不能抵御整机丢盘。账号库、对象目录和完成清单一起保管；清单含 Deployment 身份，不能公开。恢复到新目录后再切换服务；外部内容后端的服务端备份保存元数据引用和临时任务输入，项目正文应在设备上使用 `coconet storage export --file /absolute/project.tar` 归档。临时对象存储不是永久备份；OAuth 密钥、TLS 和代理配置需独立备份。
 
 ## Disconnect and uninstall / 断开与卸载
 
