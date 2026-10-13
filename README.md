@@ -8,17 +8,17 @@ This repository distributes release documentation and binaries. Implementation s
 
 当前仓库仅分发文档与制品，尚未公开实现源码；GitHub 自动生成的源码压缩包仅包含公开文档。
 
-## 0.24.0: conversation rewind / 会话回退
+## 0.24.1: editable stages after rewind / 回退后恢复可编辑状态
 
-Client, Server, npm and both Plugins use **0.24.0**. See [release notes](RELEASE_NOTES_v0.24.0.md).
+Client, Server, npm and both Plugins use **0.24.1**. See [release notes](RELEASE_NOTES_v0.24.1.md).
 
-Native Codex / Claude Code rewinds withdraw invalid work from the shared graph. Valid earlier work and colleagues’ independent nodes remain; search, Pull and Fork use the effective conversation branch. TCodex-specific integration is retired.
+After a native conversation rewind, a surviving live tail becomes editable again when no remaining dependency or Library collection pins it. This also releases a colleague’s tail when the withdrawn work was its last reference. Protected and ended stages stay fixed; search, Pull and Fork keep using the active branch.
 
-原版 Codex / Claude Code 回退后，失效工作从共享图撤下，有效前序工作和同事独立节点保留；检索、读取与接力使用有效对话分支。TCodex 专用接入已停用。
+原生会话回退后，没有剩余引用或收藏保护的有效末尾会恢复可编辑；同事的末尾节点若因此失去最后一个引用，也使用同一规则。仍受保护或已结束的阶段保持固定，检索、读取与接力继续使用有效分支。
 
-**Upgrade the Server first, then every collaborating client to 0.24.0.** Earlier clients cannot read the new reconciliation commits and checkpoints. Existing accounts, projects, identities and folder connections are preserved.
+**Upgrade the Server first, then every collaborating client to 0.24.1.** Earlier clients cannot read the new reconciliation commits and checkpoints. Existing accounts, projects, identities and folder connections are preserved.
 
-**先升级服务器，再将全部协作客户端升级到 0.24.0。** 旧客户端无法读取新格式；现有账号、项目、身份与目录关联保留。
+**先升级服务器，再将全部协作客户端升级到 0.24.1。** 旧客户端无法读取新格式；现有账号、项目、身份与目录关联保留。
 
 **This MVP is not end-to-end encrypted.** Server administrators can read uploaded payloads, and inference providers receive the selected model input. Encryption, old-DAG migration and ultra-long-conversation segmentation are deferred. Project content and commit-log quotas do not replace whole-server disk monitoring.
 
@@ -29,7 +29,7 @@ Native Codex / Claude Code rewinds withdraw invalid work from the shared graph. 
 Supported: macOS Apple Silicon / Intel and Linux arm64 / x86_64. Windows is not supported.
 
 ```sh
-npm install --global coconet@0.24.0
+npm install --global coconet@0.24.1
 coconet version
 ```
 
@@ -68,9 +68,9 @@ Hosted Dashboard: <https://coconet.space/>. Hosted API: `https://api.coconet.spa
 
 ## Upgrade / 升级
 
-Upgrade the Server first, install 0.24.0 on every collaborating device and start a new Agent session. Earlier clients cannot read the new processing commits. This update preserves existing projects, identities and folder connections. Upgrade every collaborating device before enabling history compaction. Clients older than 0.22 cannot recover from compacted history; update them to resume syncing. Previously accepted graph edges are not automatically rewritten. Separate inference configuration is no longer used; `coconet inference status` reports automatic mode. Pausing and resuming remain available. Source Agent authentication and default model settings stay under the Agent’s control.
+Upgrade the Server first, install 0.24.1 on every collaborating device and start a new Agent session. Earlier clients cannot read the new processing commits. This update preserves existing projects, identities and folder connections. Upgrade every collaborating device before enabling history compaction. Clients older than 0.22 cannot recover from compacted history; update them to resume syncing. Previously accepted graph edges are not automatically rewritten. Separate inference configuration is no longer used; `coconet inference status` reports automatic mode. Pausing and resuming remain available. Source Agent authentication and default model settings stay under the Agent’s control.
 
-先升级服务器，再将全部协作设备升级到 0.23.0 后开启新 Agent 会话；旧客户端不能读取新格式的处理提交。本次升级保留现有项目、身份与目录连接，启用历史回收前应升级全部协作设备；0.22 之前的客户端无法从已回收历史恢复同步，需升级后继续。已有图的连线不会自动重写。旧的独立推理配置不再使用，`coconet inference status` 显示自动模式；仍可暂停和恢复。登录状态与默认模型由来源 Agent 自身管理。
+先升级服务器，再将全部协作设备升级到 0.24.1 后开启新 Agent 会话；旧客户端不能读取新格式的处理提交。本次升级保留现有项目、身份与目录连接，启用历史回收前应升级全部协作设备；0.22 之前的客户端无法从已回收历史恢复同步，需升级后继续。已有图的连线不会自动重写。旧的独立推理配置不再使用，`coconet inference status` 显示自动模式；仍可暂停和恢复。登录状态与默认模型由来源 Agent 自身管理。
 
 When upgrading from 0.19 or reconnecting after a development-project reset, run `coconet connect` in the work directory. Old server-generated DAGs are not migrated. Native Agent history is preserved; historical import starts with `coconet history preview --agent codex` or `claude`, then an explicit selection.
 
@@ -79,7 +79,6 @@ When upgrading from 0.19 or reconnecting after a development-project reset, run 
 ## Additional Agent instances / 额外 Agent 实例
 
 ```sh
-coconet agent add codex --command tcodex --config-root ~/.tcodex
 coconet agent add claude --command tclaude --config-root ~/.tclaude
 coconet agent list --verbose
 ```
