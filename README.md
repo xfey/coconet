@@ -8,21 +8,17 @@ This repository distributes release documentation and binaries. Implementation s
 
 当前仓库仅分发文档与制品，尚未公开实现源码；GitHub 自动生成的源码压缩包仅包含公开文档。
 
-## 0.23.0: shared background tasks / 后台任务接管
+## 0.24.0: conversation rewind / 会话回退
 
-Client, Server, npm and both Plugins use version **0.23.0**. See [release notes](RELEASE_NOTES_v0.23.0.md).
+Client, Server, npm and both Plugins use **0.24.0**. See [release notes](RELEASE_NOTES_v0.24.0.md).
 
-- Each device normally processes its own conversations. Before starting its next task, it can help with an earlier failed or expired task, then continue its own work. No permanent project worker is selected.
-- The handoff carries the same fixed model request and evidence mapping. The helper uses its own Agent login and default model; original authorship remains unchanged. Server-validated claims prevent late duplicate results.
-- Temporary task inputs are bounded and removed on completion or expiry. The Relay coordinates tasks and ordered graph commits; it does not run models. Full processing outputs remain on the executing device.
-- Current-stage revisions are distinguished from external dependencies, so refining a node's own earlier work does not require an extra parent.
-- Devices retain the current and referenced Session replicas, search compact text locally, and use fixed sources for Pull and same-Agent Fork. Hosted object storage remains a temporary content relay.
+Native Codex / Claude Code rewinds withdraw invalid work from the shared graph. Valid earlier work and colleagues’ independent nodes remain; search, Pull and Fork use the effective conversation branch. TCodex-specific integration is retired.
 
-每台设备继续处理自己的对话，在开始下一项工作前可先接管此前失败或领取超时的任务。接手方使用自己的 Agent 和默认模型，固定请求与证据映射保持一致，来源作者不变。服务器只协调任务和提交，不调用模型。任务输入有容量和期限上限，完整输出留在执行设备；会话副本、检索与原生接力仍在本地完成。同节点返修不再因引用自身旧成果而被误判为缺少外部依赖。
+原版 Codex / Claude Code 回退后，失效工作从共享图撤下，有效前序工作和同事独立节点保留；检索、读取与接力使用有效对话分支。TCodex 专用接入已停用。
 
-**Upgrade the Server first, then all collaborating clients to 0.23.0.** Earlier clients cannot read the new processing commits. Existing accounts, projects, identities and folder connections are preserved. Fully unsynced content and updates that never registered a task cannot be taken over.
+**Upgrade the Server first, then every collaborating client to 0.24.0.** Earlier clients cannot read the new reconciliation commits and checkpoints. Existing accounts, projects, identities and folder connections are preserved.
 
-**先升级服务器，再将参与协作的客户端全部升级到 0.23.0。** 旧客户端不能读取新的处理提交；账号、项目、稳定身份与目录关联保留。尚未同步或注册为任务的更新无法自动接管。
+**先升级服务器，再将全部协作客户端升级到 0.24.0。** 旧客户端无法读取新格式；现有账号、项目、身份与目录关联保留。
 
 **This MVP is not end-to-end encrypted.** Server administrators can read uploaded payloads, and inference providers receive the selected model input. Encryption, old-DAG migration and ultra-long-conversation segmentation are deferred. Project content and commit-log quotas do not replace whole-server disk monitoring.
 
@@ -33,7 +29,7 @@ Client, Server, npm and both Plugins use version **0.23.0**. See [release notes]
 Supported: macOS Apple Silicon / Intel and Linux arm64 / x86_64. Windows is not supported.
 
 ```sh
-npm install --global coconet@0.23.0
+npm install --global coconet@0.24.0
 coconet version
 ```
 
@@ -72,7 +68,7 @@ Hosted Dashboard: <https://coconet.space/>. Hosted API: `https://api.coconet.spa
 
 ## Upgrade / 升级
 
-Upgrade the Server first, install 0.23.0 on every collaborating device and start a new Agent session. Earlier clients cannot read the new processing commits. This update preserves existing projects, identities and folder connections. Upgrade every collaborating device before enabling history compaction. Clients older than 0.22 cannot recover from compacted history; update them to resume syncing. Previously accepted graph edges are not automatically rewritten. Separate inference configuration is no longer used; `coconet inference status` reports automatic mode. Pausing and resuming remain available. Source Agent authentication and default model settings stay under the Agent’s control.
+Upgrade the Server first, install 0.24.0 on every collaborating device and start a new Agent session. Earlier clients cannot read the new processing commits. This update preserves existing projects, identities and folder connections. Upgrade every collaborating device before enabling history compaction. Clients older than 0.22 cannot recover from compacted history; update them to resume syncing. Previously accepted graph edges are not automatically rewritten. Separate inference configuration is no longer used; `coconet inference status` reports automatic mode. Pausing and resuming remain available. Source Agent authentication and default model settings stay under the Agent’s control.
 
 先升级服务器，再将全部协作设备升级到 0.23.0 后开启新 Agent 会话；旧客户端不能读取新格式的处理提交。本次升级保留现有项目、身份与目录连接，启用历史回收前应升级全部协作设备；0.22 之前的客户端无法从已回收历史恢复同步，需升级后继续。已有图的连线不会自动重写。旧的独立推理配置不再使用，`coconet inference status` 显示自动模式；仍可暂停和恢复。登录状态与默认模型由来源 Agent 自身管理。
 
