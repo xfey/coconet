@@ -8,17 +8,17 @@ This repository distributes release documentation and binaries. Implementation s
 
 当前仓库仅分发文档与制品，尚未公开实现源码；GitHub 自动生成的源码压缩包仅包含公开文档。
 
-## 0.24.2: clearer summaries and work relationships / 更清晰的摘要与工作关系
+## 0.25.0: connect with a Project ID / 使用项目 ID 连接
 
-Client, Server, npm and both Plugins use **0.24.2**. See [release notes](RELEASE_NOTES_v0.24.2.md).
+Client, Server, npm and both Plugins use **0.25.0**. See [release notes](RELEASE_NOTES_v0.25.0.md).
 
-Summaries emphasize core outcomes and constraints. Dependencies follow specific contributions actually used. Historical Session items link to related later work, helping distinguish earlier open items from current team progress.
+Join a teammate's project by entering its Project ID in the connection page, or run `coconet connect prj_…`. The Dashboard now lives at `/`, with project links in the form `/#project=prj_…`. Invitation codes and the visible device code have been removed; connecting still requires explicit browser approval.
 
-摘要聚焦核心成果和限制，依赖关系按实际采用的具体贡献生成。历史会话事项提供相关后续节点入口，便于结合后续成果理解团队当前进展。
+连接页面可直接输入同事分享的项目 ID，也可运行 `coconet connect prj_…`。看板统一位于网站根路径，项目链接为 `/#project=prj_…`。不再使用邀请码，也不再显示设备授权码；连接仍需在网页明确确认。
 
-Upgrade collaborating clients and restart Agent sessions to load the updated guidance. Existing projects and native histories are preserved; accepted graph decisions are not automatically regenerated.
+A Project ID grants joining access to a signed-in user: share it only with intended collaborators. Opening a link alone does not join the project. Upgrade the Server and all collaborating clients together.
 
-升级协作客户端并开启新的 Agent 会话即可加载新指引；现有项目与原始历史保留，已接受的图不会自动重生成。
+已登录用户可通过项目 ID 加入项目，请只分享给希望加入的协作者。仅打开链接不会自动加入。服务器和所有协作客户端应一起升级。
 
 **This MVP is not end-to-end encrypted.** Server administrators can read uploaded payloads, and inference providers receive the selected model input. Encryption, old-DAG migration and ultra-long-conversation segmentation are deferred. Project content and commit-log quotas do not replace whole-server disk monitoring.
 
@@ -29,7 +29,7 @@ Upgrade collaborating clients and restart Agent sessions to load the updated gui
 Supported: macOS Apple Silicon / Intel and Linux arm64 / x86_64. Windows is not supported.
 
 ```sh
-npm install --global coconet@0.24.2
+npm install --global coconet@0.25.0
 coconet version
 ```
 
@@ -60,21 +60,21 @@ Pausing stops inference on this device only; already shared tasks may still be h
 
 暂停只停止本设备推理，已共享的任务仍可由其他成员设备接手。
 
-The browser confirms the account, device and directory before connecting to an existing or new project. SSH users can run `coconet connect --no-browser` and open the printed link on their own computer. Use `--path /path/to/folder` to select another directory. Invitations are available from the Dashboard.
+The browser confirms the account, device and directory before connecting to an existing or new project. SSH users can run `coconet connect --no-browser` and open the printed link on their own computer. Use `--path /path/to/folder` to select another directory. Share the Project ID or project link from the Dashboard. `coconet connect PROJECT_ID` preselects the target project; `--server https://your-server.example` selects another deployment.
 
-网页会确认账号、设备和目录，然后选择已有项目或新建项目。SSH 用户可用 `--no-browser`，在自己的电脑打开终端链接；`--path` 指定远程目录，分享邀请可在网页获取。
+网页会确认账号、设备和目录，然后选择已有项目或新建项目。SSH 用户可用 `--no-browser`，在自己的电脑打开终端链接；`--path` 指定远程目录，在网页分享项目 ID 或链接。`coconet connect PROJECT_ID` 可预选目标项目，`--server https://your-server.example` 可指定其他部署。
 
 Hosted Dashboard: <https://coconet.space/>. Hosted API: `https://api.coconet.space`.
 
 ## Upgrade / 升级
 
-Upgrade the Server first, install 0.24.2 on every collaborating device and start a new Agent session. Clients older than 0.24.1 cannot read the current processing commits. This update preserves existing projects, identities and folder connections. Upgrade every collaborating device before enabling history compaction. Clients older than 0.22 cannot recover from compacted history; update them to resume syncing. Previously accepted graph edges are not automatically rewritten. Separate inference configuration is no longer used; `coconet inference status` reports automatic mode. Pausing and resuming remain available. Source Agent authentication and default model settings stay under the Agent’s control.
+Upgrade the Server and all collaborating devices to 0.25.0, then start new Agent sessions. The connection protocol requires matching new capabilities; old clients must upgrade before connecting. This development release resets Hosted test projects, while retaining account mappings, credentials and Deployment identity. Reconnect each work directory and create or join a new project. No old invitation or project-data migration is provided.
 
-先升级服务器，再将全部协作设备升级到 0.24.2 后开启新 Agent 会话；0.24.1 之前的客户端不能读取当前格式的处理提交。本次升级保留现有项目、身份与目录连接，启用历史回收前应升级全部协作设备；0.22 之前的客户端无法从已回收历史恢复同步，需升级后继续。已有图的连线不会自动重写。旧的独立推理配置不再使用，`coconet inference status` 显示自动模式；仍可暂停和恢复。登录状态与默认模型由来源 Agent 自身管理。
+将服务器和全部协作设备升级到 0.25.0，再开启新的 Agent 会话。连接协议使用新的能力标记，旧客户端需要先升级。本次开发版已清空 Hosted 测试项目，保留账号映射、凭据和部署身份。在各工作目录重新连接，创建或加入新项目；不迁移旧邀请码和旧项目数据。
 
-When upgrading from 0.19 or reconnecting after a development-project reset, run `coconet connect` in the work directory. Old server-generated DAGs are not migrated. Native Agent history is preserved; historical import starts with `coconet history preview --agent codex` or `claude`, then an explicit selection.
+Native Agent history is preserved. Existing history is not imported automatically: preview it with `coconet history preview --agent codex` or `claude`, then select it explicitly. Previously accepted graph decisions are not automatically regenerated by this connection update.
 
-从 0.19 升级或开发项目重置后，在工作目录重新执行 `coconet connect`。旧服务端 DAG 不迁移，原生 Agent 历史保留；如需导入历史，先预览再明确选择。
+原生 Agent 历史保持不变，不会自动导入；如需导入，先用 `coconet history preview --agent codex` 或 `claude` 预览，再明确选择。本次连接流程更新不改变 DAG 推理规则。
 
 ## Additional Agent instances / 额外 Agent 实例
 
