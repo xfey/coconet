@@ -8,17 +8,17 @@ This repository distributes release documentation and binaries. Implementation s
 
 当前仓库仅分发文档与制品，尚未公开实现源码；GitHub 自动生成的源码压缩包仅包含公开文档。
 
-## 0.24.1: editable stages after rewind / 回退后恢复可编辑状态
+## 0.24.2: clearer summaries and work relationships / 更清晰的摘要与工作关系
 
-Client, Server, npm and both Plugins use **0.24.1**. See [release notes](RELEASE_NOTES_v0.24.1.md).
+Client, Server, npm and both Plugins use **0.24.2**. See [release notes](RELEASE_NOTES_v0.24.2.md).
 
-After a native conversation rewind, a surviving live tail becomes editable again when no remaining dependency or Library collection pins it. This also releases a colleague’s tail when the withdrawn work was its last reference. Protected and ended stages stay fixed; search, Pull and Fork keep using the active branch.
+Summaries emphasize core outcomes and constraints. Dependencies follow specific contributions actually used. Historical Session items link to related later work, helping distinguish earlier open items from current team progress.
 
-原生会话回退后，没有剩余引用或收藏保护的有效末尾会恢复可编辑；同事的末尾节点若因此失去最后一个引用，也使用同一规则。仍受保护或已结束的阶段保持固定，检索、读取与接力继续使用有效分支。
+摘要聚焦核心成果和限制，依赖关系按实际采用的具体贡献生成。历史会话事项提供相关后续节点入口，便于结合后续成果理解团队当前进展。
 
-**Upgrade the Server first, then every collaborating client to 0.24.1.** Earlier clients cannot read the new reconciliation commits and checkpoints. Existing accounts, projects, identities and folder connections are preserved.
+Upgrade collaborating clients and restart Agent sessions to load the updated guidance. Existing projects and native histories are preserved; accepted graph decisions are not automatically regenerated.
 
-**先升级服务器，再将全部协作客户端升级到 0.24.1。** 旧客户端无法读取新格式；现有账号、项目、身份与目录关联保留。
+升级协作客户端并开启新的 Agent 会话即可加载新指引；现有项目与原始历史保留，已接受的图不会自动重生成。
 
 **This MVP is not end-to-end encrypted.** Server administrators can read uploaded payloads, and inference providers receive the selected model input. Encryption, old-DAG migration and ultra-long-conversation segmentation are deferred. Project content and commit-log quotas do not replace whole-server disk monitoring.
 
@@ -29,7 +29,7 @@ After a native conversation rewind, a surviving live tail becomes editable again
 Supported: macOS Apple Silicon / Intel and Linux arm64 / x86_64. Windows is not supported.
 
 ```sh
-npm install --global coconet@0.24.1
+npm install --global coconet@0.24.2
 coconet version
 ```
 
@@ -68,9 +68,9 @@ Hosted Dashboard: <https://coconet.space/>. Hosted API: `https://api.coconet.spa
 
 ## Upgrade / 升级
 
-Upgrade the Server first, install 0.24.1 on every collaborating device and start a new Agent session. Earlier clients cannot read the new processing commits. This update preserves existing projects, identities and folder connections. Upgrade every collaborating device before enabling history compaction. Clients older than 0.22 cannot recover from compacted history; update them to resume syncing. Previously accepted graph edges are not automatically rewritten. Separate inference configuration is no longer used; `coconet inference status` reports automatic mode. Pausing and resuming remain available. Source Agent authentication and default model settings stay under the Agent’s control.
+Upgrade the Server first, install 0.24.2 on every collaborating device and start a new Agent session. Clients older than 0.24.1 cannot read the current processing commits. This update preserves existing projects, identities and folder connections. Upgrade every collaborating device before enabling history compaction. Clients older than 0.22 cannot recover from compacted history; update them to resume syncing. Previously accepted graph edges are not automatically rewritten. Separate inference configuration is no longer used; `coconet inference status` reports automatic mode. Pausing and resuming remain available. Source Agent authentication and default model settings stay under the Agent’s control.
 
-先升级服务器，再将全部协作设备升级到 0.24.1 后开启新 Agent 会话；旧客户端不能读取新格式的处理提交。本次升级保留现有项目、身份与目录连接，启用历史回收前应升级全部协作设备；0.22 之前的客户端无法从已回收历史恢复同步，需升级后继续。已有图的连线不会自动重写。旧的独立推理配置不再使用，`coconet inference status` 显示自动模式；仍可暂停和恢复。登录状态与默认模型由来源 Agent 自身管理。
+先升级服务器，再将全部协作设备升级到 0.24.2 后开启新 Agent 会话；0.24.1 之前的客户端不能读取当前格式的处理提交。本次升级保留现有项目、身份与目录连接，启用历史回收前应升级全部协作设备；0.22 之前的客户端无法从已回收历史恢复同步，需升级后继续。已有图的连线不会自动重写。旧的独立推理配置不再使用，`coconet inference status` 显示自动模式；仍可暂停和恢复。登录状态与默认模型由来源 Agent 自身管理。
 
 When upgrading from 0.19 or reconnecting after a development-project reset, run `coconet connect` in the work directory. Old server-generated DAGs are not migrated. Native Agent history is preserved; historical import starts with `coconet history preview --agent codex` or `claude`, then an explicit selection.
 
