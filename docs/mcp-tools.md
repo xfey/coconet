@@ -10,7 +10,7 @@ constraints and usage guidance. Tools do not accept a `project_id` override.
 
 | Tool | Input and limits |
 | --- | --- |
-| `coconet_health` | No arguments. Reports Runtime, synchronization and processing separately. |
+| `coconet_health` | No arguments. Compact current-project processing, replica and search coverage for requested diagnosis or a blocked operation. |
 | `read_project_work_graph` | Optional `limit`: 1–100, default 50; optional `cursor`. |
 | `list_library_entries` | Optional `limit`: 1–100, default 50; optional `cursor`. |
 | `search_work` | Required `query`: 1–4000 characters, not blank, at most 64 whitespace-separated literal terms. Optional `limit`: 1–20, default 10; optional `cursor`. |
@@ -50,8 +50,8 @@ A valid call from an unconnected folder returns `status: "not_connected"` and
 and connection are invalid, the parameter error also includes
 `connection_status: "not_connected"` and instructions for both issues.
 
-Execution failures preserve the Runtime's diagnostic message and provide a next
-step. Missing temporary content, changed source references, stale cursors and
+Execution failures provide a concise reason and a next step; verbose provider
+output remains in local diagnostics. Missing temporary content, changed source references, stale cursors and
 permission failures must not be interpreted as an empty search or success. For
 unclassified Runtime failures, inspect `coconet status --verbose` and
 `coconet diagnostics list` in the work folder before retrying.
@@ -59,3 +59,13 @@ unclassified Runtime failures, inspect `coconet status --verbose` and
 Malformed JSON-RPC requests, unknown methods and unknown tool names remain
 protocol errors with guidance. Tool-level errors are ordinary MCP tool results,
 so hosts can forward them to the Agent for recovery.
+
+## Background status
+
+Successful reads and searches remain usable while unrelated background work is
+pending or paused. Use the result's coverage and exact source to scope your answer.
+A background capture failure does not identify the current conversation or prove
+that a teammate's work is missing. Inspect `coconet_health` when the requested
+operation is blocked or when the user asks about synchronization. It summarizes
+only the connected project; `coconet projection status --json` and
+`coconet diagnostics list` provide detailed local records for explicit diagnosis.

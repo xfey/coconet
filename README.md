@@ -8,30 +8,26 @@ This repository distributes release documentation and binaries. Implementation s
 
 当前仓库仅分发文档与制品，尚未公开实现源码；GitHub 自动生成的源码压缩包仅包含公开文档。
 
-## 0.27.0: cross-Agent continuation / 跨 Agent 接力
+## 0.27.2: clearer Agent context / 更清晰的协作上下文
 
-Client, npm and both Plugins are **0.27.0**. Codex ↔ Claude Fork automatically converts effective main dialogue on the receiving device and returns a new Session ID and resume command. It does not duplicate existing DAG work. Tools, reasoning, images and workspace files are not transferred. See [release notes](RELEASE_NOTES_v0.27.0.md).
+Client, npm, Plugins and Server are **0.27.2**. Normal collaboration tools keep their responses focused on the requested work. Current-project health is compact; detailed background errors remain available through local diagnostics. See [release notes](RELEASE_NOTES_v0.27.2.md).
 
-客户端、npm 与双 Agent 插件已更新为 **0.27.0**。跨 Agent 接力自动在用户设备转换有效主对话，返回新会话 ID 和继续命令；转换本身不重复生成 DAG 工作节点，不迁移工具状态、推理、图片或工作区文件。
+客户端、npm、双 Agent 插件及服务端更新为 **0.27.2**。协作工具减少重复提醒，健康状态按当前项目汇总；详细后台错误可通过本地诊断查看。升级后重新打开 Agent 加载新插件。
 
-Server **0.27.0** artifacts are available for self-hosting. Hosted remains **0.26.5** and is compatible with this client release; no data migration is required.
+Codex ↔ Claude continuation remains automatic and local. Existing projects, connections and original histories are preserved; no server data migration is required.
 
-自部署提供 **0.27.0** 服务端制品；Hosted 保持 **0.26.5**，可兼容新版客户端，无需数据迁移。
+跨 Agent 接力仍由用户设备自动转换，已有项目、连接及原始历史保留，无需数据迁移。
 
-A Project ID grants joining access to a signed-in user: share it only with intended collaborators. Opening a link alone does not join the project. Upgrade participating clients to use cross-Agent continuation.
+A Project ID grants joining access to a signed-in user: share it only with intended collaborators. Opening a link alone does not join the project.
 
-已登录用户可通过项目 ID 加入项目，请只分享给希望加入的协作者。仅打开链接不会自动加入。需要跨 Agent 接力的设备请升级客户端。
-
-**This MVP is not end-to-end encrypted.** Server administrators can read uploaded payloads, and inference providers receive the selected model input. Encryption, old-DAG migration and ultra-long-conversation segmentation are deferred. Project content and commit-log quotas do not replace whole-server disk monitoring.
-
-**本 MVP 尚未端到端加密。** 服务器管理员仍可读取上传内容，推理提供方会收到选定的模型输入。加密、旧 DAG 迁移与超长会话分段后置；项目配额不能替代整机容量监控。
+已登录用户可通过项目 ID 加入项目，请只分享给希望加入的协作者。仅打开链接不会自动加入。
 
 ## Install and connect / 安装与连接
 
 Supported: macOS Apple Silicon / Intel and Linux arm64 / x86_64. Windows is not supported.
 
 ```sh
-npm install -g coconet@0.27.0
+npm install -g coconet@0.27.2
 coconet version
 ```
 
