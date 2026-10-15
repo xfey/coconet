@@ -8,13 +8,17 @@ This repository distributes release documentation and binaries. Implementation s
 
 当前仓库仅分发文档与制品，尚未公开实现源码；GitHub 自动生成的源码压缩包仅包含公开文档。
 
-## 0.25.0: connect with a Project ID / 使用项目 ID 连接
+## 0.26.0: clean project links / 简洁的项目链接
 
-Client, Server, npm and both Plugins use **0.25.0**. See [release notes](RELEASE_NOTES_v0.25.0.md).
+Client, npm and both Plugins use **0.26.0**; Server/Dashboard uses **0.26.1**. See [release notes](RELEASE_NOTES_v0.26.0.md).
 
-Join a teammate's project by entering its Project ID in the connection page, or run `coconet connect prj_…`. The Dashboard now lives at `/`, with project links in the form `/#project=prj_…`. Invitation codes and the visible device code have been removed; connecting still requires explicit browser approval.
+Project IDs now start with `coco_`, and project links open directly at `https://coconet.space/coco_…`. Share a Project ID or paste the link into the connection page; the ordinary project URL no longer needs `#project=`. The sidebar entry is now “Install Coconet”.
 
-连接页面可直接输入同事分享的项目 ID，也可运行 `coconet connect prj_…`。看板统一位于网站根路径，项目链接为 `/#project=prj_…`。不再使用邀请码，也不再显示设备授权码；连接仍需在网页明确确认。
+项目 ID 统一使用 `coco_`，项目链接直接为 `https://coconet.space/coco_…`。分享项目 ID 或将链接粘贴到连接页面即可加入，普通项目地址不再需要 `#project=`。侧栏入口改为“安装 Coconet”。
+
+Old hosted test projects have been cleared for a fresh start. Upgrade the client, then run `coconet connect` to create a new project or join by `coco_…`. Accounts and native Agent histories are preserved. If a folder still has an old association, run `coconet disconnect` there before reconnecting.
+
+旧托管测试项目已清空。升级客户端后，在工作目录运行 `coconet connect` 新建项目或使用 `coco_…` 加入；账号和原生 Agent 历史保留。目录若仍有关联，先运行 `coconet disconnect` 再连接。
 
 A Project ID grants joining access to a signed-in user: share it only with intended collaborators. Opening a link alone does not join the project. Upgrade the Server and all collaborating clients together.
 
@@ -29,7 +33,7 @@ A Project ID grants joining access to a signed-in user: share it only with inten
 Supported: macOS Apple Silicon / Intel and Linux arm64 / x86_64. Windows is not supported.
 
 ```sh
-npm install --global coconet@0.25.0
+npm install --global coconet@0.26.0
 coconet version
 ```
 
