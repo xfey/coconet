@@ -1,24 +1,26 @@
 # Coconet
 
-Coconet helps teams understand shared Coding Agent work through a DAG, read selected conversations locally, and continue work in a new Session with the same Agent type.
+Coconet helps teams understand shared Coding Agent work through a DAG, read selected conversations locally, and continue work in a new Codex or Claude Session, including cross-Agent continuation.
 
-Coconet 帮助团队通过 DAG 理解 Coding Agent 的工作进度与依赖，按需拉取会话到本地阅读、检索，并使用同类型 Agent 接力。
+Coconet 帮助团队通过 DAG 理解 Coding Agent 的工作进度与依赖，按需拉取会话到本地阅读、检索，并在 Codex 与 Claude 之间接力。
 
 This repository distributes release documentation and binaries. Implementation source is not published here yet; GitHub's automatically generated source archives contain only these public documents.
 
 当前仓库仅分发文档与制品，尚未公开实现源码；GitHub 自动生成的源码压缩包仅包含公开文档。
 
-## 0.26.5: clearer tools and help / 更清晰的工具与帮助
+## 0.27.0: cross-Agent continuation / 跨 Agent 接力
 
-Client, npm, both Plugins and Server/Dashboard use **0.26.5**. See [release notes](RELEASE_NOTES_v0.26.5.md).
+Client, npm and both Plugins are **0.27.0**. Codex ↔ Claude Fork automatically converts effective main dialogue on the receiving device and returns a new Session ID and resume command. It does not duplicate existing DAG work. Tools, reasoning, images and workspace files are not transferred. See [release notes](RELEASE_NOTES_v0.27.0.md).
 
-MCP parameters now explain their bounds and retry rules. Tool failures identify the invalid field and provide recovery steps; an unconnected folder is reported separately. Client and server help share the same command catalog as the [parameter manual](docs/cli.md). The login page includes a decorative animation that pauses when hidden and respects reduced-motion preferences. Debug login is disabled.
+客户端、npm 与双 Agent 插件已更新为 **0.27.0**。跨 Agent 接力自动在用户设备转换有效主对话，返回新会话 ID 和继续命令；转换本身不重复生成 DAG 工作节点，不迁移工具状态、推理、图片或工作区文件。
 
-客户端、npm、双 Agent 插件及服务端统一为 **0.26.5**。MCP 参数说明补齐范围与重试规则，报错明确指出字段和修正方式，未连接目录单独提示。命令帮助与[参数手册](docs/cli.md)保持一致；首页增加装饰动画，支持后台暂停及减少动态效果，Debug 登录已关闭。
+Server **0.27.0** artifacts are available for self-hosting. Hosted remains **0.26.5** and is compatible with this client release; no data migration is required.
 
-A Project ID grants joining access to a signed-in user: share it only with intended collaborators. Opening a link alone does not join the project. Upgrade the Server and all collaborating clients together.
+自部署提供 **0.27.0** 服务端制品；Hosted 保持 **0.26.5**，可兼容新版客户端，无需数据迁移。
 
-已登录用户可通过项目 ID 加入项目，请只分享给希望加入的协作者。仅打开链接不会自动加入。服务器和所有协作客户端应一起升级。
+A Project ID grants joining access to a signed-in user: share it only with intended collaborators. Opening a link alone does not join the project. Upgrade participating clients to use cross-Agent continuation.
+
+已登录用户可通过项目 ID 加入项目，请只分享给希望加入的协作者。仅打开链接不会自动加入。需要跨 Agent 接力的设备请升级客户端。
 
 **This MVP is not end-to-end encrypted.** Server administrators can read uploaded payloads, and inference providers receive the selected model input. Encryption, old-DAG migration and ultra-long-conversation segmentation are deferred. Project content and commit-log quotas do not replace whole-server disk monitoring.
 
@@ -29,7 +31,7 @@ A Project ID grants joining access to a signed-in user: share it only with inten
 Supported: macOS Apple Silicon / Intel and Linux arm64 / x86_64. Windows is not supported.
 
 ```sh
-npm install -g coconet@0.26.5
+npm install -g coconet@0.27.0
 coconet version
 ```
 
@@ -68,9 +70,9 @@ Hosted Dashboard: <https://coconet.space/>. Hosted API: `https://api.coconet.spa
 
 ## Upgrade / 升级
 
-Upgrade self-hosted Servers and collaborating clients to 0.26.5, then start new Agent sessions to load the updated tool schemas. Existing 0.26.x connections, projects and native histories remain in place; this update does not clear data or change DAG inference rules.
+Upgrade collaborating clients to 0.27.0, then start new Agent sessions to load the updated Plugins and tool descriptions. Existing connections, projects and native histories remain in place. The current 0.26.5 Relay is compatible; upgrading a self-hosted Server is optional.
 
-将自部署服务器与协作客户端升级到 0.26.5，再开启新的 Agent 会话加载工具说明。现有 0.26.x 目录连接、项目与原生历史保留；本次不清空数据，也不改变 DAG 推理规则。
+将协作客户端升级到 0.27.0，再开启新的 Agent 会话加载插件和工具说明。现有目录连接、项目与原生历史保留；当前 0.26.5 Relay 兼容新版客户端，自部署服务器可按需升级。
 
 Use `coconet --help`, `coconet help connect` or `coconet-server --help` for command usage. See the [parameter manual](docs/cli.md) and [MCP tools](docs/mcp-tools.md) for details. Search pages allow 1–20 results (default 10); use `next_cursor` for more results.
 

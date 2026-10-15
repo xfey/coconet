@@ -536,7 +536,7 @@ coconet session <read|pull|resume> [options]
 | `--session ID` | — | Required for a fixed source: use that node's Session ID |
 | `--version N` | 0 | Required for a fixed source: use that node's positive version number |
 | `--project ID` | — | Required: expected project ID; must match this folder's connection |
-| `--agent codex\|claude` | — | Required for resume and invalid for read/pull; must match the source Agent |
+| `--agent codex\|claude` | — | Required for resume and invalid for read/pull; selects the target Agent |
 | `--include-artifact` | false | read/pull: also materialize the native session artifact |
 | `--request-id ID` | — | resume only: generated if omitted; retry with the printed ID and all original arguments |
 
@@ -624,11 +624,11 @@ coconet fork --agent codex|claude --node ID --session ID --version N [options]
 | `--node ID` | — | Required for a fixed source: select a current DAG node |
 | `--session ID` | — | Required for a fixed source: use that node's Session ID |
 | `--version N` | 0 | Required for a fixed source: use that node's positive version number |
-| `--agent codex\|claude` | — | Required: same Agent type as the source |
+| `--agent codex\|claude` | — | Required: target Agent; Codex and Claude sources support cross-Agent text continuation |
 | `--request-id ID` | — | Generated if omitted; on retry reuse the printed ID and all original arguments |
 | `--json` | false | Write machine-readable JSON |
 
-Run in a connected folder. Uses retained local source content, preserves the original history and prints a native continuation command. Publication can finish later in the background.
+Run in a connected folder. Uses retained local source content, preserves the original history and prints a native continuation command. Same-Agent Fork preserves native history; cross-Agent Fork imports user/assistant text, excluding tools, reasoning and media. Publication can finish later in the background.
 
 ```sh
 coconet fork --agent claude --node NODE_ID --session SESSION_ID --version 3
