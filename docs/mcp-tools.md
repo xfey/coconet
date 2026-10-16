@@ -17,7 +17,7 @@ constraints and usage guidance. Tools do not accept a `project_id` override.
 | `pull_session` | Required `source`; optional `work_node_id`. `include_artifact` defaults to false; true also requires the node ID. |
 | `add_session_to_library` | Required `request_id`, `work_node_id`, `source`; optional `note`, at most 1000 characters. |
 | `remove_session_from_library` | Required `request_id`, `work_node_id`, `source`. Does not accept a note. |
-| `fork_session` | Required `request_id`, `work_node_id`, `source`. Available to identified Codex / Claude Code hosts. |
+| `fork_session` | Required `request_id`, `work_node_id`, `source`. Available to identified Codex / Claude Code / Cursor CLI hosts. |
 
 Omit `limit` to use the default; zero is not a valid page size. A cursor is at
 most 1024 characters. Copy `next_cursor` from the previous response, using the

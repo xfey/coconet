@@ -30,7 +30,7 @@ coconet local-dag <command> --root DIR [options]
 | `--project ID` | — | Required except for serve/status/stop/inbox/retry-inbox |
 | `--actor ID` | — | Required for capture/process/serve: origin device identity |
 | `--input FILE` | — | Required for capture/observe: fixed JSON input, read-only |
-| `--provider codex\|claude` | — | Required for process/serve: inference provider |
+| `--provider codex\|claude\|cursor` | — | Required for process/serve: inference provider |
 | `--command CMD` | — | Required for process/serve: provider executable |
 | `--profile DIR` | — | Required for process/serve: absolute isolated Agent configuration directory |
 | `--model MODEL` | — | Required for process/serve: explicit inference model |
@@ -202,24 +202,24 @@ coconet local-dag index-rebuild --root DIR [options]
 Run the stdio MCP server for an Agent integration
 
 ```sh
-coconet mcp [--agent codex|claude]
+coconet mcp [--agent codex|claude|cursor]
 ```
 
 | Option | Default | Meaning |
 |---|---|---|
-| `--agent codex\|claude` | — | Target Agent for native continuation tools; optional |
+| `--agent codex\|claude\|cursor` | — | Target Agent for native continuation tools; optional |
 
 ### `coconet hook`
 
 Capture an Agent hook event from stdin
 
 ```sh
-coconet hook --agent codex|claude [options]
+coconet hook --agent codex|claude|cursor [options]
 ```
 
 | Option | Default | Meaning |
 |---|---|---|
-| `--agent codex\|claude` | — | Source Agent type |
+| `--agent codex\|claude\|cursor` | — | Source Agent type |
 | `--skill-path FILE` | — | Installed Codex team-context Skill path; integration-managed |
 
 Called automatically by the plugin. Ordinary hook execution is silent and fail-open.

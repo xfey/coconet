@@ -8,7 +8,7 @@ README 保留快速上手说明；本页列出公开命令、参数、默认值�
 
 Put flags after the command/subcommand. Required positional arguments such as `agent add claude` precede flags. Most commands accept `--flag VALUE` or `--flag=VALUE`; boolean flags may use `--flag=false`. The small `health` and `mcp` entry points accept only the exact option forms shown in their usage. `--` ends option parsing. Paths containing spaces must be quoted. Replace example IDs and paths with your own. Group option tables state which subcommands use each parameter; a parameter is not global.
 
-普通工作流沿用 Agent 的默认模型，无需设置模型或调用次数。服务端 OAuth、对象存储和容量策略使用环境变量，见 [self-hosting](../README.md#self-hosted-relay--自部署)；它们不是 CLI 参数。[集成与调试命令](cli-internal.md) 单独列出。
+普通工作流沿用 Agent 的默认模型，无需设置模型或调用次数。服务端 OAuth、对象存储和容量策略使用环境变量，见 [self-hosting](../deploy/README.md)；它们不是 CLI 参数。[集成与调试命令](cli-internal.md) 单独列出。
 
 ## coconet
 
@@ -163,7 +163,7 @@ coconet agent list --verbose
 Install or retry the plugin for an Agent
 
 ```sh
-coconet agent add <codex|claude> [options]
+coconet agent add <codex|claude|cursor> [options]
 ```
 
 | Option | Default | Meaning |
@@ -239,7 +239,7 @@ coconet history <command> [options]
 | Option | Default | Meaning |
 |---|---|---|
 | `--plan ID` | — | Required except for preview/list; take the exact plan ID from preview or list |
-| `--agent codex\|claude` | — | Required for preview: native history provider |
+| `--agent codex\|claude\|cursor` | — | Required for preview: native history provider |
 | `--sessions ID,ID` | — | Required for start: comma-separated native Session IDs selected from the preview |
 | `--batch-size N` | 5 | start: selected sessions per batch, 1-20; resume starts the next batch |
 | `--json` | false | Write machine-readable JSON |
@@ -256,7 +256,7 @@ coconet history start --plan PLAN_ID --sessions SESSION_A,SESSION_B --batch-size
 Preview eligible history without importing it
 
 ```sh
-coconet history preview --agent codex|claude [--json]
+coconet history preview --agent codex|claude|cursor [--json]
 ```
 
 #### `coconet history list`
@@ -536,7 +536,7 @@ coconet session <read|pull|resume> [options]
 | `--session ID` | — | Required for a fixed source: use that node's Session ID |
 | `--version N` | 0 | Required for a fixed source: use that node's positive version number |
 | `--project ID` | — | Required: expected project ID; must match this folder's connection |
-| `--agent codex\|claude` | — | Required for resume and invalid for read/pull; selects the target Agent |
+| `--agent codex\|claude\|cursor` | — | Required for resume and invalid for read/pull; selects the target Agent |
 | `--include-artifact` | false | read/pull: also materialize the native session artifact |
 | `--request-id ID` | — | resume only: generated if omitted; retry with the printed ID and all original arguments |
 
@@ -563,7 +563,7 @@ coconet session pull --project ID --node ID --session ID --version N [--include-
 Create a separate native continuation; equivalent to fork
 
 ```sh
-coconet session resume --project ID --node ID --session ID --version N --agent codex|claude [--request-id ID]
+coconet session resume --project ID --node ID --session ID --version N --agent codex|claude|cursor [--request-id ID]
 ```
 
 ### `coconet library`
@@ -616,7 +616,7 @@ coconet library remove --node ID --session ID --version N [--request-id ID] [--j
 Create an independent native session from a selected source
 
 ```sh
-coconet fork --agent codex|claude --node ID --session ID --version N [options]
+coconet fork --agent codex|claude|cursor --node ID --session ID --version N [options]
 ```
 
 | Option | Default | Meaning |
@@ -624,7 +624,7 @@ coconet fork --agent codex|claude --node ID --session ID --version N [options]
 | `--node ID` | — | Required for a fixed source: select a current DAG node |
 | `--session ID` | — | Required for a fixed source: use that node's Session ID |
 | `--version N` | 0 | Required for a fixed source: use that node's positive version number |
-| `--agent codex\|claude` | — | Required: target Agent; Codex and Claude sources support cross-Agent text continuation |
+| `--agent codex\|claude\|cursor` | — | Required: target Agent; Codex, Claude and Cursor sources support cross-Agent text continuation |
 | `--request-id ID` | — | Generated if omitted; on retry reuse the printed ID and all original arguments |
 | `--json` | false | Write machine-readable JSON |
 

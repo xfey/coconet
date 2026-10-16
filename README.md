@@ -1,22 +1,22 @@
 # Coconet
 
-Coconet helps teams understand shared Coding Agent work through a DAG, read selected conversations locally, and continue work in a new Codex or Claude Session, including cross-Agent continuation.
+Coconet helps teams understand shared Coding Agent work through a DAG, read selected conversations locally, and continue work in a new Codex, Claude or Cursor Session, including cross-Agent continuation.
 
-Coconet 帮助团队通过 DAG 理解 Coding Agent 的工作进度与依赖，按需拉取会话到本地阅读、检索，并在 Codex 与 Claude 之间接力。
+Coconet 帮助团队通过 DAG 理解 Coding Agent 的工作进度与依赖，按需拉取会话到本地阅读、检索，并在 Codex、Claude 与 Cursor 之间接力。
 
 This repository distributes release documentation and binaries. Implementation source is not published here yet; GitHub's automatically generated source archives contain only these public documents.
 
 当前仓库仅分发文档与制品，尚未公开实现源码；GitHub 自动生成的源码压缩包仅包含公开文档。
 
-## 0.27.2: clearer Agent context / 更清晰的协作上下文
+## 0.28.0: Cursor CLI collaboration / Cursor CLI 协作
 
-Client, npm, Plugins and Server are **0.27.2**. Normal collaboration tools keep their responses focused on the requested work. Current-project health is compact; detailed background errors remain available through local diagnostics. See [release notes](https://github.com/xfey/coconet/releases/tag/v0.27.2).
+Client, Plugins and Server release artifacts are **0.28.0**. Cursor CLI joins Codex and Claude Code for local capture, work graph generation, search, reading and native session continuation. See [release notes](https://github.com/xfey/coconet/releases/tag/v0.28.0).
 
-客户端、npm、双 Agent 插件及服务端更新为 **0.27.2**。协作工具减少重复提醒，健康状态按当前项目汇总；详细后台错误可通过本地诊断查看。升级后重新打开 Agent 加载新插件。
+客户端、三种 Agent 插件及服务端制品更新为 **0.28.0**。Cursor CLI 支持本地采集、工作图生成、搜索、读取和原生会话接力。Codex 配置兼容软链接；Cursor 的额度错误及完整 JSON 代码块输出得到更明确的处理。
 
-Codex ↔ Claude continuation remains automatic and local. Existing projects, connections and original histories are preserved; no server data migration is required.
+Cross-Agent conversion runs locally. Existing projects, connections and native histories remain in place. Restart Agents after upgrading to load the new integrations. npm publication status is listed on the Release page.
 
-跨 Agent 接力仍由用户设备自动转换，已有项目、连接及原始历史保留，无需数据迁移。
+跨 Agent 转换在本地执行。已有项目、连接及原生历史保留；升级后重新打开 Agent。npm 发布状态见 Release 页面。
 
 A Project ID grants joining access to a signed-in user: share it only with intended collaborators. Opening a link alone does not join the project.
 
@@ -27,13 +27,13 @@ A Project ID grants joining access to a signed-in user: share it only with inten
 Supported: macOS Apple Silicon / Intel and Linux arm64 / x86_64. Windows is not supported.
 
 ```sh
-npm install -g coconet@0.27.2
+npm install -g coconet@0.28.0
 coconet version
 ```
 
 The npm launcher downloads only your platform's matching release, verifies its pinned SHA-256 and installs the Runtime. npm's global bin directory must be on PATH. Missing Agents are skipped; failed Agent setup does not undo Runtime installation. Inspect `coconet agent list --verbose` for results and retry commands. Start a new Agent session to load the Plugin and approve Hook trust when prompted.
 
-npm 启动器按系统下载对应制品并核对固定 SHA-256，自动配置已安装的默认 Codex / Claude。某个 Agent 配置失败不影响 Runtime 安装，可用 `coconet agent list --verbose` 查看与重试。升级后开启新的 Agent 会话加载插件。
+npm 启动器按系统下载对应制品并核对固定 SHA-256，自动配置已安装的默认 Codex / Claude / Cursor。某个 Agent 配置失败不影响 Runtime 安装，可用 `coconet agent list --verbose` 查看与重试。升级后开启新的 Agent 会话加载插件。
 
 Run inside your work directory / 在工作目录内执行：
 
@@ -66,9 +66,9 @@ Hosted Dashboard: <https://coconet.space/>. Hosted API: `https://api.coconet.spa
 
 ## Upgrade / 升级
 
-Upgrade collaborating clients to 0.27.0, then start new Agent sessions to load the updated Plugins and tool descriptions. Existing connections, projects and native histories remain in place. The current 0.26.5 Relay is compatible; upgrading a self-hosted Server is optional.
+Upgrade collaborating clients together to 0.28.0 to share Cursor sessions, then restart Agents to load updated integrations. Existing connections, projects and native histories remain in place.
 
-将协作客户端升级到 0.27.0，再开启新的 Agent 会话加载插件和工具说明。现有目录连接、项目与原生历史保留；当前 0.26.5 Relay 兼容新版客户端，自部署服务器可按需升级。
+需要共享 Cursor 会话时，请将协作客户端一并升级到 0.28.0，并重启 Agent。现有连接、项目和原生历史保留。
 
 Use `coconet --help`, `coconet help connect` or `coconet-server --help` for command usage. See the [parameter manual](docs/cli.md) and [MCP tools](docs/mcp-tools.md) for details. Search pages allow 1–20 results (default 10); use `next_cursor` for more results.
 
@@ -79,7 +79,7 @@ coconet agent add claude --command tclaude --config-root ~/.tclaude
 coconet agent list --verbose
 ```
 
-Normal setup respects `CODEX_HOME` / `CLAUDE_CONFIG_DIR` and otherwise uses the Agent’s default directory. Register extra installations with the commands above. Coconet resolves inference from each captured conversation’s Agent type and configuration directory; ambiguous or unavailable installations produce a retryable diagnostic. `COCONET_SKIP_AGENT_SETUP=1` installs only the Runtime.
+Normal setup respects `CODEX_HOME` / `CLAUDE_CONFIG_DIR` / `CURSOR_CONFIG_DIR` and otherwise uses the Agent’s default directory. Register extra installations with the commands above. Coconet resolves inference from each captured conversation’s Agent type and configuration directory; ambiguous or unavailable installations produce a retryable diagnostic. `COCONET_SKIP_AGENT_SETUP=1` installs only the Runtime.
 
 常规安装遵循 Agent 配置目录环境变量，额外安装通过上述命令登记。每段会话按来源 Agent 类型和配置目录确定后台调用；安装缺失或存在歧义时会记录可重试错误，不自动切换账号。首次运行设置 `COCONET_SKIP_AGENT_SETUP=1` 可只安装 Runtime。
 
