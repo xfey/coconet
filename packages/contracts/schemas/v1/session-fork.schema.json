@@ -1,0 +1,279 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.coddis.dev/v1/session-fork.schema.json",
+  "title": "Coconet same-type Session Fork",
+  "$defs": {
+    "prepare_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "request_id",
+        "project_id",
+        "source_server_session_id",
+        "source_version",
+        "source_artifact_sha256",
+        "target_agent_type",
+        "work_node_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8
+        },
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "source_server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "source_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source_artifact_sha256": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "target_agent_type": {
+          "$ref": "common.schema.json#/$defs/agent_type"
+        },
+        "work_node_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        }
+      }
+    },
+    "prepare_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "attempt_token",
+        "source"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "status": {
+          "type": "string",
+          "const": "ok"
+        },
+        "attempt_token": {
+          "type": "string",
+          "minLength": 16
+        },
+        "source": {
+          "$ref": "session-pull.schema.json#/$defs/source"
+        }
+      }
+    },
+    "complete_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "request_id",
+        "attempt_token",
+        "native_session_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8
+        },
+        "attempt_token": {
+          "type": "string",
+          "minLength": 16
+        },
+        "native_session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "relative_cwd": {
+          "type": "string"
+        }
+      }
+    },
+    "created": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "server_session_id",
+        "native_session_id",
+        "agent_type",
+        "root_server_session_id",
+        "parent_server_session_id",
+        "parent_session_version"
+      ],
+      "properties": {
+        "server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "native_session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "agent_type": {
+          "$ref": "common.schema.json#/$defs/agent_type"
+        },
+        "root_server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "parent_server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "parent_session_version": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "complete_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "source",
+        "created"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "status": {
+          "type": "string",
+          "const": "ok"
+        },
+        "source": {
+          "$ref": "session-pull.schema.json#/$defs/source"
+        },
+        "created": {
+          "$ref": "#/$defs/created"
+        }
+      }
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "program",
+        "args",
+        "display"
+      ],
+      "properties": {
+        "program": {
+          "type": "string",
+          "minLength": 1
+        },
+        "args": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "display": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "environment_hints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "working_tree_dirty",
+        "working_tree_changed"
+      ],
+      "properties": {
+        "source_git_head": {
+          "type": "string"
+        },
+        "source_git_branch": {
+          "type": "string"
+        },
+        "current_git_head": {
+          "type": "string"
+        },
+        "current_git_branch": {
+          "type": "string"
+        },
+        "working_tree_dirty": {
+          "type": "boolean"
+        },
+        "working_tree_changed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "request_id",
+        "retryable"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "status": {
+          "$ref": "common.schema.json#/$defs/status"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "session-pull.schema.json#/$defs/source"
+        },
+        "created": {
+          "$ref": "#/$defs/created"
+        },
+        "resume": {
+          "$ref": "#/$defs/command"
+        },
+        "environment_hints": {
+          "$ref": "#/$defs/environment_hints"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "ok"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "source",
+              "created",
+              "resume",
+              "environment_hints"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "$ref": "#/$defs/result"
+}

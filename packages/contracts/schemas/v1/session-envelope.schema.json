@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.coddis.dev/v1/session-envelope.schema.json",
+  "title": "Coconet local Session envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "agent_type",
+    "native_session_id",
+    "cwd",
+    "activity_state",
+    "source_observed_at",
+    "client_version",
+    "adapter_name",
+    "adapter_version"
+  ],
+  "properties": {
+    "schema_version": { "$ref": "common.schema.json#/$defs/schema_version" },
+    "agent_type": { "$ref": "common.schema.json#/$defs/agent_type" },
+    "native_session_id": { "$ref": "common.schema.json#/$defs/non_empty_string" },
+    "cwd": { "$ref": "common.schema.json#/$defs/non_empty_string" },
+    "activity_state": { "$ref": "common.schema.json#/$defs/activity_state" },
+    "source_observed_at": { "type": "string", "format": "date-time" },
+    "last_activity_at": { "type": "string", "format": "date-time", "description": "Optional local Adapter evidence: latest SDK message time from a stable, fully timestamped observation. Not sent in Server sync requests." },
+    "client_version": { "$ref": "common.schema.json#/$defs/non_empty_string" },
+    "adapter_name": { "$ref": "common.schema.json#/$defs/non_empty_string" },
+    "adapter_version": { "$ref": "common.schema.json#/$defs/non_empty_string" }
+  }
+}

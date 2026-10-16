@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.coddis.dev/v1/mcp-health.schema.json",
+  "title": "Coconet MCP health tool result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "health"],
+  "properties": {
+    "schema_version": { "$ref": "common.schema.json#/$defs/schema_version" },
+    "status": { "$ref": "common.schema.json#/$defs/status" },
+    "health": { "$ref": "health.schema.json" }
+  }
+}

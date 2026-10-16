@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "entry": {
+    "entry_id": "libentry_fixture01",
+    "project_id": "coco_fixture01",
+    "source": {
+      "server_session_id": "sess_fixture01",
+      "version": 3
+    },
+    "submitted_by": "acct_fixture01",
+    "collected_at": "2026-09-09T10:00:00Z",
+    "note": "Fixed context for future reference",
+    "work_node_id": "work_library_fixture"
+  }
+}

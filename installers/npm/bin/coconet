@@ -1,0 +1,95 @@
+#!/bin/sh
+
+# Keep the npm command stable while the native Runtime remains versioned under
+# the user's Coconet data root. Node is used only when setup or an upgrade is
+# required; successful daily commands replace this process with the Runtime.
+
+launcher=$0
+link_depth=0
+while [ -L "$launcher" ]; do
+  link_depth=$((link_depth + 1))
+  if [ "$link_depth" -gt 16 ]; then
+    printf '%s\n' "coconet: the npm launcher contains too many symbolic links" >&2
+    exit 1
+  fi
+  launcher_directory=$(CDPATH= cd -P "$(dirname "$launcher")" 2>/dev/null && pwd) || {
+    printf '%s\n' "coconet: could not resolve the npm launcher directory" >&2
+    exit 1
+  }
+  link_target=$(readlink "$launcher") || {
+    printf '%s\n' "coconet: could not resolve the npm launcher link" >&2
+    exit 1
+  }
+  case $link_target in
+    /*) launcher=$link_target ;;
+    *) launcher=$launcher_directory/$link_target ;;
+  esac
+done
+
+launcher_directory=$(CDPATH= cd -P "$(dirname "$launcher")" 2>/dev/null && pwd) || {
+  printf '%s\n' "coconet: could not resolve the npm package directory" >&2
+  exit 1
+}
+package_root=$(dirname "$launcher_directory")
+package_json=$package_root/package.json
+setup_command=$package_root/cli.mjs
+
+if [ ! -f "$package_json" ] || [ ! -x "$setup_command" ]; then
+  printf '%s\n' "coconet: the npm installation is incomplete; reinstall the global coconet package" >&2
+  exit 1
+fi
+
+package_version=$(LC_ALL=C sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$package_json" | LC_ALL=C sed -n '1p')
+if [ -z "$package_version" ]; then
+  printf '%s\n' "coconet: could not read the npm package version" >&2
+  exit 1
+fi
+
+if [ -n "${XDG_DATA_HOME:-}" ]; then
+  data_root=$XDG_DATA_HOME
+elif [ -n "${HOME:-}" ]; then
+  data_root=$HOME/.local/share
+else
+  printf '%s\n' "coconet: HOME or XDG_DATA_HOME is required" >&2
+  exit 1
+fi
+
+install_root=$data_root/coconet
+runtime=$install_root/current/bin/coconet
+runtime_manifest=$install_root/current/manifest.json
+
+runtime_version() {
+  if [ ! -f "$runtime_manifest" ]; then
+    return 1
+  fi
+  LC_ALL=C sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$runtime_manifest" | LC_ALL=C sed -n '1p'
+}
+
+installed_version=$(runtime_version 2>/dev/null || true)
+if [ -x "$runtime" ] && [ "$installed_version" = "$package_version" ]; then
+  exec "$runtime" "$@"
+fi
+
+if [ -n "$installed_version" ] && [ "$installed_version" != "$package_version" ]; then
+  printf 'coconet: Updating Coconet %s -> %s before running your command...\n' "$installed_version" "$package_version" >&2
+else
+  printf 'coconet: Installing Coconet %s before running your command...\n' "$package_version" >&2
+fi
+
+# Setup is incidental to the requested command, including JSON and MCP
+# commands. Its human-readable result must not enter that command's stdout.
+"$setup_command" >&2
+setup_status=$?
+if [ "$setup_status" -ne 0 ]; then
+  printf '%s\n' "coconet: Setup did not complete; your command was not run." >&2
+  exit "$setup_status"
+fi
+
+installed_version=$(runtime_version 2>/dev/null || true)
+if [ ! -x "$runtime" ] || [ "$installed_version" != "$package_version" ]; then
+  printf '%s\n' "coconet: setup finished without activating the expected Runtime" >&2
+  exit 1
+fi
+
+# Bootstrap already configured default and registered Agent integrations.
+exec "$runtime" "$@"

@@ -1,0 +1,1063 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.coddis.dev/v1/session-context.schema.json",
+  "title": "Targeted compact evidence and legacy compatibility shapes",
+  "$defs": {
+    "index_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "request_id",
+        "project_id",
+        "server_session_id",
+        "version",
+        "normalized"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200
+        },
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "native_lineage": {
+          "$ref": "session-observation.schema.json#/properties/native_lineage"
+        },
+        "visible_text": {
+          "$ref": "session-observation.schema.json#/properties/visible_text"
+        },
+        "normalized": {
+          "$ref": "session-observation.schema.json#/properties/normalized"
+        }
+      },
+      "deprecated": true
+    },
+    "index_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "server_session_id",
+        "version",
+        "source_epoch",
+        "to_cursor",
+        "turn_count",
+        "index_sha256",
+        "indexed_at"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "base_index_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source_base_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source_epoch": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "to_cursor": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "turn_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "index_sha256": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "indexed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "index_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "index"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "status": {
+          "type": "string",
+          "const": "ok"
+        },
+        "index": {
+          "$ref": "#/$defs/index_record"
+        }
+      },
+      "deprecated": true
+    },
+    "project_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_id",
+        "name",
+        "status"
+      ],
+      "properties": {
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "$ref": "common.schema.json#/$defs/project_status"
+        }
+      }
+    },
+    "author": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "account_id",
+        "display_name"
+      ],
+      "properties": {
+        "account_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "lineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "root_server_session_id"
+      ],
+      "properties": {
+        "root_server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "parent_server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "parent_session_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "family_result_count": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "search_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "request_id",
+        "project_id"
+      ],
+      "properties": {
+        "include_library_tags": {
+          "type": "boolean",
+          "default": false,
+          "description": "Opt into generated Library tags after negotiating session_library_tags_v1. Requires scope=library."
+        },
+        "scope": {
+          "enum": [
+            "all",
+            "library"
+          ],
+          "default": "all",
+          "description": "Search all indexed Sessions or only collected fixed Library sources. session_refs further restricts the selected scope."
+        },
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200
+        },
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "query": {
+          "type": "string",
+          "maxLength": 4000,
+          "description": "Lexical query; code symbols and error identifiers are classified automatically."
+        },
+        "paths": {
+          "type": "array",
+          "maxItems": 50,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "description": "Collaboration-root-relative module, directory, or file paths."
+        },
+        "session_refs": {
+          "type": "array",
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/read_reference"
+          },
+          "description": "Optional fixed Session Versions that limit the search scope."
+        },
+        "symbols": {
+          "type": "array",
+          "maxItems": 50,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "deprecated": true,
+          "description": "Deprecated compatibility input; include code symbols in query."
+        },
+        "error_tokens": {
+          "type": "array",
+          "maxItems": 50,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "deprecated": true,
+          "description": "Deprecated compatibility input; include error identifiers in query."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "cursor": {
+          "type": "string",
+          "maxLength": 500
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "include_library_tags"
+            ],
+            "properties": {
+              "include_library_tags": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "scope"
+            ],
+            "properties": {
+              "scope": {
+                "const": "library"
+              }
+            }
+          }
+        }
+      ],
+      "deprecated": true
+    },
+    "query_interpretation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "query": {
+          "type": "string"
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "symbols": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "error_tokens": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "search_match": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "turn_id",
+        "ordinal",
+        "excerpt",
+        "reasons",
+        "inherited"
+      ],
+      "properties": {
+        "turn_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ordinal": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "excerpt": {
+          "type": "string"
+        },
+        "reasons": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "relative_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "symbols": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "error_tokens": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "inherited": {
+          "type": "boolean"
+        }
+      }
+    },
+    "read_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "server_session_id",
+        "version"
+      ],
+      "properties": {
+        "server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "search_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "server_session_id",
+        "agent_type",
+        "author",
+        "activity_state",
+        "latest_synced_at",
+        "hit_version",
+        "latest_version",
+        "lineage",
+        "matches",
+        "read_ref"
+      ],
+      "properties": {
+        "library_entry": {
+          "$ref": "session-library.schema.json#/$defs/entry"
+        },
+        "library_note_match": {
+          "$ref": "#/$defs/library_note_match"
+        },
+        "library_tag_match": {
+          "$ref": "#/$defs/library_tag_match"
+        },
+        "server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "agent_type": {
+          "$ref": "common.schema.json#/$defs/agent_type"
+        },
+        "author": {
+          "$ref": "#/$defs/author"
+        },
+        "activity_state": {
+          "$ref": "common.schema.json#/$defs/activity_state"
+        },
+        "latest_synced_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "hit_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "latest_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "lineage": {
+          "$ref": "#/$defs/lineage"
+        },
+        "matches": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/search_match"
+          }
+        },
+        "read_ref": {
+          "$ref": "#/$defs/read_reference"
+        }
+      },
+      "dependentRequired": {
+        "library_note_match": [
+          "library_entry"
+        ],
+        "library_tag_match": [
+          "library_entry"
+        ]
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "library_tag_match"
+            ]
+          },
+          "then": {
+            "properties": {
+              "library_entry": {
+                "required": [
+                  "tagging"
+                ],
+                "properties": {
+                  "tagging": {
+                    "properties": {
+                      "state": {
+                        "const": "ready"
+                      },
+                      "tags": {
+                        "minItems": 1
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "anyOf": [
+        {
+          "properties": {
+            "matches": {
+              "minItems": 1
+            }
+          }
+        },
+        {
+          "required": [
+            "library_note_match"
+          ]
+        },
+        {
+          "required": [
+            "library_tag_match"
+          ]
+        }
+      ]
+    },
+    "library_note_match": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "excerpt",
+        "reasons"
+      ],
+      "properties": {
+        "excerpt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reasons": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "library_tag_match": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tags"
+      ],
+      "properties": {
+        "tags": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 48
+          }
+        }
+      }
+    },
+    "search_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "request_id",
+        "retryable",
+        "query_interpretation",
+        "results"
+      ],
+      "properties": {
+        "scope": {
+          "enum": [
+            "all",
+            "library"
+          ],
+          "description": "Effective scope. Omitted by older Servers for all-Session searches."
+        },
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "status": {
+          "$ref": "common.schema.json#/$defs/status"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        },
+        "project": {
+          "$ref": "#/$defs/project_reference"
+        },
+        "query_interpretation": {
+          "$ref": "#/$defs/query_interpretation"
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/search_result"
+          }
+        },
+        "next_cursor": {
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "scope"
+            ],
+            "properties": {
+              "scope": {
+                "const": "library"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "results": {
+                "items": {
+                  "required": [
+                    "library_entry"
+                  ]
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "results": {
+                "items": {
+                  "not": {
+                    "required": [
+                      "library_entry"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "deprecated": true
+    },
+    "recent_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "request_id",
+        "project_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200
+        },
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "cursor": {
+          "type": "string",
+          "maxLength": 500
+        }
+      },
+      "deprecated": true
+    },
+    "recent_excerpt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "turn_id",
+        "ordinal",
+        "role",
+        "kind",
+        "text"
+      ],
+      "properties": {
+        "turn_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ordinal": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "user",
+            "assistant",
+            "tool",
+            "system",
+            "other"
+          ]
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "message",
+            "tool_call",
+            "tool_result",
+            "summary",
+            "event"
+          ]
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 400
+        }
+      }
+    },
+    "recent_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "server_session_id",
+        "agent_type",
+        "author",
+        "activity_state",
+        "latest_synced_at",
+        "latest_version",
+        "lineage",
+        "read_ref"
+      ],
+      "properties": {
+        "server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "agent_type": {
+          "$ref": "common.schema.json#/$defs/agent_type"
+        },
+        "author": {
+          "$ref": "#/$defs/author"
+        },
+        "activity_state": {
+          "$ref": "common.schema.json#/$defs/activity_state"
+        },
+        "latest_synced_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "latest_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "latest_excerpt": {
+          "$ref": "#/$defs/recent_excerpt"
+        },
+        "recent_paths": {
+          "type": "array",
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "lineage": {
+          "$ref": "#/$defs/lineage"
+        },
+        "read_ref": {
+          "$ref": "#/$defs/read_reference"
+        }
+      }
+    },
+    "recent_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "request_id",
+        "retryable",
+        "results"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "status": {
+          "$ref": "common.schema.json#/$defs/status"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        },
+        "project": {
+          "$ref": "#/$defs/project_reference"
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/recent_result"
+          }
+        },
+        "next_cursor": {
+          "type": "string"
+        }
+      },
+      "deprecated": true
+    },
+    "read_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "request_id",
+        "project_id",
+        "server_session_id",
+        "version"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200
+        },
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "around_turn_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "through_turn_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "before": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "after": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "cursor": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "through_turn_id"
+            ]
+          },
+          "then": {
+            "required": [
+              "around_turn_id"
+            ],
+            "properties": {
+              "before": {
+                "const": 0
+              },
+              "after": {
+                "const": 0
+              }
+            },
+            "not": {
+              "required": [
+                "cursor"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "read_turn": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "turn_id",
+        "ordinal",
+        "role",
+        "kind",
+        "text",
+        "text_offset",
+        "text_complete",
+        "content_hash",
+        "inherited"
+      ],
+      "properties": {
+        "turn_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ordinal": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "user",
+            "assistant",
+            "tool",
+            "system",
+            "other"
+          ]
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "message",
+            "tool_call",
+            "tool_result",
+            "summary",
+            "event"
+          ]
+        },
+        "text": {
+          "type": "string"
+        },
+        "text_offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "text_complete": {
+          "type": "boolean"
+        },
+        "tool_name": {
+          "type": "string"
+        },
+        "relative_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "symbols": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "error_tokens": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "content_hash": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "inherited": {
+          "type": "boolean"
+        }
+      }
+    },
+    "read_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "request_id",
+        "retryable",
+        "turns"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "status": {
+          "$ref": "common.schema.json#/$defs/status"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        },
+        "server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "agent_type": {
+          "$ref": "common.schema.json#/$defs/agent_type"
+        },
+        "project_status": {
+          "$ref": "common.schema.json#/$defs/project_status"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "latest_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "activity_state": {
+          "$ref": "common.schema.json#/$defs/activity_state"
+        },
+        "author": {
+          "$ref": "#/$defs/author"
+        },
+        "lineage": {
+          "$ref": "#/$defs/lineage"
+        },
+        "turns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/read_turn"
+          }
+        },
+        "next_cursor": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "$ref": "#/$defs/search_response",
+  "description": "Session Index/Search/Recent/Read public routes are retired. Historical shapes remain for migration and compatibility validation. Dashboard targeted evidence is supported."
+}

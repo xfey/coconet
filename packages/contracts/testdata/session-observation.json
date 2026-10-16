@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "session": {
+    "schema_version": 1,
+    "agent_type": "codex",
+    "native_session_id": "00000000-0000-4000-8000-000000000001",
+    "cwd": "/tmp/coconet-contract-fixture",
+    "activity_state": "unknown",
+    "source_observed_at": "2026-08-24T08:00:00Z",
+    "last_activity_at": "2026-08-24T07:59:59Z",
+    "client_version": "fixture",
+    "adapter_name": "codex",
+    "adapter_version": "dev"
+  },
+  "raw_artifact": {
+    "path": "/tmp/coconet-contract-fixture/artifact.jsonl",
+    "media_type": "application/x-ndjson",
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "size": 128
+  },
+  "normalized": {
+    "to_cursor": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "reset": false,
+    "source_epoch": 1,
+    "turns": [
+      {
+        "turn_id": "turn_fixture_1",
+        "ordinal": 0,
+        "role": "user",
+        "kind": "message",
+        "text": "Fixture content",
+        "relative_paths": [
+          "src/example.go"
+        ],
+        "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      }
+    ]
+  },
+  "visible_text": {
+    "version": 1,
+    "source_cursor": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "turns": [
+      {
+        "turn_id": "turn_fixture_1",
+        "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "ranges": [
+          {
+            "start": 0,
+            "end": 15
+          }
+        ]
+      }
+    ]
+  }
+}

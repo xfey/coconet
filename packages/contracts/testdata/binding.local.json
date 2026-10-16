@@ -1,0 +1,16 @@
+{
+  "schema_version": 3,
+  "bindings": [
+    {
+      "schema_version": 3,
+      "deployment_id": "dpl_fixture01",
+      "server_public_key_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "project_id": "coco_fixture01",
+      "account_id": "acct_fixture01",
+      "collaboration_root": "/tmp/coconet-fixture",
+      "local_server_url": "https://api.coconet.space",
+      "connected_at": "2026-08-27T10:00:00Z",
+      "workflow": "local-dag-v1"
+    }
+  ]
+}

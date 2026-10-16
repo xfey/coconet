@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "index": {
+    "schema_version": 1,
+    "server_session_id": "sess_context001",
+    "version": 3,
+    "base_index_version": 2,
+    "source_base_version": 2,
+    "source_epoch": 1,
+    "to_cursor": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "turn_count": 7,
+    "index_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "indexed_at": "2026-08-24T12:00:03Z"
+  }
+}

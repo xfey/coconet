@@ -1,0 +1,350 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.coddis.dev/v1/dashboard.schema.json",
+  "title": "Coconet Dashboard sessions, dialogue and Library management",
+  "$defs": {
+    "login_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "account_key"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "account_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "writeOnly": true
+        }
+      }
+    },
+    "session_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "account",
+        "expires_at"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "status": {
+          "const": "ok"
+        },
+        "account": {
+          "$ref": "account.schema.json#/$defs/account"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "project_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_id",
+        "name",
+        "status"
+      ],
+      "properties": {
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "name": {
+          "$ref": "common.schema.json#/$defs/non_empty_string"
+        },
+        "status": {
+          "$ref": "common.schema.json#/$defs/project_status"
+        }
+      }
+    },
+    "projects_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "projects"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "status": {
+          "const": "ok"
+        },
+        "projects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/project_reference"
+          }
+        }
+      }
+    },
+    "reset_key_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "new_key"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "new_key": {
+          "type": "string",
+          "minLength": 43,
+          "maxLength": 43,
+          "pattern": "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$",
+          "writeOnly": true,
+          "description": "Canonical unpadded base64url encoding of 32 cryptographically random bytes, durably saved by Runtime before submission."
+        }
+      }
+    },
+    "reset_key_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "account_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "status": {
+          "const": "ok"
+        },
+        "account_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        }
+      }
+    },
+    "library_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "request_id",
+        "source",
+        "collected"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200
+        },
+        "source": {
+          "$ref": "session-context.schema.json#/$defs/read_reference"
+        },
+        "collected": {
+          "type": "boolean"
+        },
+        "entry_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "collected": {
+                "const": false
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "entry_id"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "entry_id"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "library_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "collected"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "status": {
+          "const": "ok"
+        },
+        "collected": {
+          "type": "boolean"
+        },
+        "entry": {
+          "$ref": "session-library.schema.json#/$defs/entry"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "collected": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "entry"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "entry"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "dialogue_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "request_id",
+        "project_id",
+        "server_session_id",
+        "version"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200
+        },
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 20
+        },
+        "cursor": {
+          "type": "string"
+        }
+      }
+    },
+    "message": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "turn_id",
+        "role",
+        "text",
+        "text_offset",
+        "text_complete"
+      ],
+      "properties": {
+        "turn_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "enum": [
+            "user",
+            "assistant"
+          ]
+        },
+        "text": {
+          "type": "string"
+        },
+        "text_offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "text_complete": {
+          "type": "boolean"
+        }
+      }
+    },
+    "dialogue_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "server_session_id",
+        "version",
+        "agent_type",
+        "author",
+        "messages"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "status": {
+          "const": "ok"
+        },
+        "server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "agent_type": {
+          "$ref": "common.schema.json#/$defs/agent_type"
+        },
+        "author": {
+          "$ref": "session-context.schema.json#/$defs/author"
+        },
+        "messages": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/message"
+          }
+        },
+        "next_cursor": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

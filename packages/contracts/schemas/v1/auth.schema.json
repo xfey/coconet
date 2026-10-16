@@ -1,0 +1,467 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.coddis.dev/v1/auth.schema.json",
+  "title": "Coconet account login and device authorization",
+  "$defs": {
+    "configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "provider": {
+          "enum": [
+            "github",
+            "oidc",
+            "key"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      },
+      "required": [
+        "schema_version",
+        "provider",
+        "label"
+      ]
+    },
+    "start_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "authorization_id": {
+          "type": "string",
+          "maxLength": 43
+        },
+        "project_id": {
+          "type": "string",
+          "maxLength": 128
+        }
+      },
+      "required": []
+    },
+    "start_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "url"
+      ]
+    },
+    "device_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "device_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "code_challenge": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{43}$"
+        },
+        "callback_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "connect_project": {
+          "type": "boolean"
+        },
+        "project_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "expected_account_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "directory": {
+          "$ref": "#/$defs/directory"
+        },
+        "suggested_project_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "device_name",
+        "code_challenge"
+      ]
+    },
+    "device_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "ok",
+            "pending"
+          ]
+        },
+        "device_code": {
+          "type": "string"
+        },
+        "authorization_id": {
+          "type": "string",
+          "maxLength": 43
+        },
+        "verification_uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "expires_in": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 600
+        },
+        "interval": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "access_token": {
+          "type": "string",
+          "minLength": 32
+        },
+        "account": {
+          "$ref": "https://schemas.coddis.dev/v1/account.schema.json#/$defs/account"
+        },
+        "project_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "directory": {
+          "$ref": "#/$defs/directory"
+        },
+        "directory_request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "ok"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "access_token",
+              "account"
+            ]
+          },
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "access_token"
+                  ]
+                },
+                {
+                  "required": [
+                    "account"
+                  ]
+                },
+                {
+                  "required": [
+                    "project_id"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "poll_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "device_code": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "code_verifier": {
+          "type": "string",
+          "minLength": 43,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "device_code",
+        "code_verifier"
+      ]
+    },
+    "decision_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "authorization_id": {
+          "type": "string",
+          "maxLength": 43
+        },
+        "approve": {
+          "type": "boolean"
+        },
+        "project_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "choose_directory": {
+          "type": "boolean"
+        },
+        "directory_revision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "authorization_id"
+      ]
+    },
+    "decision_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "device_name": {
+          "type": "string"
+        },
+        "callback_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "connect_project": {
+          "type": "boolean"
+        },
+        "project_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "directory": {
+          "$ref": "#/$defs/directory"
+        },
+        "suggested_project_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "directory_pending": {
+          "type": "boolean"
+        },
+        "directory_error": {
+          "enum": [
+            "cancelled",
+            "unavailable",
+            "invalid",
+            "already_connected"
+          ]
+        }
+      },
+      "required": [
+        "device_name"
+      ]
+    },
+    "profile_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      },
+      "required": [
+        "display_name"
+      ]
+    },
+    "devices": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "devices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "expires_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "created_at",
+              "expires_at"
+            ]
+          }
+        }
+      },
+      "required": [
+        "devices"
+      ]
+    },
+    "join_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1800
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8
+        }
+      },
+      "required": [
+        "code",
+        "request_id"
+      ]
+    },
+    "directory": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cwd": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "remote": {
+          "type": "boolean"
+        },
+        "can_browse": {
+          "type": "boolean"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "cwd",
+        "path",
+        "remote",
+        "can_browse",
+        "revision"
+      ]
+    },
+    "directory_update": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "device_code": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "code_verifier": {
+          "type": "string",
+          "minLength": 43,
+          "maxLength": 128
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "cwd": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "error": {
+          "enum": [
+            "cancelled",
+            "unavailable",
+            "invalid",
+            "already_connected"
+          ]
+        }
+      },
+      "required": [
+        "device_code",
+        "code_verifier",
+        "request_id"
+      ],
+      "oneOf": [
+        {
+          "required": [
+            "cwd",
+            "path"
+          ],
+          "not": {
+            "required": [
+              "error"
+            ]
+          }
+        },
+        {
+          "required": [
+            "error"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "cwd"
+                ]
+              },
+              {
+                "required": [
+                  "path"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "$ref": "#/$defs/configuration"
+}

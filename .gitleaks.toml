@@ -1,0 +1,12 @@
+title = "Coconet source scan"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Published ELK API SHA-256 and the sequential token used only in schema fixtures"
+regexTarget = "secret"
+regexes = [
+  '''^ccca46175c05bbd280b5de6c9853103711e52c666a101f145b717e345363e24d$''',
+  '''^abcdefghijklmnopqrstuvwxyz123456$''',
+]

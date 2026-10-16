@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "sessions": [
+    {
+      "schema_version": 1,
+      "agent_type": "codex",
+      "native_session_id": "fixture-codex-session",
+      "cwd": "/fixture/project",
+      "activity_state": "unknown",
+      "created_at": "2026-08-24T08:00:00Z",
+      "updated_at": "2026-08-24T08:10:00Z"
+    }
+  ]
+}

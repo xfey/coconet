@@ -1,0 +1,30 @@
+{
+  "operator_socket": "/var/lib/coconet/operator.sock",
+  "backup_status": "/var/lib/coconet/backups/automatic/last-backup.json",
+  "free_bytes": {
+    "warning": 10737418240,
+    "critical": 5368709120
+  },
+  "free_percent": {
+    "warning": 20,
+    "critical": 10
+  },
+  "free_inode_percent": {
+    "warning": 10,
+    "critical": 5
+  },
+  "directories": [
+    {
+      "name": "data",
+      "path": "/var/lib/coconet",
+      "warning_bytes": 2147483648,
+      "critical_bytes": 4294967296
+    },
+    {
+      "name": "releases",
+      "path": "/opt/coconet/releases",
+      "warning_bytes": 268435456,
+      "critical_bytes": 536870912
+    }
+  ]
+}

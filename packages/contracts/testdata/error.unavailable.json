@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "status": "unavailable",
+  "request_id": "req_fixture_1",
+  "code": "server_unreachable",
+  "message": "Coconet is temporarily unavailable",
+  "retryable": true
+}

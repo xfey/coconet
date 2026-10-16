@@ -1,0 +1,38 @@
+{
+  "description": "Forward Session completion for synchronization and provide local source context for Coconet-created Session branches.",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -x \"$PLUGIN_ROOT/scripts/hook.sh\" ]; then \"$PLUGIN_ROOT/scripts/hook.sh\" 2>/dev/null || :; fi",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -x \"$PLUGIN_ROOT/scripts/hook.sh\" ]; then \"$PLUGIN_ROOT/scripts/hook.sh\" 2>/dev/null || :; fi",
+            "timeout": 1
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -x \"$PLUGIN_ROOT/scripts/hook.sh\" ]; then \"$PLUGIN_ROOT/scripts/hook.sh\" --context 2>/dev/null || :; fi",
+            "timeout": 3
+          }
+        ]
+      }
+    ]
+  }
+}

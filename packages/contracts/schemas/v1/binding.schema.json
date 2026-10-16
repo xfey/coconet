@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.coddis.dev/v1/binding.schema.json",
+  "title": "Coconet legacy repository declaration and local binding",
+  "$defs": {
+    "project_declaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "deployment_id", "server_url", "server_public_key_sha256", "project_id"],
+      "properties": {
+        "schema_version": { "type": "integer", "const": 2 },
+        "deployment_id": { "$ref": "common.schema.json#/$defs/identifier" },
+        "server_url": { "type": "string", "format": "uri", "pattern": "^https?://" },
+        "server_public_key_sha256": { "$ref": "common.schema.json#/$defs/sha256" },
+        "project_id": { "$ref": "common.schema.json#/$defs/identifier" }
+      }
+    },
+    "local_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "deployment_id", "server_public_key_sha256", "project_id", "account_id", "collaboration_root", "local_server_url", "connected_at"],
+      "properties": {
+        "schema_version": { "type": "integer", "const": 3 },
+        "deployment_id": { "$ref": "common.schema.json#/$defs/identifier" },
+        "server_public_key_sha256": { "$ref": "common.schema.json#/$defs/sha256" },
+        "project_id": { "$ref": "common.schema.json#/$defs/identifier" },
+        "account_id": { "$ref": "common.schema.json#/$defs/identifier" },
+        "collaboration_root": { "$ref": "common.schema.json#/$defs/non_empty_string" },
+        "local_server_url": { "type": "string", "format": "uri", "pattern": "^https?://" },
+        "connected_at": { "type": "string", "format": "date-time" },
+        "workflow": { "enum": ["local-dag-v1"] }
+      }
+    },
+    "local_binding_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "bindings"],
+      "properties": {
+        "schema_version": { "type": "integer", "const": 3 },
+        "bindings": { "type": "array", "items": { "$ref": "#/$defs/local_binding" } }
+      }
+    }
+  },
+  "$ref": "#/$defs/project_declaration"
+}

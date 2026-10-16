@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "request_id": "request-work-graph-fixture",
+  "retryable": false,
+  "nodes": [
+    {
+      "id": "work_fixture01",
+      "summary": "The Server exposes a compact, version-anchored Work DAG.",
+      "state": "current",
+      "author": {
+        "account_id": "acct_fixture01",
+        "display_name": "Fixture User"
+      },
+      "work_time": {
+        "start": "2026-09-07T08:00:00Z",
+        "end": "2026-09-07T09:00:00Z"
+      },
+      "parents": [],
+      "source": {
+        "server_session_id": "sess_fixture01",
+        "version": 3
+      },
+      "objective": "Implement Project Work Graph reading",
+      "evidence": {
+        "start_turn_id": "turn_fixture_start",
+        "end_turn_id": "turn_fixture_end",
+        "turn_count": 2,
+        "scope": "stage_window"
+      },
+      "approach": "Reuse the fixed-version reader to keep each node tied to its evidence."
+    }
+  ],
+  "session_work": [
+    {
+      "source": {
+        "server_session_id": "sess_fixture01",
+        "version": 3
+      },
+      "author": {
+        "account_id": "acct_fixture01",
+        "display_name": "Fixture User"
+      },
+      "open_items": [
+        {
+          "id": "item_3_1",
+          "text": "Validate the real inference endpoint.",
+          "source_version": 3
+        }
+      ]
+    }
+  ]
+}

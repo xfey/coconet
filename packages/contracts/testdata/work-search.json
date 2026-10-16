@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "request_id": "request_work_fixture",
+  "retryable": false,
+  "nodes": [
+    {
+      "node": {
+        "id": "work_fixture01",
+        "summary": "The Server exposes a compact, version-anchored Work DAG.",
+        "state": "current",
+        "author": {
+          "account_id": "acct_fixture01",
+          "display_name": "Fixture User"
+        },
+        "work_time": {
+          "start": "2026-09-07T08:00:00Z",
+          "end": "2026-09-07T09:00:00Z"
+        },
+        "parents": [],
+        "source": {
+          "server_session_id": "sess_fixture01",
+          "version": 3
+        },
+        "objective": "Implement Project Work Graph reading",
+        "evidence": {
+          "start_turn_id": "turn_fixture_start",
+          "end_turn_id": "turn_fixture_end",
+          "turn_count": 2,
+          "scope": "stage_window"
+        }
+      },
+      "reasons": [
+        "stage_text"
+      ],
+      "children": []
+    }
+  ],
+  "coverage": {
+    "projected_nodes": 1,
+    "matching_nodes": 1,
+    "projection": "incomplete",
+    "truncated": false
+  }
+}

@@ -1,0 +1,11 @@
+[Unit]
+Description=Check Coconet storage capacity every five minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+RandomizedDelaySec=20s
+Unit=coconet-storage-check.service
+
+[Install]
+WantedBy=timers.target

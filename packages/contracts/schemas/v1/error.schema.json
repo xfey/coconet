@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.coddis.dev/v1/error.schema.json",
+  "title": "Coconet error envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "request_id", "code", "message", "retryable"],
+  "properties": {
+    "schema_version": { "$ref": "common.schema.json#/$defs/schema_version" },
+    "status": {
+      "type": "string",
+      "enum": [
+        "unavailable",
+        "not_connected",
+        "forbidden",
+        "project_archived",
+        "not_found",
+        "unsupported",
+        "invalid_request",
+        "integrity_error",
+        "internal_error"
+      ]
+    },
+    "request_id": { "$ref": "common.schema.json#/$defs/non_empty_string" },
+    "code": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+    "message": { "$ref": "common.schema.json#/$defs/non_empty_string" },
+    "retryable": { "type": "boolean" }
+  }
+}

@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.coddis.dev/v1/project-activity.schema.json",
+  "title": "Coconet Project Activity snapshots",
+  "$defs": {
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "project_id",
+        "kind",
+        "recorded_at",
+        "historical",
+        "actor",
+        "source"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "kind": {
+          "enum": [
+            "checkpoint",
+            "library_collected",
+            "fork_registered"
+          ]
+        },
+        "recorded_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "historical": {
+          "type": "boolean"
+        },
+        "actor": {
+          "$ref": "work-graph.schema.json#/$defs/author"
+        },
+        "source": {
+          "$ref": "work-graph.schema.json#/$defs/source"
+        },
+        "node": {
+          "allOf": [
+            {
+              "$ref": "work-graph.schema.json#/$defs/node"
+            },
+            {
+              "properties": {
+                "state": {
+                  "const": "sealed"
+                }
+              }
+            }
+          ]
+        },
+        "library_entry": {
+          "$ref": "session-library.schema.json#/$defs/entry"
+        },
+        "child_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "checkpoint"
+            }
+          },
+          "required": [
+            "node"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "library_entry"
+                ]
+              },
+              {
+                "required": [
+                  "child_session_id"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "library_collected"
+            }
+          },
+          "required": [
+            "node",
+            "library_entry"
+          ],
+          "not": {
+            "required": [
+              "child_session_id"
+            ]
+          }
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "fork_registered"
+            }
+          },
+          "required": [
+            "child_session_id"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "node"
+                ]
+              },
+              {
+                "required": [
+                  "library_entry"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "list_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "project_id",
+        "events"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "status": {
+          "const": "ok"
+        },
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "events": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "$ref": "#/$defs/event"
+          }
+        },
+        "next_cursor": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

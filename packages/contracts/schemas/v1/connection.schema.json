@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.coddis.dev/v1/connection.schema.json",
+  "title": "Coconet Project ID joining",
+  "$defs": {
+    "connect_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "request_id",
+        "project_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200
+        },
+        "project_id": {
+          "type": "string",
+          "pattern": "^coco_[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{16,22}$"
+        }
+      }
+    }
+  },
+  "$ref": "#/$defs/connect_request"
+}

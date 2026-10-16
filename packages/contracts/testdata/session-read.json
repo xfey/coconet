@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "request_id": "req_read0001",
+  "retryable": false,
+  "server_session_id": "sess_context001",
+  "agent_type": "claude",
+  "project_status": "active",
+  "version": 3,
+  "latest_version": 4,
+  "activity_state": "active",
+  "author": {
+    "account_id": "acct_context001",
+    "display_name": "Fixture User"
+  },
+  "lineage": {
+    "root_server_session_id": "sess_context001"
+  },
+  "turns": [
+    {
+      "turn_id": "turn-context-6",
+      "ordinal": 6,
+      "role": "assistant",
+      "kind": "message",
+      "text": "Updated RetryPolicy in src/payments/retry.go",
+      "text_offset": 0,
+      "text_complete": true,
+      "relative_paths": ["src/payments/retry.go"],
+      "symbols": ["RetryPolicy"],
+      "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "inherited": false
+    }
+  ]
+}

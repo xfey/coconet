@@ -1,0 +1,255 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.coddis.dev/v1/session-observation.schema.json",
+  "title": "Coconet Adapter Session observation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "session",
+    "raw_artifact",
+    "normalized"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "common.schema.json#/$defs/schema_version"
+    },
+    "session": {
+      "$ref": "session-envelope.schema.json"
+    },
+    "raw_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "media_type",
+        "sha256",
+        "size"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "common.schema.json#/$defs/non_empty_string"
+        },
+        "media_type": {
+          "$ref": "common.schema.json#/$defs/non_empty_string"
+        },
+        "sha256": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "visible_text": {
+      "description": "Complete native source projection independent of normalized delta. UTF-8 byte ranges in canonical Text; omitted source turns have no visible text. Absence means unavailable legacy metadata.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "source_cursor",
+        "turns"
+      ],
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "source_cursor": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "turns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "turn_id",
+              "content_hash",
+              "ranges"
+            ],
+            "properties": {
+              "turn_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "content_hash": {
+                "$ref": "common.schema.json#/$defs/sha256"
+              },
+              "ranges": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "start",
+                    "end"
+                  ],
+                  "properties": {
+                    "start": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "end": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  }
+                }
+              },
+              "text_omitted": {
+                "type": "boolean",
+                "description": "Opaque tool/system/event body omitted in portable upload; native content_hash remains a source anchor."
+              }
+            }
+          }
+        }
+      }
+    },
+    "normalized": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "to_cursor",
+        "reset",
+        "source_epoch",
+        "turns"
+      ],
+      "properties": {
+        "from_cursor": {
+          "type": "string"
+        },
+        "to_cursor": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "reset": {
+          "type": "boolean"
+        },
+        "source_epoch": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "turns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "turn_id",
+              "ordinal",
+              "role",
+              "kind",
+              "text",
+              "content_hash"
+            ],
+            "properties": {
+              "turn_id": {
+                "$ref": "common.schema.json#/$defs/non_empty_string"
+              },
+              "ordinal": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "user",
+                  "assistant",
+                  "tool",
+                  "system",
+                  "other"
+                ]
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "message",
+                  "tool_call",
+                  "tool_result",
+                  "summary",
+                  "event"
+                ]
+              },
+              "text": {
+                "type": "string"
+              },
+              "tool_name": {
+                "type": "string"
+              },
+              "relative_paths": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "uniqueItems": true
+              },
+              "symbols": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "uniqueItems": true
+              },
+              "error_tokens": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "uniqueItems": true
+              },
+              "occurred_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "content_hash": {
+                "$ref": "common.schema.json#/$defs/sha256"
+              },
+              "text_omitted": {
+                "type": "boolean",
+                "description": "Opaque tool/system/event body omitted in portable upload; native content_hash remains a source anchor."
+              }
+            }
+          }
+        }
+      }
+    },
+    "git": {
+      "$ref": "common.schema.json#/$defs/git_observation"
+    },
+    "native_lineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "root_id": {
+          "type": "string"
+        },
+        "parent_id": {
+          "type": "string"
+        }
+      }
+    },
+    "active_history": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ids"
+      ],
+      "properties": {
+        "ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        }
+      }
+    }
+  }
+}

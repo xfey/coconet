@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "health": {
+    "schema_version": 1,
+    "status": "ok",
+    "component": "runtime",
+    "version": "dev",
+    "components": [{ "name": "runtime", "status": "ok" }]
+  }
+}

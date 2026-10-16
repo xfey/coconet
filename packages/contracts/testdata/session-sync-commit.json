@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "session": {
+    "schema_version": 1,
+    "server_session_id": "sess_fixture01",
+    "project_id": "coco_fixture01",
+    "author_account_id": "acct_fixture01",
+    "agent_type": "claude",
+    "native_session_id": "fixture-claude-session",
+    "activity_state": "unknown",
+    "latest_committed_version": 1,
+    "latest_synced_at": "2026-08-24T08:10:01Z",
+    "relative_cwd": ".",
+    "created_at": "2026-08-24T08:10:01Z",
+    "updated_at": "2026-08-24T08:10:01Z"
+  },
+  "version": {
+    "schema_version": 1,
+    "server_session_id": "sess_fixture01",
+    "version": 1,
+    "manifest": {
+      "schema_version": 1,
+      "artifact_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "artifact_size": 8,
+      "artifact_media_type": "application/x-ndjson",
+      "manifest_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "chunking_schema_version": 1,
+      "chunks": [
+        {
+          "ordinal": 0,
+          "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "raw_size": 8
+        }
+      ]
+    },
+    "observed_activity_state": "unknown",
+    "source_observed_at": "2026-08-24T08:10:00Z",
+    "adapter_name": "claude-agent-sdk",
+    "adapter_version": "0.3.241",
+    "agent_version": "2.1.154",
+    "committed_at": "2026-08-24T08:10:01Z"
+  }
+}

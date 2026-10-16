@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "folders": [
+    {
+      "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "account_id": "account_fixture",
+      "display_name": "Developer",
+      "device_name": "Laptop",
+      "path": "/work/example",
+      "connected_at": "2026-09-15T09:00:00Z",
+      "reported_at": "2026-09-15T09:01:00Z"
+    }
+  ]
+}

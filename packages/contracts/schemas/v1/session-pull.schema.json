@@ -1,0 +1,308 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.coddis.dev/v1/session-pull.schema.json",
+  "title": "Coconet fixed Session pull",
+  "$defs": {
+    "author": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "account_id",
+        "display_name"
+      ],
+      "properties": {
+        "account_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "lineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "root_server_session_id"
+      ],
+      "properties": {
+        "root_server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "parent_server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "parent_session_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "family_result_count": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "server_session_id",
+        "native_session_id",
+        "version",
+        "artifact_sha256",
+        "agent_type",
+        "author",
+        "manifest",
+        "lineage",
+        "work_node_id"
+      ],
+      "properties": {
+        "server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "native_session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "artifact_sha256": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "agent_type": {
+          "$ref": "common.schema.json#/$defs/agent_type"
+        },
+        "author": {
+          "$ref": "#/$defs/author"
+        },
+        "manifest": {
+          "$ref": "session-sync.schema.json#/$defs/manifest"
+        },
+        "git": {
+          "$ref": "common.schema.json#/$defs/git_observation"
+        },
+        "lineage": {
+          "$ref": "#/$defs/lineage"
+        },
+        "work_node_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "conversation": {
+          "$ref": "session-sync.schema.json#/$defs/conversation_manifest"
+        }
+      }
+    },
+    "download_target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ordinal",
+        "sha256",
+        "raw_size",
+        "method",
+        "url"
+      ],
+      "properties": {
+        "ordinal": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sha256": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "raw_size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "method": {
+          "type": "string",
+          "const": "GET"
+        },
+        "url": {
+          "$ref": "session-sync.schema.json#/$defs/artifact_transfer_url"
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "pull_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "request_id",
+        "project_id",
+        "server_session_id",
+        "version",
+        "work_node_id"
+      ],
+      "properties": {
+        "artifact_formats": {
+          "type": "array",
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              1,
+              2
+            ]
+          }
+        },
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8
+        },
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "work_node_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "include_artifact": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "pull_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "request_id",
+        "source",
+        "downloads",
+        "content_downloads"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "status": {
+          "type": "string",
+          "const": "ok"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "downloads": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "$ref": "#/$defs/download_target"
+          }
+        },
+        "content_downloads": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/download_target"
+          }
+        }
+      }
+    },
+    "local": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pull_id",
+        "normalized_transcript_path",
+        "normalized_sha256",
+        "pulled_at"
+      ],
+      "properties": {
+        "pull_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "artifact_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "normalized_transcript_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "normalized_sha256": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "pulled_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "request_id",
+        "retryable"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "status": {
+          "$ref": "common.schema.json#/$defs/status"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "local": {
+          "$ref": "#/$defs/local"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "ok"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "source",
+              "local"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "$ref": "#/$defs/result"
+}

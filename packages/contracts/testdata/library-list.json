@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "request_id": "request-library-list01",
+  "project_id": "coco_fixture01",
+  "retryable": false,
+  "entries": [
+    {
+      "entry": {
+        "entry_id": "libentry_fixture01",
+        "project_id": "coco_fixture01",
+        "source": {
+          "server_session_id": "sess_fixture01",
+          "version": 3
+        },
+        "submitted_by": "acct_fixture01",
+        "collected_at": "2026-09-09T10:00:00Z",
+        "note": "Fixed context for future reference",
+        "work_node_id": "work_library_fixture"
+      },
+      "agent_type": "codex",
+      "latest_version": 4,
+      "work": {
+        "node": {
+          "id": "work_library_fixture",
+          "summary": "The Server exposes a compact, version-anchored Work DAG.",
+          "state": "sealed",
+          "author": {
+            "account_id": "acct_fixture01",
+            "display_name": "Fixture User"
+          },
+          "work_time": {
+            "start": "2026-09-07T08:00:00Z",
+            "end": "2026-09-07T09:00:00Z"
+          },
+          "parents": [],
+          "source": {
+            "server_session_id": "sess_fixture01",
+            "version": 3
+          },
+          "objective": "Implement Project Work Graph reading"
+        },
+        "parents_total": 0,
+        "children": [],
+        "children_total": 0
+      }
+    }
+  ]
+}

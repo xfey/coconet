@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "request_id": "request-pull-fixture",
+  "retryable": false,
+  "source": {
+    "server_session_id": "sess_source01",
+    "native_session_id": "01980000-0000-7000-8000-000000000000",
+    "version": 3,
+    "artifact_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "agent_type": "codex",
+    "author": {
+      "account_id": "acct_author01",
+      "display_name": "Author"
+    },
+    "manifest": {
+      "schema_version": 1,
+      "artifact_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "artifact_size": 8,
+      "artifact_media_type": "application/x-ndjson",
+      "manifest_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "chunking_schema_version": 1,
+      "chunks": [
+        {
+          "ordinal": 0,
+          "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "raw_size": 8
+        }
+      ]
+    },
+    "git": {
+      "head": "abc123",
+      "branch": "main"
+    },
+    "lineage": {
+      "root_server_session_id": "sess_source01"
+    },
+    "work_node_id": "work_fixture01"
+  },
+  "local": {
+    "pull_id": "pull_0123456789abcdef",
+    "artifact_path": "/local/coconet/pulls/pull_0123456789abcdef/artifact.jsonl",
+    "normalized_transcript_path": "/local/coconet/pulls/pull_0123456789abcdef/transcript.jsonl",
+    "normalized_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "pulled_at": "2026-08-26T12:00:00Z"
+  }
+}

@@ -1,0 +1,445 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.coddis.dev/v1/session-library.schema.json",
+  "title": "Coconet Session Library collection",
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entry_id",
+        "project_id",
+        "source",
+        "submitted_by",
+        "collected_at",
+        "work_node_id"
+      ],
+      "properties": {
+        "entry_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "server_session_id",
+            "version"
+          ],
+          "properties": {
+            "server_session_id": {
+              "$ref": "common.schema.json#/$defs/identifier"
+            },
+            "version": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "submitted_by": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "collected_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "tagging": {
+          "$ref": "#/$defs/tagging"
+        },
+        "work_node_id": {
+          "$ref": "common.schema.json#/$defs/identifier",
+          "description": "Sealed Work Node anchored to the identical fixed Session Version."
+        }
+      }
+    },
+    "add_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "request_id",
+        "project_id",
+        "source"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200
+        },
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "server_session_id",
+            "version"
+          ],
+          "properties": {
+            "server_session_id": {
+              "$ref": "common.schema.json#/$defs/identifier"
+            },
+            "version": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 1000
+        }
+      }
+    },
+    "add_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "entry"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "status": {
+          "const": "ok"
+        },
+        "entry": {
+          "$ref": "#/$defs/entry"
+        }
+      }
+    },
+    "submission_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "request_id",
+        "state",
+        "retryable"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200
+        },
+        "status": {
+          "$ref": "common.schema.json#/$defs/status"
+        },
+        "state": {
+          "enum": [
+            "not_captured",
+            "pending",
+            "collected",
+            "failed"
+          ]
+        },
+        "entry": {
+          "$ref": "#/$defs/entry"
+        },
+        "captured_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "collected"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "entry"
+            ],
+            "properties": {
+              "status": {
+                "const": "ok"
+              },
+              "retryable": {
+                "const": false
+              }
+            }
+          },
+          "else": {
+            "not": {
+              "required": [
+                "entry"
+              ]
+            },
+            "properties": {
+              "status": {
+                "not": {
+                  "const": "ok"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "tagging": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "tags"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "disabled",
+            "pending",
+            "ready",
+            "suspended"
+          ]
+        },
+        "tags": {
+          "type": "array",
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 48
+          }
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "error_code": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "ready"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "generated_at"
+            ],
+            "not": {
+              "required": [
+                "error_code"
+              ]
+            }
+          },
+          "else": {
+            "properties": {
+              "tags": {
+                "maxItems": 0
+              }
+            },
+            "not": {
+              "required": [
+                "generated_at"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "suspended"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "error_code"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "disabled"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "error_code"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "work_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "node",
+        "parents_total",
+        "children",
+        "children_total"
+      ],
+      "properties": {
+        "node": {
+          "$ref": "work-graph.schema.json#/$defs/node"
+        },
+        "parents_total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "children": {
+          "type": "array",
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.schema.json#/$defs/identifier"
+          }
+        },
+        "children_total": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "description": "Currently known graph neighborhood. Node parents and children each contain at most 20 sorted IDs; totals indicate omitted IDs. This is not a complete Project graph."
+    },
+    "list_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entry",
+        "agent_type",
+        "latest_version",
+        "work"
+      ],
+      "properties": {
+        "entry": {
+          "$ref": "#/$defs/entry"
+        },
+        "agent_type": {
+          "$ref": "common.schema.json#/$defs/agent_type"
+        },
+        "latest_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "work": {
+          "$ref": "#/$defs/work_context"
+        }
+      }
+    },
+    "list_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "request_id",
+        "project_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200
+        },
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "session_refs": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "$ref": "session-context.schema.json#/$defs/read_reference"
+          }
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "cursor": {
+          "type": "string"
+        }
+      }
+    },
+    "list_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "request_id",
+        "project_id",
+        "retryable",
+        "entries"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "status": {
+          "$ref": "common.schema.json#/$defs/status"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        },
+        "entries": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/$defs/list_entry"
+          }
+        },
+        "next_cursor": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

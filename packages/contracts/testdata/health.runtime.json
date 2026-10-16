@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "status": "degraded",
+  "component": "runtime",
+  "version": "dev",
+  "components": [
+    { "name": "runtime", "status": "ok", "version": "dev" },
+    { "name": "adapter.codex", "status": "unavailable", "message": "command not found", "failure_category": "adapter" },
+    { "name": "adapter.claude", "status": "ok" },
+    { "name": "local_state", "status": "ok" },
+    { "name": "sync", "status": "degraded", "message": "Terminal sync failures require attention", "failure_category": "object_store" }
+  ],
+  "runtime_state": {
+    "deployment_count": 1,
+    "binding_count": 1,
+    "invalid_binding_count": 0,
+    "sync": {
+      "pending": 2,
+      "terminal": 1,
+      "oldest_pending_at": "2026-08-25T10:00:00Z",
+      "last_successful_sync_at": "2026-08-25T10:05:00Z"
+    },
+    "recall": [
+      { "kind": "search", "status": "ok", "event_count": 2, "result_count": 3 }
+    ],
+    "failures": [
+      {
+        "operation": "sync.process",
+        "status": "unavailable",
+        "failure_category": "object_store",
+        "error_code": "artifact_upload",
+        "retryable": true,
+        "event_count": 2,
+        "last_observed_at": "2026-08-25T10:06:00Z",
+        "correlation_id": "corr_fixture123"
+      }
+    ]
+  }
+}

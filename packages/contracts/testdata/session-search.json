@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "request_id": "req_search001",
+  "retryable": false,
+  "project": {
+    "project_id": "coco_context001",
+    "name": "payments-service",
+    "status": "active"
+  },
+  "query_interpretation": {
+    "query": "RetryPolicy idempotency",
+    "paths": ["src/payments"],
+    "symbols": ["RetryPolicy"]
+  },
+  "results": [
+    {
+      "server_session_id": "sess_context001",
+      "agent_type": "claude",
+      "author": {
+        "account_id": "acct_context001",
+        "display_name": "Fixture User"
+      },
+      "activity_state": "active",
+      "latest_synced_at": "2026-08-24T12:00:03Z",
+      "hit_version": 3,
+      "latest_version": 4,
+      "lineage": {
+        "root_server_session_id": "sess_context001",
+        "family_result_count": 1
+      },
+      "matches": [
+        {
+          "turn_id": "turn-context-6",
+          "ordinal": 6,
+          "excerpt": "Updated RetryPolicy in src/payments/retry.go",
+          "reasons": ["path", "symbol"],
+          "relative_paths": ["src/payments/retry.go"],
+          "symbols": ["RetryPolicy"],
+          "inherited": false
+        }
+      ],
+      "read_ref": {
+        "server_session_id": "sess_context001",
+        "version": 3
+      }
+    }
+  ]
+}

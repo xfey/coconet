@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "account_id": "acct_fixture01",
+  "display_name": "Fixture Owner",
+  "email": "owner@coconet.test",
+  "created_at": "2026-08-24T09:00:00Z"
+}

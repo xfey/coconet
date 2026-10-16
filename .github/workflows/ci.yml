@@ -1,0 +1,57 @@
+name: ci
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.0'
+          cache: npm
+          cache-dependency-path: |
+            installers/npm/package-lock.json
+            apps/release/dependencies/claude-sdk/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Formatting
+        run: test -z "$(gofmt -l $(find apps adapters packages prompts tests -type f -name '*.go'))"
+      - name: Install SDK for offline adapter tests
+        run: npm ci --ignore-scripts --prefix apps/release/dependencies/claude-sdk
+      - name: Tests, vet and build
+        run: make check
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Scan source (redacted)
+        run: |
+          go install github.com/zricethezav/gitleaks/v8@v8.24.3
+          gitleaks dir . --redact=100 --no-banner
+  dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.0'
+      - name: Go vulnerability analysis
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+      - name: npm dependency audits
+        run: |
+          npm audit --omit=dev --prefix installers/npm
+          npm audit --omit=dev --prefix apps/release/dependencies/claude-sdk

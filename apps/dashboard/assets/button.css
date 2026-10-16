@@ -1,0 +1,6 @@
+/* Shared action controls. Navigation, canvas tools and content cards are separate. */
+.ui-button[data-size] { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:40px; padding:9px 14px; border-radius:10px; font-size:13px; line-height:20px; }
+.ui-button > .icon { width:16px; height:16px; }
+.ui-button > .button-label { min-width:0; overflow-wrap:anywhere; }
+.ui-button[data-size="compact"] { min-height:32px; padding:5px 10px; border-radius:8px; font-size:12px; }
+.ui-button[data-size="session"] { min-height:40px; padding:8px 10px; font-size:12px; }

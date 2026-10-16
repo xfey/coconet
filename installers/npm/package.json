@@ -1,0 +1,32 @@
+{
+  "name": "coconet",
+  "version": "0.28.1-internal.1",
+  "private": true,
+  "description": "Install the verified Coconet runtime for the current user.",
+  "type": "module",
+  "bin": {
+    "coconet": "./bin/coconet"
+  },
+  "files": [
+    "README.md",
+    "LICENSE",
+    "bin/coconet",
+    "cli.mjs",
+    "core.mjs",
+    "progress.mjs",
+    "release-manifest.json"
+  ],
+  "engines": {
+    "node": ">=18.17"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "node --test core.test.mjs cli.test.mjs progress.test.mjs"
+  },
+  "dependencies": {
+    "tar": "7.5.22"
+  },
+  "license": "MIT"
+}

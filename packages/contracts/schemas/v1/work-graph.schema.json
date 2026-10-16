@@ -1,0 +1,446 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.coddis.dev/v1/work-graph.schema.json",
+  "title": "Coconet Project Work Graph",
+  "$defs": {
+    "read_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "request_id",
+        "project_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200
+        },
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        }
+      }
+    },
+    "author": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "account_id",
+        "display_name"
+      ],
+      "properties": {
+        "account_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      }
+    },
+    "work_time": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "start",
+        "end"
+      ],
+      "properties": {
+        "start": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "server_session_id",
+        "version"
+      ],
+      "properties": {
+        "server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "objective",
+        "state",
+        "author",
+        "work_time",
+        "parents",
+        "source"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "current",
+            "sealed"
+          ]
+        },
+        "author": {
+          "$ref": "#/$defs/author"
+        },
+        "work_time": {
+          "$ref": "#/$defs/work_time"
+        },
+        "parents": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.schema.json#/$defs/identifier"
+          }
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "objective": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidence"
+        },
+        "approach": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        }
+      }
+    },
+    "read_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "request_id",
+        "retryable",
+        "nodes",
+        "session_work"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "status": {
+          "$ref": "common.schema.json#/$defs/status"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        },
+        "warning": {
+          "type": "string",
+          "enum": [
+            "projection_incomplete",
+            "projection_processing",
+            "history_incomplete",
+            "projection_retrying",
+            "projection_suspended"
+          ]
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/node"
+          }
+        },
+        "session_work": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/session_work"
+          }
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "open_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "text",
+        "source_version"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^item_[1-9][0-9]*_[1-9][0-9]*$"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "pattern": "^[^\\r\\n]+$"
+        },
+        "source_version": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "session_work": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "author",
+        "open_items"
+      ],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "author": {
+          "$ref": "#/$defs/author"
+        },
+        "open_items": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/open_item"
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "start_turn_id",
+        "end_turn_id",
+        "turn_count",
+        "scope"
+      ],
+      "properties": {
+        "start_turn_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "end_turn_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "turn_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "scope": {
+          "enum": [
+            "stage_window",
+            "session_history"
+          ]
+        }
+      }
+    },
+    "search_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "request_id",
+        "project_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200
+        },
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "query": {
+          "type": "string",
+          "maxLength": 4000,
+          "description": "Lexical query; code symbols and error identifiers are classified automatically."
+        },
+        "paths": {
+          "type": "array",
+          "maxItems": 50,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "description": "Collaboration-root-relative module, directory, or file paths."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "include_library_entries": {
+          "type": "boolean",
+          "description": "Request exact Library associations when session_library_browse_v1 is advertised; omitted for older Servers."
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "query"
+          ]
+        },
+        {
+          "required": [
+            "paths"
+          ]
+        }
+      ]
+    },
+    "search_coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projected_nodes",
+        "matching_nodes",
+        "projection",
+        "truncated"
+      ],
+      "properties": {
+        "projected_nodes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "matching_nodes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "projection": {
+          "enum": [
+            "disabled",
+            "initializing",
+            "incomplete",
+            "ready"
+          ]
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      }
+    },
+    "search_match": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "node",
+        "reasons",
+        "children"
+      ],
+      "properties": {
+        "node": {
+          "$ref": "#/$defs/node"
+        },
+        "reasons": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "stage_text",
+              "stage_evidence"
+            ]
+          }
+        },
+        "children": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.schema.json#/$defs/identifier"
+          }
+        },
+        "library_entry": {
+          "$ref": "session-library.schema.json#/$defs/entry"
+        }
+      }
+    },
+    "search_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "request_id",
+        "retryable",
+        "nodes",
+        "coverage"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "status": {
+          "$ref": "common.schema.json#/$defs/status"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        },
+        "nodes": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/$defs/search_match"
+          }
+        },
+        "coverage": {
+          "$ref": "#/$defs/search_coverage"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  },
+  "$ref": "#/$defs/read_response"
+}

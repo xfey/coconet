@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.coddis.dev/v1/common.schema.json",
+  "title": "Coconet common definitions",
+  "$defs": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ok",
+        "pending",
+        "degraded",
+        "unavailable",
+        "not_connected",
+        "forbidden",
+        "project_archived",
+        "not_found",
+        "unsupported",
+        "invalid_request",
+        "integrity_error",
+        "internal_error"
+      ]
+    },
+    "failure_category": {
+      "type": "string",
+      "enum": [
+        "network",
+        "timeout",
+        "deployment_identity",
+        "authentication",
+        "authorization",
+        "adapter",
+        "local_state",
+        "artifact_integrity",
+        "object_store",
+        "server_internal"
+      ]
+    },
+    "agent_type": { "type": "string", "enum": ["codex", "claude", "cursor"] },
+    "activity_state": {
+      "type": "string",
+      "enum": ["active", "ended", "unknown"]
+    },
+    "project_status": { "type": "string", "enum": ["active", "archived"] },
+    "project_role": { "type": "string", "enum": ["owner", "member"] },
+    "membership_status": {
+      "type": "string",
+      "enum": ["pending", "active", "left", "removed", "archived"]
+    },
+    "join_request_status": {
+      "type": "string",
+      "enum": ["pending", "approved", "rejected"]
+    },
+    "identifier": { "type": "string", "pattern": "^[a-z]+_[A-Za-z0-9_-]{8,}$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "non_empty_string": { "type": "string", "minLength": 1 },
+    "git_observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "head": { "type": "string" },
+        "branch": { "type": "string" },
+        "relative_cwd": { "type": "string" }
+      }
+    }
+  }
+}

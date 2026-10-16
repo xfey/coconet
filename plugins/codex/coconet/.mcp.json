@@ -1,0 +1,28 @@
+{
+  "mcpServers": {
+    "coconet": {
+      "command": "/bin/sh",
+      "args": [
+        "-c",
+        "runtime=\"$COCONET_EXECUTABLE\"; if [ -z \"$runtime\" ]; then data_root=\"$XDG_DATA_HOME\"; if [ -z \"$data_root\" ]; then data_root=\"$HOME/.local/share\"; fi; runtime=\"$data_root/coconet/current/bin/coconet\"; fi; if [ ! -x \"$runtime\" ] && command -v coconet >/dev/null 2>&1; then runtime=\"$(command -v coconet)\"; fi; exec \"$runtime\" mcp --agent codex"
+      ],
+      "env_vars": [
+        "HOME",
+        "PATH",
+        "XDG_DATA_HOME",
+        "COCONET_EXECUTABLE",
+        "COCONET_HOME",
+        "COCONET_SERVER_URL",
+        "COCONET_CODEX_COMMAND",
+        "CODEX_HOME",
+        "COCONET_CLAUDE_COMMAND",
+        "CLAUDE_CONFIG_DIR",
+        "COCONET_CLAUDE_NODE",
+        "COCONET_CLAUDE_HELPER",
+        "COCONET_CLAUDE_SDK_ENTRY"
+      ],
+      "startup_timeout_sec": 5,
+      "tool_timeout_sec": 60
+    }
+  }
+}

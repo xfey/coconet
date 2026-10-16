@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "projection": {
+    "project_id": "coco_demo12345",
+    "mode": "legacy",
+    "state": "incremental"
+  },
+  "batches": [],
+  "suspended": [
+    {
+      "stage": "extract",
+      "source": {
+        "server_session_id": "sess_demo12345",
+        "version": 1
+      },
+      "error_code": "work_extraction_http_401",
+      "attempts": 1,
+      "explanation": {
+        "reason": "模型接入认证或权限校验失败。",
+        "action": "请管理员检查模型凭据及访问权限；修复后重新排队已暂停任务。"
+      }
+    }
+  ],
+  "recent_failures": [
+    {
+      "operation": "projection.extract",
+      "status": "forbidden",
+      "failure_category": "authentication",
+      "error_code": "work_extraction_http_401",
+      "retryable": false,
+      "event_count": 1,
+      "last_observed_at": "2026-09-11T00:00:00Z",
+      "correlation_id": "corr_example123",
+      "explanation": {
+        "reason": "模型接入认证或权限校验失败。",
+        "action": "请管理员检查模型凭据及访问权限；修复后重新排队已暂停任务。"
+      }
+    }
+  ]
+}

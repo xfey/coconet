@@ -1,0 +1,1 @@
+When using the coconet-team-context Skill, read its full instructions from the installed absolute path below (a JSON string). Use that path directly; it already includes the catalog root and all plugin directories.

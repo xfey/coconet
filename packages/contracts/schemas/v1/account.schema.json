@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.coddis.dev/v1/account.schema.json",
+  "title": "Coconet account and credential",
+  "$defs": {
+    "account": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "account_id", "display_name", "email", "created_at"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schema_version" },
+        "account_id": { "$ref": "common.schema.json#/$defs/identifier" },
+        "display_name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "email": { "type": "string", "maxLength": 254, "anyOf": [{"const":""},{"format":"email"}] },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "bootstrap_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "display_name", "email"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schema_version" },
+        "display_name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "email": { "type": "string", "maxLength": 254, "anyOf": [{"const":""},{"format":"email"}] }
+      }
+    },
+    "account_credential": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "status", "access_token", "token_type", "account"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schema_version" },
+        "status": { "type": "string", "const": "ok" },
+        "access_token": { "type": "string", "minLength": 32 },
+        "token_type": { "type": "string", "const": "Bearer" },
+        "account": { "$ref": "#/$defs/account" }
+      }
+    }
+  },
+  "$ref": "#/$defs/account"
+}

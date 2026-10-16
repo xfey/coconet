@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.coddis.dev/v1/project.schema.json",
+  "title": "Coconet project authority resources",
+  "$defs": {
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "project_id", "name", "created_by", "status", "created_at"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schema_version" },
+        "project_id": { "$ref": "common.schema.json#/$defs/identifier" },
+        "name": { "$ref": "common.schema.json#/$defs/non_empty_string" },
+        "created_by": { "$ref": "common.schema.json#/$defs/identifier" },
+        "owner_id": { "$ref": "common.schema.json#/$defs/identifier" },
+        "status": { "$ref": "common.schema.json#/$defs/project_status" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "archived_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "membership": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "project_id", "account", "role", "status", "created_at", "updated_at"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schema_version" },
+        "project_id": { "$ref": "common.schema.json#/$defs/identifier" },
+        "account": { "$ref": "account.schema.json#/$defs/account" },
+        "role": { "$ref": "common.schema.json#/$defs/project_role" },
+        "status": { "$ref": "common.schema.json#/$defs/membership_status" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "join_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "join_request_id", "project_id", "account", "status", "created_at"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schema_version" },
+        "join_request_id": { "$ref": "common.schema.json#/$defs/identifier" },
+        "project_id": { "$ref": "common.schema.json#/$defs/identifier" },
+        "account": { "$ref": "account.schema.json#/$defs/account" },
+        "status": { "$ref": "common.schema.json#/$defs/join_request_status" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "decided_at": { "type": "string", "format": "date-time" },
+        "decided_by": { "$ref": "common.schema.json#/$defs/identifier" }
+      }
+    },
+    "audit_event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "audit_event_id", "request_id", "project_id", "actor_id", "action", "outcome", "occurred_at"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schema_version" },
+        "audit_event_id": { "$ref": "common.schema.json#/$defs/identifier" },
+        "request_id": { "$ref": "common.schema.json#/$defs/non_empty_string" },
+        "project_id": { "$ref": "common.schema.json#/$defs/identifier" },
+        "actor_id": { "$ref": "common.schema.json#/$defs/identifier" },
+        "action": { "$ref": "common.schema.json#/$defs/non_empty_string" },
+        "target_id": { "type": "string" },
+        "outcome": { "$ref": "common.schema.json#/$defs/non_empty_string" },
+        "occurred_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "access": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "status", "capabilities"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schema_version" },
+        "status": { "$ref": "common.schema.json#/$defs/status" },
+        "project": { "$ref": "#/$defs/project" },
+        "membership": { "$ref": "#/$defs/membership" },
+        "join_request": { "$ref": "#/$defs/join_request" },
+        "capabilities": {
+          "type": "object",
+          "additionalProperties": { "type": "boolean" }
+        }
+      }
+    },
+    "management": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "project", "current_membership", "members", "join_requests"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schema_version" },
+        "project": { "$ref": "#/$defs/project" },
+        "current_membership": { "$ref": "#/$defs/membership" },
+        "members": { "type": "array", "items": { "$ref": "#/$defs/membership" } },
+        "join_requests": { "type": "array", "items": { "$ref": "#/$defs/join_request" } }
+      }
+    }
+  },
+  "$ref": "#/$defs/access"
+}

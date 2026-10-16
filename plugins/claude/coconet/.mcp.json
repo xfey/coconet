@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "coconet": {
+      "command": "/bin/sh",
+      "args": [
+        "-c",
+        "runtime=\"$COCONET_EXECUTABLE\"; if [ -z \"$runtime\" ]; then data_root=\"$XDG_DATA_HOME\"; if [ -z \"$data_root\" ]; then data_root=\"$HOME/.local/share\"; fi; runtime=\"$data_root/coconet/current/bin/coconet\"; fi; if [ ! -x \"$runtime\" ] && command -v coconet >/dev/null 2>&1; then runtime=\"$(command -v coconet)\"; fi; exec \"$runtime\" mcp --agent claude"
+      ]
+    }
+  }
+}

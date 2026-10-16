@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "request_id": "req_search001",
+  "retryable": false,
+  "project": {
+    "project_id": "coco_context001",
+    "name": "payments-service",
+    "status": "active"
+  },
+  "query_interpretation": {
+    "query": "ReusableCacheGuide",
+    "symbols": [
+      "ReusableCacheGuide"
+    ]
+  },
+  "results": [
+    {
+      "server_session_id": "sess_context001",
+      "agent_type": "claude",
+      "author": {
+        "account_id": "acct_context001",
+        "display_name": "Fixture User"
+      },
+      "activity_state": "active",
+      "latest_synced_at": "2026-08-24T12:00:03Z",
+      "hit_version": 3,
+      "latest_version": 4,
+      "lineage": {
+        "root_server_session_id": "sess_context001",
+        "family_result_count": 1
+      },
+      "matches": [],
+      "read_ref": {
+        "server_session_id": "sess_context001",
+        "version": 3
+      },
+      "library_entry": {
+        "entry_id": "libentry_fixture01",
+        "project_id": "coco_context001",
+        "source": {
+          "server_session_id": "sess_context001",
+          "version": 3
+        },
+        "submitted_by": "acct_context001",
+        "collected_at": "2026-09-09T00:00:00Z",
+        "note": "ReusableCacheGuide",
+        "work_node_id": "work_library_fixture"
+      },
+      "library_note_match": {
+        "excerpt": "ReusableCacheGuide",
+        "reasons": [
+          "exact_text",
+          "mentioned_symbol"
+        ]
+      }
+    }
+  ],
+  "scope": "library"
+}

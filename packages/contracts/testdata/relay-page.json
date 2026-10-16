@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "head": 1,
+  "entries": [
+    {
+      "schema_version": 1,
+      "project_id": "project_example",
+      "revision": 1,
+      "writer": "account_example.device_example",
+      "accepted_at": "2026-10-09T00:00:00Z",
+      "commit": {
+        "schema_version": 1,
+        "id": "commit_example",
+        "device_id": "device_example",
+        "base": 0,
+        "codec": "coconet-json-v2",
+        "payload": "e30=",
+        "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+        "objects": []
+      }
+    }
+  ]
+}

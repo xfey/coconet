@@ -1,0 +1,33 @@
+**/node_modules/
+/bin/
+probes/phase-0/.linux-matrix.*
+probes/phase-0/runtime-closure/.runtime-closure-matrix.*
+.DS_Store
+/coconet-server.db
+
+# Local configuration, credentials and private signing material.
+.env
+.env.*
+!.env.example
+!.env.*.example
+**/server.env
+**/server.env.*
+!**/server.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+.npmrc
+.netrc
+
+# Runtime state, backups and generated reports (never source fixtures).
+/private/
+/local-data/
+/coverage/
+/public-export/
+__pycache__/
+*.pyc
+
+# Default operator config and local build output.
+/server.json
+/dist/

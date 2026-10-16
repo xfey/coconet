@@ -1,0 +1,25 @@
+{
+  "name": "coconet",
+  "version": "0.28.1-internal.1",
+  "description": "Discover Coconet work through DAG nodes and Library metadata, Pull selected conversations for local search, and Fork native Sessions.",
+  "author": {
+    "name": "Coconet"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Coconet",
+    "shortDescription": "Connect Codex to shared team Session context.",
+    "longDescription": "Coconet connects Codex to a local fail-open runtime for automatic Session synchronization, Work DAG and Library metadata discovery, exact-node conversation Pull for local reading and search, and independent Session Fork with native history for the same Agent or main dialogue conversion across Codex and Claude.",
+    "developerName": "Coconet",
+    "category": "Productivity",
+    "capabilities": [
+      "Skills",
+      "Hooks",
+      "MCP"
+    ],
+    "defaultPrompt": [
+      "Inspect the connected Coconet Project's Work DAG for relevant work, then Pull a selected node's conversation when needed."
+    ]
+  },
+  "mcpServers": "./.mcp.json"
+}

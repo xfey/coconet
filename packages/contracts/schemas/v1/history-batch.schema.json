@@ -1,0 +1,879 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.coddis.dev/v1/history-batch.schema.json",
+  "title": "Coconet fixed history batches",
+  "$defs": {
+    "manifest_member": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "member_id",
+        "agent_type",
+        "native_session_id"
+      ],
+      "properties": {
+        "member_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200,
+          "pattern": "^[A-Za-z0-9_-]{8,200}$"
+        },
+        "agent_type": {
+          "$ref": "common.schema.json#/$defs/agent_type"
+        },
+        "native_session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "artifact_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "failure_code": {
+          "type": "string",
+          "enum": [
+            "capture_failed"
+          ]
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "artifact_sha256"
+          ],
+          "not": {
+            "required": [
+              "failure_code"
+            ]
+          }
+        },
+        {
+          "required": [
+            "failure_code"
+          ],
+          "not": {
+            "required": [
+              "artifact_sha256"
+            ]
+          }
+        }
+      ]
+    },
+    "discovery_issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "agent_type",
+        "code"
+      ],
+      "properties": {
+        "agent_type": {
+          "$ref": "common.schema.json#/$defs/agent_type"
+        },
+        "code": {
+          "type": "string",
+          "enum": [
+            "discovery_unavailable"
+          ]
+        }
+      }
+    },
+    "begin_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "request_id",
+        "project_id",
+        "batch_id",
+        "members",
+        "discovery_issues"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200
+        },
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "batch_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200,
+          "pattern": "^[A-Za-z0-9_-]{8,200}$"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/manifest_member"
+          },
+          "maxItems": 100000
+        },
+        "discovery_issues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/discovery_issue"
+          },
+          "maxItems": 2
+        },
+        "retry_of_batch_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{8,200}$"
+        }
+      }
+    },
+    "resolve_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "request_id",
+        "project_id",
+        "batch_id",
+        "member_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200
+        },
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "batch_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200,
+          "pattern": "^[A-Za-z0-9_-]{8,200}$"
+        },
+        "member_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200,
+          "pattern": "^[A-Za-z0-9_-]{8,200}$"
+        },
+        "source": {
+          "$ref": "work-graph.schema.json#/$defs/source"
+        },
+        "failure_code": {
+          "type": "string",
+          "enum": [
+            "sync_failed"
+          ]
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "source"
+          ],
+          "not": {
+            "required": [
+              "failure_code"
+            ]
+          }
+        },
+        {
+          "required": [
+            "failure_code"
+          ],
+          "not": {
+            "required": [
+              "source"
+            ]
+          }
+        }
+      ]
+    },
+    "complete_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "request_id",
+        "project_id",
+        "batch_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200
+        },
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "batch_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200,
+          "pattern": "^[A-Za-z0-9_-]{8,200}$"
+        }
+      }
+    },
+    "member": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "member_id",
+        "agent_type",
+        "native_session_id",
+        "indexed"
+      ],
+      "properties": {
+        "member_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200,
+          "pattern": "^[A-Za-z0-9_-]{8,200}$"
+        },
+        "agent_type": {
+          "$ref": "common.schema.json#/$defs/agent_type"
+        },
+        "native_session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "artifact_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "failure_code": {
+          "type": "string",
+          "enum": [
+            "capture_failed"
+          ]
+        },
+        "source": {
+          "$ref": "work-graph.schema.json#/$defs/source"
+        },
+        "indexed": {
+          "type": "boolean"
+        },
+        "result_error": {
+          "type": "string",
+          "enum": [
+            "sync_failed"
+          ]
+        },
+        "extraction": {
+          "$ref": "#/$defs/extraction_result"
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "artifact_sha256"
+          ],
+          "not": {
+            "required": [
+              "failure_code"
+            ]
+          }
+        },
+        {
+          "required": [
+            "failure_code"
+          ],
+          "not": {
+            "required": [
+              "artifact_sha256"
+            ]
+          }
+        }
+      ]
+    },
+    "projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_id",
+        "mode",
+        "state"
+      ],
+      "properties": {
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "legacy",
+            "bootstrap"
+          ]
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "incremental",
+            "initializing",
+            "ready"
+          ]
+        },
+        "t0": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "initial_batch_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200,
+          "pattern": "^[A-Za-z0-9_-]{8,200}$"
+        }
+      }
+    },
+    "batch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "batch_id",
+        "project_id",
+        "account_id",
+        "kind",
+        "cutoff_at",
+        "state",
+        "incomplete",
+        "members",
+        "discovery_issues"
+      ],
+      "properties": {
+        "batch_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200,
+          "pattern": "^[A-Za-z0-9_-]{8,200}$"
+        },
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "account_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "bootstrap",
+            "import"
+          ]
+        },
+        "cutoff_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "collecting",
+            "awaiting_sources",
+            "sources_ready"
+          ]
+        },
+        "incomplete": {
+          "type": "boolean"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/member"
+          }
+        },
+        "discovery_issues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/discovery_issue"
+          }
+        },
+        "extraction_completed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Every fixed source has a recorded extraction outcome; graph publication is a separate boundary."
+        },
+        "graph_build": {
+          "$ref": "#/$defs/graph_build"
+        },
+        "recovery_of": {
+          "$ref": "#/$defs/recovery_reference",
+          "description": "Original failed extraction member; this import records a new immutable processing round."
+        },
+        "retry_of_batch_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{8,200}$"
+        }
+      }
+    },
+    "batch_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "batch",
+        "projection"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "ok"
+          ]
+        },
+        "batch": {
+          "$ref": "#/$defs/batch"
+        },
+        "projection": {
+          "$ref": "#/$defs/projection"
+        }
+      }
+    },
+    "projection_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "projection",
+        "batches",
+        "suspended"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "ok"
+          ]
+        },
+        "projection": {
+          "$ref": "#/$defs/projection"
+        },
+        "batches": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/batch"
+          }
+        },
+        "suspended": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/suspended_projection"
+          }
+        },
+        "recent_failures": {
+          "type": "array",
+          "maxItems": 256,
+          "description": "Bounded historical observations; may already have recovered. Counts cover retained records only.",
+          "items": {
+            "$ref": "health.schema.json#/$defs/failure_aggregate"
+          }
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/projection_issue"
+          }
+        }
+      }
+    },
+    "extraction_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "completed_at"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "updated",
+            "unchanged",
+            "failed"
+          ]
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "error_code": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "if": {
+        "properties": {
+          "status": {
+            "const": "failed"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "error_code"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "error_code"
+          ]
+        }
+      }
+    },
+    "graph_build": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "attempts"
+      ],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "retrying",
+            "candidate_ready",
+            "published",
+            "suspended"
+          ]
+        },
+        "attempts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "last_error": {
+          "type": "string",
+          "minLength": 1
+        },
+        "next_attempt_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "published_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "published"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "published_at"
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "last_error"
+                  ]
+                },
+                {
+                  "required": [
+                    "next_attempt_at"
+                  ]
+                }
+              ]
+            }
+          },
+          "else": {
+            "not": {
+              "required": [
+                "published_at"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "retrying"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "last_error",
+              "next_attempt_at"
+            ],
+            "properties": {
+              "attempts": {
+                "minimum": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "suspended"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "last_error"
+            ],
+            "properties": {
+              "attempts": {
+                "minimum": 1
+              }
+            },
+            "not": {
+              "required": [
+                "next_attempt_at"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "recovery_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "batch_id",
+        "member_id"
+      ],
+      "properties": {
+        "batch_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200,
+          "pattern": "^[A-Za-z0-9_-]{8,200}$"
+        },
+        "member_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200,
+          "pattern": "^[A-Za-z0-9_-]{8,200}$"
+        }
+      }
+    },
+    "suspended_projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage",
+        "error_code",
+        "attempts"
+      ],
+      "properties": {
+        "stage": {
+          "enum": [
+            "extract",
+            "graph",
+            "bootstrap",
+            "patch",
+            "library_tags",
+            "library_checkpoint"
+          ]
+        },
+        "source": {
+          "$ref": "work-graph.schema.json#/$defs/source"
+        },
+        "batch_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200,
+          "pattern": "^[A-Za-z0-9_-]{8,200}$"
+        },
+        "error_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "attempts": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "explanation": {
+          "$ref": "health.schema.json#/$defs/failure_explanation"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "stage": {
+                "enum": [
+                  "extract",
+                  "graph",
+                  "library_tags",
+                  "library_checkpoint"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "source"
+            ],
+            "not": {
+              "required": [
+                "batch_id"
+              ]
+            }
+          },
+          "else": {
+            "required": [
+              "batch_id"
+            ],
+            "not": {
+              "required": [
+                "source"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "retry_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "request_id",
+        "project_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200
+        },
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        }
+      }
+    },
+    "retry_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "request_id",
+        "project_id",
+        "status"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200
+        },
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "status": {
+          "const": "ok"
+        }
+      }
+    },
+    "projection_issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage",
+        "state",
+        "error_code",
+        "retry_location",
+        "attempts",
+        "explanation"
+      ],
+      "properties": {
+        "stage": {
+          "type": "string",
+          "enum": [
+            "discovery",
+            "capture",
+            "sync",
+            "extract",
+            "graph",
+            "bootstrap",
+            "patch",
+            "library_checkpoint",
+            "library_tags"
+          ]
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "retrying",
+            "suspended",
+            "recovering"
+          ]
+        },
+        "error_code": {
+          "type": "string"
+        },
+        "retry_location": {
+          "type": "string",
+          "enum": [
+            "server",
+            "source_device"
+          ]
+        },
+        "batch_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{8,200}$"
+        },
+        "agent_type": {
+          "$ref": "common.schema.json#/$defs/agent_type"
+        },
+        "source": {
+          "$ref": "work-graph.schema.json#/$defs/source"
+        },
+        "attempts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "next_attempt_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "explanation": {
+          "$ref": "health.schema.json#/$defs/failure_explanation"
+        }
+      }
+    }
+  },
+  "$ref": "#/$defs/batch_response"
+}

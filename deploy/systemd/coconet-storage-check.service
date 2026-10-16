@@ -1,0 +1,22 @@
+[Unit]
+Description=Coconet storage capacity check (read-only)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/lib/coconet/storage-check.py --config /etc/coconet/storage-check.json --state-file /var/lib/coconet-storage-check/latest.json
+StateDirectory=coconet-storage-check
+StateDirectoryMode=0700
+UMask=0077
+LogNamespace=coconet
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+PrivateNetwork=true
+ProtectHome=true
+ProtectSystem=strict
+RestrictAddressFamilies=AF_UNIX
+TimeoutStartSec=30s
+MemoryMax=128M
+CPUQuota=10%
+Nice=19
+IOSchedulingClass=idle

@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "projects": [
+    {
+      "project_id": "coco_fixture01",
+      "name": "Fixture project",
+      "status": "active"
+    }
+  ]
+}

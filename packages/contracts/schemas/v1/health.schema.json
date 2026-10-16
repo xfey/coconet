@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.coddis.dev/v1/health.schema.json",
+  "title": "Coconet component health",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "component",
+    "version"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "common.schema.json#/$defs/schema_version"
+    },
+    "status": {
+      "$ref": "common.schema.json#/$defs/status"
+    },
+    "component": {
+      "$ref": "common.schema.json#/$defs/non_empty_string"
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/non_empty_string"
+    },
+    "components": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "status"
+        ],
+        "properties": {
+          "name": {
+            "$ref": "common.schema.json#/$defs/non_empty_string"
+          },
+          "status": {
+            "$ref": "common.schema.json#/$defs/status"
+          },
+          "version": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "failure_category": {
+            "$ref": "common.schema.json#/$defs/failure_category"
+          }
+        }
+      }
+    },
+    "runtime_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deployment_count",
+        "binding_count",
+        "invalid_binding_count",
+        "sync"
+      ],
+      "properties": {
+        "deployment_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "binding_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invalid_binding_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sync": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "pending",
+            "terminal"
+          ],
+          "properties": {
+            "pending": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "terminal": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "oldest_pending_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "last_successful_sync_at": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "recall": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "status",
+              "event_count",
+              "result_count"
+            ],
+            "properties": {
+              "kind": {
+                "$ref": "common.schema.json#/$defs/non_empty_string"
+              },
+              "status": {
+                "$ref": "common.schema.json#/$defs/non_empty_string"
+              },
+              "event_count": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "result_count": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "failures": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/failure_aggregate"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "failure_explanation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reason",
+        "action"
+      ],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      }
+    },
+    "failure_aggregate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation",
+        "status",
+        "failure_category",
+        "error_code",
+        "retryable",
+        "event_count",
+        "last_observed_at"
+      ],
+      "properties": {
+        "operation": {
+          "$ref": "common.schema.json#/$defs/non_empty_string"
+        },
+        "status": {
+          "$ref": "common.schema.json#/$defs/status"
+        },
+        "failure_category": {
+          "$ref": "common.schema.json#/$defs/failure_category"
+        },
+        "error_code": {
+          "$ref": "common.schema.json#/$defs/non_empty_string"
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "event_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "last_observed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "correlation_id": {
+          "type": "string",
+          "pattern": "^corr_[A-Za-z0-9_-]{8,}$"
+        },
+        "explanation": {
+          "$ref": "#/$defs/failure_explanation"
+        }
+      }
+    }
+  }
+}

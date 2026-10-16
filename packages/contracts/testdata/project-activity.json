@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "project_id": "coco_fixture01",
+  "events": [
+    {
+      "project_id": "coco_fixture01",
+      "recorded_at": "2026-09-11T08:00:00Z",
+      "historical": false,
+      "actor": {
+        "account_id": "acct_fixture01",
+        "display_name": "Fixture User"
+      },
+      "source": {
+        "server_session_id": "sess_fixture01",
+        "version": 3
+      },
+      "id": "activity_checkpoint_fixture",
+      "kind": "checkpoint",
+      "node": {
+        "id": "work_library_fixture",
+        "summary": "The Server exposes a compact, version-anchored Work DAG.",
+        "state": "sealed",
+        "author": {
+          "account_id": "acct_fixture01",
+          "display_name": "Fixture User"
+        },
+        "work_time": {
+          "start": "2026-09-07T08:00:00Z",
+          "end": "2026-09-07T09:00:00Z"
+        },
+        "parents": [],
+        "source": {
+          "server_session_id": "sess_fixture01",
+          "version": 3
+        },
+        "objective": "Implement Project Work Graph reading"
+      }
+    },
+    {
+      "project_id": "coco_fixture01",
+      "recorded_at": "2026-09-11T08:00:00Z",
+      "historical": false,
+      "actor": {
+        "account_id": "acct_fixture01",
+        "display_name": "Fixture User"
+      },
+      "source": {
+        "server_session_id": "sess_fixture01",
+        "version": 3
+      },
+      "id": "activity_library_fixture",
+      "kind": "library_collected",
+      "node": {
+        "id": "work_library_fixture",
+        "summary": "The Server exposes a compact, version-anchored Work DAG.",
+        "state": "sealed",
+        "author": {
+          "account_id": "acct_fixture01",
+          "display_name": "Fixture User"
+        },
+        "work_time": {
+          "start": "2026-09-07T08:00:00Z",
+          "end": "2026-09-07T09:00:00Z"
+        },
+        "parents": [],
+        "source": {
+          "server_session_id": "sess_fixture01",
+          "version": 3
+        },
+        "objective": "Implement Project Work Graph reading"
+      },
+      "library_entry": {
+        "entry_id": "libentry_fixture01",
+        "project_id": "coco_fixture01",
+        "source": {
+          "server_session_id": "sess_fixture01",
+          "version": 3
+        },
+        "submitted_by": "acct_fixture01",
+        "collected_at": "2026-09-09T10:00:00Z",
+        "note": "Fixed context for future reference",
+        "work_node_id": "work_library_fixture"
+      }
+    },
+    {
+      "project_id": "coco_fixture01",
+      "recorded_at": "2026-09-11T08:00:00Z",
+      "historical": false,
+      "actor": {
+        "account_id": "acct_fixture01",
+        "display_name": "Fixture User"
+      },
+      "source": {
+        "server_session_id": "sess_fixture01",
+        "version": 3
+      },
+      "id": "activity_fork_fixture",
+      "kind": "fork_registered",
+      "child_session_id": "sess_fixture_child"
+    }
+  ]
+}

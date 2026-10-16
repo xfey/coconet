@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "batch": {
+    "batch_id": "batch_recovery01",
+    "project_id": "coco_fixture01",
+    "account_id": "acct_fixture01",
+    "kind": "import",
+    "cutoff_at": "2026-09-07T01:00:00Z",
+    "completed_at": "2026-09-07T01:00:01Z",
+    "state": "sources_ready",
+    "incomplete": false,
+    "members": [
+      {
+        "member_id": "member_fixture01",
+        "agent_type": "codex",
+        "native_session_id": "native-fixture",
+        "artifact_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source": {
+          "server_session_id": "sess_fixture01",
+          "version": 1
+        },
+        "indexed": true,
+        "extraction": {
+          "status": "unchanged",
+          "completed_at": "2026-09-07T01:00:02Z"
+        }
+      }
+    ],
+    "discovery_issues": [],
+    "extraction_completed_at": "2026-09-07T01:00:02Z",
+    "graph_build": {
+      "state": "published",
+      "attempts": 0,
+      "published_at": "2026-09-07T01:00:03Z"
+    },
+    "recovery_of": {
+      "batch_id": "batch_failed01",
+      "member_id": "member_fixture01"
+    }
+  },
+  "projection": {
+    "project_id": "coco_fixture01",
+    "mode": "bootstrap",
+    "state": "ready",
+    "t0": "2026-09-07T01:00:00Z",
+    "initial_batch_id": "batch_fixture01"
+  }
+}

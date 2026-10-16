@@ -1,0 +1,639 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.coddis.dev/v1/relay.schema.json",
+  "title": "Opaque Relay transport v1",
+  "$defs": {
+    "commit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "id",
+        "device_id",
+        "base",
+        "codec",
+        "payload",
+        "sha256",
+        "objects"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+        },
+        "device_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+        },
+        "base": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740990
+        },
+        "codec": {
+          "enum": [
+            "coconet-json-v2",
+            "coconet-json-v3",
+            "coconet-json-v4",
+            "coconet-json-v5"
+          ]
+        },
+        "payload": {
+          "type": "string",
+          "contentEncoding": "base64",
+          "minLength": 4,
+          "maxLength": 1398104,
+          "description": "Opaque bytes, plain JSON in MVP. Relay does not interpret the business payload."
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "objects": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "maxItems": 8192,
+          "uniqueItems": true
+        },
+        "state_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "processing": {
+          "$ref": "#/$defs/processing_authorization"
+        }
+      }
+    },
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "project_id",
+        "revision",
+        "writer",
+        "accepted_at",
+        "commit"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "project_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "writer": {
+          "type": "string",
+          "maxLength": 401
+        },
+        "accepted_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "commit": {
+          "$ref": "#/$defs/commit"
+        }
+      }
+    },
+    "page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "head",
+        "entries"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "head": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/receipt"
+          },
+          "maxItems": 100
+        },
+        "hints": {
+          "$ref": "#/$defs/sync_hints"
+        }
+      }
+    },
+    "object": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sha256",
+        "size"
+      ],
+      "properties": {
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 268435456
+        }
+      }
+    },
+    "object_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "objects"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "objects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/object"
+          },
+          "maxItems": 8192
+        }
+      }
+    },
+    "missing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "missing"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "missing": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "maxItems": 8192,
+          "uniqueItems": true
+        }
+      }
+    },
+    "object_uploaded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "sha256"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "checkpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "device_id",
+        "revision",
+        "commit_id",
+        "codec",
+        "sha256",
+        "payload"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "device_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "commit_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+        },
+        "codec": {
+          "enum": ["coconet-state-json-v1", "coconet-state-json-v2", "coconet-state-json-v3"]
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "payload": {
+          "type": "string",
+          "contentEncoding": "base64",
+          "minLength": 4,
+          "maxLength": 22369624
+        }
+      }
+    },
+    "checkpoint_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "project_id",
+        "writer",
+        "accepted_at",
+        "checkpoint",
+        "anchor"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "project_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+        },
+        "writer": {
+          "type": "string",
+          "maxLength": 401
+        },
+        "accepted_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "checkpoint": {
+          "$ref": "#/$defs/checkpoint"
+        },
+        "anchor": {
+          "$ref": "#/$defs/receipt"
+        }
+      }
+    },
+    "checkpoint_page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "head",
+        "checkpoint",
+        "generation"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "head": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "checkpoint": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/checkpoint_receipt"
+            }
+          ]
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "published_graph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "event_revision",
+        "relay",
+        "authors"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "event_revision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "relay": {
+          "$ref": "#/$defs/checkpoint_page"
+        },
+        "authors": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "read_lease_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "device_id",
+        "revision"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "device_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "lease_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+        }
+      }
+    },
+    "read_lease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "id",
+        "revision",
+        "expires_at"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "read_lease_released": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "released"
+      ],
+      "properties": {
+        "released": {
+          "const": true
+        }
+      }
+    },
+    "collection_plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "id",
+        "device_id",
+        "revision",
+        "checkpoint_sha256",
+        "objects"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+        },
+        "device_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "checkpoint_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "objects": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "minItems": 1,
+          "maxItems": 8192,
+          "uniqueItems": true
+        }
+      }
+    },
+    "collection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "plan",
+        "writer",
+        "epoch",
+        "not_before",
+        "status",
+        "deleted",
+        "updated_at"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "plan": {
+          "$ref": "#/$defs/collection_plan"
+        },
+        "writer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 401
+        },
+        "epoch": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "not_before": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "enum": [
+            "marked",
+            "cancelled",
+            "deleting",
+            "deleted"
+          ]
+        },
+        "deleted": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8192
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "object_page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "head",
+        "objects"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "head": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "objects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/object"
+          },
+          "maxItems": 512
+        },
+        "next": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "sync_hints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy",
+        "repairs_pending"
+      ],
+      "properties": {
+        "repairs_pending": {
+          "type": "boolean"
+        },
+        "policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "direct",
+            "temporary",
+            "ttl_seconds"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": 1
+            },
+            "direct": {
+              "type": "boolean"
+            },
+            "temporary": {
+              "type": "boolean"
+            },
+            "ttl_seconds": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "processing_authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_id",
+        "lease",
+        "owner",
+        "session_id",
+        "version",
+        "sha256"
+      ],
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+        },
+        "lease": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+        },
+        "owner": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+        },
+        "node_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "node_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    }
+  }
+}

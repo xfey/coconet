@@ -1,0 +1,2876 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Coconet Server API",
+    "version": "0.20.0",
+    "description": "Local DAG Relay MVP. Devices generate and verify the DAG; the server stores and relays published content. Business payloads are not yet encrypted."
+  },
+  "paths": {
+    "/healthz": {
+      "get": {
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "description": "Server process and Project authority are healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/health.schema.json"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/deployment": {
+      "get": {
+        "operationId": "getDeploymentIdentity",
+        "parameters": [
+          {
+            "name": "challenge",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Challenge-bound Deployment identity, legacy-compatible protocol version, and independently signed additive capabilities. history_batches_v1 is advertised when semantic projection is configured and covers Bootstrap and subsequent imports.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/deployment.schema.json"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/account": {
+      "get": {
+        "operationId": "getCurrentAccount",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authenticated Account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/account.schema.json#/$defs/account"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/connections": {
+      "post": {
+        "operationId": "connectProject",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "https://schemas.coddis.dev/v1/connection.schema.json#/$defs/connect_request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/ProjectAccess"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects": {
+      "post": {
+        "operationId": "createProject",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProjectRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/ProjectAccess"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "get": {
+        "operationId": "listAccountProjects",
+        "description": "List only projects this identity may read; membership is checked on each request.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/dashboard.schema.json#/$defs/projects_response"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/access": {
+      "get": {
+        "operationId": "getProjectAccess",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/ProjectAccess"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/membership": {
+      "delete": {
+        "operationId": "leaveProject",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Current Account membership was revoked"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/join-requests": {
+      "post": {
+        "deprecated": true,
+        "operationId": "requestProjectMembership",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/Mutation"
+        },
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/ProjectAccess"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/manage": {
+      "get": {
+        "deprecated": true,
+        "operationId": "getProjectManagement",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Role-scoped Project management view",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/project.schema.json#/$defs/management"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/join-requests/{join_request_id}/decision": {
+      "post": {
+        "deprecated": true,
+        "operationId": "decideJoinRequest",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          },
+          {
+            "$ref": "#/components/parameters/JoinRequestID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Join request after the decision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/project.schema.json#/$defs/join_request"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/members/{account_id}/remove": {
+      "post": {
+        "deprecated": true,
+        "operationId": "removeProjectMember",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          },
+          {
+            "$ref": "#/components/parameters/AccountID"
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/Mutation"
+        },
+        "responses": {
+          "200": {
+            "description": "Removed membership",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/project.schema.json#/$defs/membership"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/leave": {
+      "post": {
+        "deprecated": true,
+        "operationId": "leaveProjectLegacy",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/Mutation"
+        },
+        "responses": {
+          "200": {
+            "description": "Left membership",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/project.schema.json#/$defs/membership"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/dissolve": {
+      "post": {
+        "deprecated": true,
+        "operationId": "dissolveProject",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/Mutation"
+        },
+        "responses": {
+          "200": {
+            "description": "Archived Project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/project.schema.json#/$defs/project"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/sessions/prepare": {
+      "post": {
+        "operationId": "prepareSessionSync",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead."
+      }
+    },
+    "/v1/projects/{project_id}/sessions/commit": {
+      "post": {
+        "operationId": "commitSessionSync",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead."
+      }
+    },
+    "/v1/projects/{project_id}/sessions/{server_session_id}/versions/{version}/index": {
+      "post": {
+        "operationId": "indexSessionVersion",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          },
+          {
+            "$ref": "#/components/parameters/ServerSessionID"
+          },
+          {
+            "$ref": "#/components/parameters/SessionVersion"
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "summary": "Retired Session API: use DAG selection and node Pull",
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead."
+      }
+    },
+    "/v1/projects/{project_id}/sessions/search": {
+      "post": {
+        "operationId": "searchSessions",
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "summary": "Retired Session API: use DAG selection and node Pull"
+      }
+    },
+    "/v1/projects/{project_id}/work-graph": {
+      "post": {
+        "operationId": "readProjectWorkGraph",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead."
+      }
+    },
+    "/v1/projects/{project_id}/sessions/recent": {
+      "post": {
+        "operationId": "listRecentSessions",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "summary": "Retired Session API: use DAG selection and node Pull",
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead."
+      }
+    },
+    "/v1/projects/{project_id}/sessions/{server_session_id}/read": {
+      "post": {
+        "operationId": "readSessionVersion",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          },
+          {
+            "$ref": "#/components/parameters/ServerSessionID"
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "summary": "Retired Session API: use DAG selection and node Pull",
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead."
+      }
+    },
+    "/v1/projects/{project_id}/sessions/pull": {
+      "post": {
+        "operationId": "pullSession",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead."
+      }
+    },
+    "/v1/projects/{project_id}/sessions/fork/prepare": {
+      "post": {
+        "operationId": "prepareSessionFork",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead."
+      }
+    },
+    "/v1/projects/{project_id}/sessions/fork/complete": {
+      "post": {
+        "operationId": "completeSessionFork",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead."
+      }
+    },
+    "/v1/projects/{project_id}/history-batches": {
+      "post": {
+        "operationId": "beginHistoryBatch",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "deprecated": true,
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead."
+      }
+    },
+    "/v1/projects/{project_id}/history-batches/{batch_id}/resolve": {
+      "post": {
+        "operationId": "resolveHistoryMember",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          },
+          {
+            "name": "batch_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 200
+            }
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "deprecated": true,
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead."
+      }
+    },
+    "/v1/projects/{project_id}/history-batches/{batch_id}/complete": {
+      "post": {
+        "operationId": "completeHistoryBatch",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          },
+          {
+            "name": "batch_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 200
+            }
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "deprecated": true,
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead."
+      }
+    },
+    "/v1/projects/{project_id}/projection": {
+      "get": {
+        "operationId": "readProjectProjection",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead.",
+        "deprecated": true
+      }
+    },
+    "/v1/dashboard/session": {
+      "post": {
+        "operationId": "loginDashboard",
+        "description": "Only configured key mode accepts an administrator-issued Key. GitHub / OIDC use /v1/auth/start. Issues an independent 30-day HttpOnly browser session.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/dashboard.schema.json#/$defs/session_response"
+                }
+              }
+            },
+            "headers": {
+              "Set-Cookie": {
+                "description": "Distinct opaque browser token; no Account Key in the response. Old browser token is replaced.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "https://schemas.coddis.dev/v1/dashboard.schema.json#/$defs/login_request"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly match the public HTTPS origin, including a non-default port. TLS proxies preserve Host and must be explicitly trusted."
+          }
+        ]
+      },
+      "get": {
+        "operationId": "getDashboardSession",
+        "description": "Read the current identity and fixed expiry; does not renew the session.",
+        "security": [
+          {
+            "dashboardSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/dashboard.schema.json#/$defs/session_response"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "logoutDashboard",
+        "description": "Invalidate the supplied browser session and clear its cookie. Idempotent, including expired or absent sessions; HTTPS and exact Origin required.",
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "Success",
+            "headers": {
+              "Set-Cookie": {
+                "description": "Clear the host-only Dashboard cookie.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly match the public HTTPS origin, including a non-default port. TLS proxies preserve Host and must be explicitly trusted."
+          }
+        ]
+      }
+    },
+    "/v1/dashboard/projects": {
+      "get": {
+        "operationId": "listDashboardProjects",
+        "description": "List only projects this identity may read; membership is checked on each request.",
+        "security": [
+          {
+            "dashboardSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/dashboard.schema.json#/$defs/projects_response"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createDashboardProject",
+        "security": [
+          {
+            "dashboardSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProjectRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/ProjectAccess"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/dashboard/projects/{project_id}/graph": {
+      "get": {
+        "operationId": "readDashboardWorkGraph",
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead.",
+        "security": [
+          {
+            "dashboardSession": []
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "deprecated": true
+      }
+    },
+    "/v1/dashboard/projects/{project_id}/projection": {
+      "get": {
+        "operationId": "readDashboardProjection",
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead.",
+        "security": [
+          {
+            "dashboardSession": []
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "deprecated": true
+      }
+    },
+    "/v1/dashboard/projects/{project_id}/sessions/{server_session_id}/read": {
+      "post": {
+        "operationId": "readDashboardEvidence",
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead.",
+        "security": [
+          {
+            "dashboardSession": []
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          },
+          {
+            "$ref": "#/components/parameters/ServerSessionID"
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly match the public HTTPS origin, including a non-default port. TLS proxies preserve Host and must be explicitly trusted."
+          }
+        ],
+        "deprecated": true
+      }
+    },
+    "/v1/account/key": {
+      "put": {
+        "operationId": "resetAccountKey",
+        "description": "Atomically replace the identity Account Key and revoke all existing browser sessions. Cookie authentication is not accepted. Retrying with the new key as both bearer credential and replacement is idempotent. Runtime persists the replacement before submission; 10 attempts per minute per account.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/dashboard.schema.json#/$defs/reset_key_response"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "https://schemas.coddis.dev/v1/dashboard.schema.json#/$defs/reset_key_request"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/projection/retry": {
+      "post": {
+        "operationId": "retryProjectProjection",
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/v1/projects/{project_id}/work/search": {
+      "post": {
+        "operationId": "searchWork",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true,
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead."
+      }
+    },
+    "/v1/projects/{project_id}/library/entries": {
+      "post": {
+        "operationId": "addSessionToLibrary",
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/v1/projects/{project_id}/library/entries/list": {
+      "post": {
+        "operationId": "listLibraryEntries",
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/v1/dashboard/projects/{project_id}/activity": {
+      "get": {
+        "operationId": "listDashboardActivity",
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead.",
+        "security": [
+          {
+            "dashboardSession": []
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "event_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "deprecated": true
+      }
+    },
+    "/v1/dashboard/projects/{project_id}/library": {
+      "get": {
+        "operationId": "listDashboardLibrary",
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead.",
+        "security": [
+          {
+            "dashboardSession": []
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entry_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "deprecated": true
+      }
+    },
+    "/v1/dashboard/projects/{project_id}/nodes/{node_id}/library": {
+      "put": {
+        "operationId": "setDashboardLibrary",
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead.",
+        "security": [
+          {
+            "dashboardSession": []
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          },
+          {
+            "name": "node_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly match the public HTTPS origin, including a non-default port. TLS proxies preserve Host and must be explicitly trusted."
+          }
+        ],
+        "deprecated": true
+      }
+    },
+    "/v1/dashboard/projects/{project_id}/sessions/{server_session_id}/dialogue": {
+      "post": {
+        "operationId": "readDashboardDialogue",
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead.",
+        "security": [
+          {
+            "dashboardSession": []
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          },
+          {
+            "$ref": "#/components/parameters/ServerSessionID"
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly match the public HTTPS origin, including a non-default port. TLS proxies preserve Host and must be explicitly trusted."
+          }
+        ],
+        "deprecated": true
+      }
+    },
+    "/v1/auth/config": {
+      "get": {
+        "operationId": "getLoginConfiguration",
+        "security": [],
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/auth.schema.json#/$defs/configuration"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          },
+          "404": {
+            "description": "Not found or expired"
+          },
+          "429": {
+            "description": "Rate limit"
+          }
+        }
+      }
+    },
+    "/v1/auth/start": {
+      "post": {
+        "operationId": "startBrowserLogin",
+        "security": [],
+        "description": "Exact same-origin HTTPS POST. Creates a one-time state bound to an HttpOnly browser cookie and S256 PKCE.",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/auth.schema.json#/$defs/start_response"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          },
+          "404": {
+            "description": "Not found or expired"
+          },
+          "429": {
+            "description": "Rate limit"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "https://schemas.coddis.dev/v1/auth.schema.json#/$defs/start_request"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/callback": {
+      "get": {
+        "operationId": "completeBrowserLogin",
+        "security": [],
+        "description": "Validates and consumes OAuth state, browser cookie, PKCE and provider identity. Redirects to Dashboard; no provider credentials enter the browser.",
+        "responses": {
+          "303": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          },
+          "404": {
+            "description": "Not found or expired"
+          },
+          "429": {
+            "description": "Rate limit"
+          }
+        }
+      }
+    },
+    "/v1/auth/device": {
+      "post": {
+        "operationId": "startDeviceAuthorization",
+        "security": [],
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/auth.schema.json#/$defs/device_response"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          },
+          "404": {
+            "description": "Not found or expired"
+          },
+          "429": {
+            "description": "Rate limit"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "https://schemas.coddis.dev/v1/auth.schema.json#/$defs/device_request"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/token": {
+      "post": {
+        "operationId": "exchangeDeviceAuthorization",
+        "security": [],
+        "description": "Pending polling is read-only. Approval and S256 proof are required; a grant can issue only one device credential.",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/auth.schema.json#/$defs/device_response"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          },
+          "404": {
+            "description": "Not found or expired"
+          },
+          "429": {
+            "description": "Rate limit"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "https://schemas.coddis.dev/v1/auth.schema.json#/$defs/poll_request"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "operationId": "revokeCurrentDevice",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "",
+        "responses": {
+          "204": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          },
+          "404": {
+            "description": "Not found or expired"
+          },
+          "429": {
+            "description": "Rate limit"
+          }
+        }
+      }
+    },
+    "/v1/dashboard/authorize": {
+      "post": {
+        "operationId": "decideDeviceAuthorization",
+        "security": [
+          {
+            "dashboardSession": []
+          }
+        ],
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/auth.schema.json#/$defs/decision_response"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          },
+          "404": {
+            "description": "Not found or expired"
+          },
+          "429": {
+            "description": "Rate limit"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "https://schemas.coddis.dev/v1/auth.schema.json#/$defs/decision_request"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dashboard/profile": {
+      "put": {
+        "operationId": "updateAccountProfile",
+        "security": [
+          {
+            "dashboardSession": []
+          }
+        ],
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/account.schema.json#/$defs/account"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          },
+          "404": {
+            "description": "Not found or expired"
+          },
+          "429": {
+            "description": "Rate limit"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "https://schemas.coddis.dev/v1/auth.schema.json#/$defs/profile_request"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dashboard/devices": {
+      "get": {
+        "operationId": "listAccountDevices",
+        "security": [
+          {
+            "dashboardSession": []
+          }
+        ],
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/auth.schema.json#/$defs/devices"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          },
+          "404": {
+            "description": "Not found or expired"
+          },
+          "429": {
+            "description": "Rate limit"
+          }
+        }
+      }
+    },
+    "/v1/dashboard/devices/{device_id}": {
+      "delete": {
+        "operationId": "revokeAccountDevice",
+        "security": [
+          {
+            "dashboardSession": []
+          }
+        ],
+        "description": "",
+        "responses": {
+          "204": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          },
+          "404": {
+            "description": "Not found or expired"
+          },
+          "429": {
+            "description": "Rate limit"
+          }
+        },
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/dashboard/connections": {
+      "post": {
+        "operationId": "joinDashboardProject",
+        "security": [
+          {
+            "dashboardSession": []
+          }
+        ],
+        "description": "Explicitly join a project by Project ID. Repeated joins are idempotent.",
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          },
+          "404": {
+            "description": "Not found or expired"
+          },
+          "429": {
+            "description": "Rate limit"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "../../schemas/v1/connection.schema.json#/$defs/connect_request"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dashboard/projects/{project_id}/membership": {
+      "delete": {
+        "operationId": "leaveDashboardProject",
+        "security": [
+          {
+            "dashboardSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Current Account membership was revoked"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/workspaces": {
+      "put": {
+        "operationId": "reportWorkspaceSnapshot",
+        "description": "Replace this account installation's locally saved directory snapshot. Revision makes retries ordered; this does not create project membership.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "https://schemas.coddis.dev/v1/workspaces.schema.json#/$defs/report"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/workspaces.schema.json#/$defs/report_response"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/dashboard/projects/{project_id}/workspaces": {
+      "get": {
+        "operationId": "listProjectFolders",
+        "description": "Read member-reported folders for this project. Revoked credentials and memberships are excluded. Reports are not real-time device presence.",
+        "security": [
+          {
+            "dashboardSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/workspaces.schema.json#/$defs/list_response"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/dashboard/projects/{project_id}/events": {
+      "get": {
+        "operationId": "watchDashboardWorkGraph",
+        "description": "SSE with committed project revision, reconnect snapshot and access_revoked events. Heartbeats do not read metadata.",
+        "security": [
+          {
+            "dashboardSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Event stream. graph data is {revision: integer}; access_revoked terminates the stream.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/dashboard/projects/{project_id}/projection/retry": {
+      "post": {
+        "operationId": "retryDashboardProjectProjection",
+        "description": "Retired in 0.20. Upgrade the client, reconnect this directory, and configure local inference. Use local Runtime tools or the published graph instead.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "security": [
+          {
+            "dashboardSession": []
+          }
+        ],
+        "responses": {
+          "422": {
+            "description": "local_runtime_required: this Relay does not process Sessions or generate the DAG.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Retry paused project processing from the Dashboard",
+        "deprecated": true
+      }
+    },
+    "/v1/projects/{project_id}/relay/commits": {
+      "get": {
+        "operationId": "listRelayCommits",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Accepted transport response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/relay.schema.json#/$defs/page"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "operationId": "appendRelayCommit",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Accepted transport response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/relay.schema.json#/$defs/receipt"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "https://schemas.coddis.dev/v1/relay.schema.json#/$defs/commit"
+              }
+            }
+          }
+        },
+        "description": "CAS append to an opaque project log. Authenticated account plus device_id determines writer. Same ID/content replay returns the original receipt; a new commit requires the current head."
+      }
+    },
+    "/v1/projects/{project_id}/relay/objects/check": {
+      "post": {
+        "operationId": "checkRelayObjects",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Accepted transport response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/relay.schema.json#/$defs/missing"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "https://schemas.coddis.dev/v1/relay.schema.json#/$defs/object_check"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/relay/objects/{digest}": {
+      "get": {
+        "operationId": "downloadRelayObject",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+            }
+          },
+          {
+            "name": "digest",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project-scoped immutable bytes, SHA-256 verified",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "put": {
+        "operationId": "uploadRelayObject",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+            }
+          },
+          {
+            "name": "digest",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Accepted transport response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/relay.schema.json#/$defs/object_uploaded"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "Known Content-Length is required, maximum 256 MiB. Bytes must match the URL digest.",
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/relay/checkpoint": {
+      "get": {
+        "operationId": "readRelayCheckpoint",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Accepted transport response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/relay.schema.json#/$defs/checkpoint_page"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "Read the latest client-generated DAG checkpoint and current head"
+      },
+      "post": {
+        "operationId": "publishRelayCheckpoint",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Accepted transport response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/relay.schema.json#/$defs/checkpoint_receipt"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "https://schemas.coddis.dev/v1/relay.schema.json#/$defs/checkpoint"
+              }
+            }
+          }
+        },
+        "description": "CAS append to an opaque project log. Authenticated account plus device_id determines writer. Same ID/content replay returns the original receipt; a new commit requires the current head.",
+        "summary": "Publish a client-generated DAG checkpoint bound to an accepted state digest"
+      }
+    },
+    "/v1/dashboard/projects/{project_id}/published-graph": {
+      "get": {
+        "operationId": "readPublishedGraph",
+        "description": "Read the existing projection through browser-only authentication; current membership is required.",
+        "security": [
+          {
+            "dashboardSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/relay.schema.json#/$defs/published_graph"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectID"
+          }
+        ],
+        "summary": "Read the client-published DAG checkpoint without running semantic processing"
+      }
+    },
+    "/v1/projects/{project_id}/relay/leases": {
+      "post": {
+        "operationId": "acquireRelayReadLease",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Accepted transport response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/relay.schema.json#/$defs/read_lease"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "Acquire or renew protection for a fixed-revision download",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "https://schemas.coddis.dev/v1/relay.schema.json#/$defs/read_lease_request"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/relay/leases/{lease_id}": {
+      "delete": {
+        "operationId": "releaseRelayReadLease",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+            }
+          },
+          {
+            "name": "lease_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+            }
+          },
+          {
+            "name": "device",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Accepted transport response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/relay.schema.json#/$defs/read_lease_released"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "Release the calling device\u2019s read protection"
+      }
+    },
+    "/v1/projects/{project_id}/relay/collections": {
+      "post": {
+        "operationId": "markRelayCollection",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Accepted transport response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/relay.schema.json#/$defs/collection"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "Mark client-selected unused content against the accepted checkpoint",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "https://schemas.coddis.dev/v1/relay.schema.json#/$defs/collection_plan"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/relay/collections/{collection_id}": {
+      "post": {
+        "operationId": "collectRelayObjects",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+            }
+          },
+          {
+            "name": "collection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+            }
+          },
+          {
+            "name": "device",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Accepted transport response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/relay.schema.json#/$defs/collection"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "Complete deletion after the protection period"
+      }
+    },
+    "/v1/projects/{project_id}/relay/objects": {
+      "get": {
+        "operationId": "listRelayContentObjects",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,200}$"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 512,
+              "default": 512
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Accepted transport response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/relay.schema.json#/$defs/object_page"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "List a bounded page of content metadata for client-side collection"
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "dashboardSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Host-coconet_dashboard",
+        "description": "HTTPS-only opaque Web Session; Secure, HttpOnly, SameSite=Strict, Path=/, host-only, fixed 30-day lifetime. Never accepted by CLI or mutation routes."
+      }
+    },
+    "parameters": {
+      "ProjectID": {
+        "name": "project_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "ServerSessionID": {
+        "name": "server_session_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "SessionVersion": {
+        "name": "version",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "JoinRequestID": {
+        "name": "join_request_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "AccountID": {
+        "name": "account_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "schemas": {
+      "CreateProjectRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "request_id",
+          "name"
+        ],
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "const": 1
+          },
+          "request_id": {
+            "type": "string",
+            "minLength": 8
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        }
+      },
+      "MutationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "request_id"
+        ],
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "const": 1
+          },
+          "request_id": {
+            "type": "string",
+            "minLength": 8
+          }
+        }
+      },
+      "JoinDecisionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "request_id",
+          "decision"
+        ],
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "const": 1
+          },
+          "request_id": {
+            "type": "string",
+            "minLength": 8
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "rejected"
+            ]
+          }
+        }
+      }
+    },
+    "requestBodies": {
+      "Mutation": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/MutationRequest"
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "ProjectAccess": {
+        "description": "Account-specific Project access",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "https://schemas.coddis.dev/v1/project.schema.json#/$defs/access"
+            }
+          }
+        }
+      },
+      "Error": {
+        "description": "Structured API error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "https://schemas.coddis.dev/v1/error.schema.json"
+            }
+          }
+        }
+      }
+    }
+  }
+}

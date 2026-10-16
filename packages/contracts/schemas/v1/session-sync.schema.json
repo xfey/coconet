@@ -1,0 +1,640 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.coddis.dev/v1/session-sync.schema.json",
+  "title": "Coconet Session artifact and version sync",
+  "$defs": {
+    "chunk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ordinal",
+        "sha256",
+        "raw_size"
+      ],
+      "properties": {
+        "ordinal": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sha256": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "raw_size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "encoding": {
+          "enum": [
+            "gzip"
+          ]
+        },
+        "stored_size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "stored_sha256": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        }
+      }
+    },
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "artifact_sha256",
+        "artifact_size",
+        "artifact_media_type",
+        "manifest_sha256",
+        "chunking_schema_version",
+        "chunks"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "artifact_sha256": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "artifact_size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 268435456
+        },
+        "artifact_media_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "manifest_sha256": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "chunking_schema_version": {
+          "enum": [
+            1,
+            2
+          ]
+        },
+        "chunks": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1024,
+          "items": {
+            "$ref": "#/$defs/chunk"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "chunking_schema_version": {
+                "const": 2
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "chunks": {
+                "items": {
+                  "required": [
+                    "encoding",
+                    "stored_size",
+                    "stored_sha256"
+                  ],
+                  "properties": {
+                    "raw_size": {
+                      "maximum": 262144
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "chunks": {
+                "maxItems": 256,
+                "items": {
+                  "not": {
+                    "anyOf": [
+                      {
+                        "required": [
+                          "encoding"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "stored_size"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "stored_sha256"
+                        ]
+                      }
+                    ]
+                  },
+                  "properties": {
+                    "raw_size": {
+                      "maximum": 1048576
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "artifact_transfer_url": {
+      "type": "string",
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "format": "uri"
+            },
+            {
+              "pattern": "^https?://"
+            }
+          ]
+        },
+        {
+          "pattern": "^/v1/artifacts/objects/[A-Za-z0-9_-]+$"
+        }
+      ]
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "server_session_id",
+        "project_id",
+        "author_account_id",
+        "agent_type",
+        "native_session_id",
+        "activity_state",
+        "latest_committed_version",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "author_account_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "agent_type": {
+          "$ref": "common.schema.json#/$defs/agent_type"
+        },
+        "native_session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "activity_state": {
+          "$ref": "common.schema.json#/$defs/activity_state"
+        },
+        "latest_committed_version": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "latest_indexed_version": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "latest_synced_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "relative_cwd": {
+          "type": "string"
+        },
+        "root_server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "parent_server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "parent_session_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source_artifact_sha256": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sync_checkpoint": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "version": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "source_epoch": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "cursor": {
+              "$ref": "common.schema.json#/$defs/sha256"
+            },
+            "native": {
+              "$ref": "#/$defs/conversation_manifest"
+            }
+          },
+          "required": [
+            "version",
+            "source_epoch",
+            "cursor",
+            "native"
+          ]
+        }
+      }
+    },
+    "version": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "server_session_id",
+        "version",
+        "manifest",
+        "observed_activity_state",
+        "source_observed_at",
+        "adapter_name",
+        "adapter_version",
+        "committed_at"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "manifest": {
+          "$ref": "#/$defs/manifest"
+        },
+        "observed_activity_state": {
+          "$ref": "common.schema.json#/$defs/activity_state"
+        },
+        "source_observed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "adapter_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "visible_text_version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "adapter_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "agent_version": {
+          "type": "string"
+        },
+        "git": {
+          "$ref": "common.schema.json#/$defs/git_observation"
+        },
+        "committed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "conversation_sha256": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "conversation": {
+          "$ref": "#/$defs/snapshot_content"
+        }
+      }
+    },
+    "prepare_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "request_id",
+        "project_id",
+        "agent_type",
+        "native_session_id",
+        "base_version",
+        "activity_state",
+        "source_observed_at",
+        "adapter_name",
+        "adapter_version",
+        "manifest",
+        "conversation_sha256"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8
+        },
+        "project_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "agent_type": {
+          "$ref": "common.schema.json#/$defs/agent_type"
+        },
+        "native_session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "known_server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "base_version": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "relative_cwd": {
+          "type": "string"
+        },
+        "activity_state": {
+          "$ref": "common.schema.json#/$defs/activity_state"
+        },
+        "source_observed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "adapter_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "visible_text_version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "adapter_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "agent_version": {
+          "type": "string"
+        },
+        "git": {
+          "$ref": "common.schema.json#/$defs/git_observation"
+        },
+        "manifest": {
+          "$ref": "#/$defs/manifest"
+        },
+        "conversation_sha256": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        }
+      }
+    },
+    "upload_target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sha256",
+        "raw_size",
+        "method",
+        "url"
+      ],
+      "properties": {
+        "sha256": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "raw_size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "method": {
+          "type": "string",
+          "const": "PUT"
+        },
+        "url": {
+          "$ref": "#/$defs/artifact_transfer_url"
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "prepare_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "attempt_token",
+        "server_session_id",
+        "latest_version",
+        "already_committed",
+        "missing_chunk_uploads"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "status": {
+          "type": "string",
+          "const": "ok"
+        },
+        "attempt_token": {
+          "type": "string",
+          "minLength": 16
+        },
+        "server_session_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "latest_version": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "already_committed": {
+          "type": "boolean"
+        },
+        "missing_chunk_uploads": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/upload_target"
+          }
+        },
+        "committed_version": {
+          "$ref": "#/$defs/version"
+        }
+      }
+    },
+    "commit_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "request_id",
+        "attempt_token",
+        "conversation"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 8
+        },
+        "attempt_token": {
+          "type": "string",
+          "minLength": 16
+        },
+        "conversation": {
+          "$ref": "#/$defs/snapshot_observation"
+        }
+      }
+    },
+    "commit_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "session",
+        "version"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schema_version"
+        },
+        "status": {
+          "type": "string",
+          "const": "ok"
+        },
+        "session": {
+          "$ref": "#/$defs/session"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        }
+      }
+    },
+    "conversation_manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "const": 1
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sha256": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "sha256": {
+                "$ref": "common.schema.json#/$defs/sha256"
+              },
+              "size": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 16777216
+              },
+              "first": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "sha256",
+              "size",
+              "first",
+              "count"
+            ]
+          }
+        }
+      },
+      "required": [
+        "format",
+        "count",
+        "sha256",
+        "blocks"
+      ]
+    },
+    "snapshot_observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "normalized": {
+          "$ref": "session-observation.schema.json#/properties/normalized"
+        },
+        "visible_text": {
+          "$ref": "session-observation.schema.json#/properties/visible_text"
+        },
+        "native_lineage": {
+          "$ref": "session-observation.schema.json#/properties/native_lineage"
+        }
+      },
+      "required": [
+        "normalized"
+      ]
+    },
+    "snapshot_content": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "observation_sha256": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "content": {
+          "$ref": "#/$defs/conversation_manifest"
+        },
+        "native_lineage": {
+          "$ref": "session-observation.schema.json#/properties/native_lineage"
+        },
+        "visible_text_sha256": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "summary": {
+          "$ref": "session-context.schema.json#/$defs/index_record"
+        }
+      },
+      "required": [
+        "content",
+        "summary"
+      ]
+    }
+  },
+  "$ref": "#/$defs/commit_response"
+}

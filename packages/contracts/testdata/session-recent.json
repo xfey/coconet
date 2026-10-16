@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "request_id": "req_recent001",
+  "retryable": false,
+  "project": {
+    "project_id": "coco_context001",
+    "name": "payments-service",
+    "status": "active"
+  },
+  "results": [
+    {
+      "server_session_id": "sess_context001",
+      "agent_type": "claude",
+      "author": {
+        "account_id": "acct_context001",
+        "display_name": "Fixture User"
+      },
+      "activity_state": "active",
+      "latest_synced_at": "2026-08-24T12:00:03Z",
+      "latest_version": 4,
+      "latest_excerpt": {
+        "turn_id": "turn-context-6",
+        "ordinal": 6,
+        "role": "assistant",
+        "kind": "message",
+        "text": "Updated RetryPolicy for idempotent payment retries."
+      },
+      "recent_paths": ["src/payments/retry.go", "tests/payments/retry_test.go"],
+      "lineage": {
+        "root_server_session_id": "sess_context001",
+        "family_result_count": 1
+      },
+      "read_ref": {
+        "server_session_id": "sess_context001",
+        "version": 3
+      }
+    }
+  ]
+}
