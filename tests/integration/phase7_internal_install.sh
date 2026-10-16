@@ -74,14 +74,15 @@ current_name="coconet-${current_version}-${target_os}-${target_architecture}.tar
 [[ "$(basename "${current_archive}")" == "${current_name}" ]] || fail "current archive does not target this platform"
 [[ "$(basename "${current_checksum}")" == "${current_name}.sha256" ]] || fail "current checksum filename is invalid"
 
-test_root="$(mktemp -d "${TMPDIR:-/tmp}/coconet-internal-install.XXXXXX")"
+test_temporary_parent="$(cd "${TMPDIR:-/tmp}" && pwd -P)"
+test_root="$(mktemp -d "${test_temporary_parent}/coconet-internal-install.XXXXXX")"
 case "${test_root}" in
-  "${TMPDIR:-/tmp}"/coconet-internal-install.*) ;;
+  "${test_temporary_parent}"/coconet-internal-install.*) ;;
   *) fail "temporary root escaped its safety boundary" ;;
 esac
 cleanup() {
   case "${test_root}" in
-    "${TMPDIR:-/tmp}"/coconet-internal-install.*)
+    "${test_temporary_parent}"/coconet-internal-install.*)
       if [[ -d "${test_root}" ]]; then
         find "${test_root}" -depth -delete
       fi
@@ -151,7 +152,8 @@ NODE
 assert_runtime_version() {
   local expected="$1"
   local actual
-  actual="$("${install_root}/current/bin/coconet" version)"
+  [[ "$(readlink "${test_root}/bin/coconet")" == "${install_root}/current/bin/coconet" ]] || fail "test command link escaped its isolated install"
+  actual="$("${test_root}/bin/coconet" version)"
   [[ "${actual}" == "coconet ${expected}" ]] || fail "active Runtime version mismatch: ${actual}"
 }
 
@@ -173,6 +175,7 @@ run_install() {
     --artifact "${archive}" \
     --checksum "${checksum}" \
     --root "${install_root}" \
+    --bin-dir "${test_root}/bin" \
     --json >"${stdout_path}" 2>"${stderr_path}"
   exit_code=$?
   set -e
