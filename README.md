@@ -10,13 +10,13 @@ This repository distributes release documentation and binaries. Implementation s
 
 ## 0.28.0: Cursor CLI collaboration / Cursor CLI 协作
 
-Client, Plugins and Server release artifacts are **0.28.0**. Cursor CLI joins Codex and Claude Code for local capture, work graph generation, search, reading and native session continuation. See [release notes](https://github.com/xfey/coconet/releases/tag/v0.28.0).
+Client, npm, Plugins and Server release artifacts are **0.28.0**. Cursor CLI joins Codex and Claude Code for local capture, work graph generation, search, reading and native session continuation. See [release notes](https://github.com/xfey/coconet/releases/tag/v0.28.0).
 
-客户端、三种 Agent 插件及服务端制品更新为 **0.28.0**。Cursor CLI 支持本地采集、工作图生成、搜索、读取和原生会话接力。Codex 配置兼容软链接；Cursor 的额度错误及完整 JSON 代码块输出得到更明确的处理。
+客户端、npm、三种 Agent 插件及服务端制品更新为 **0.28.0**。Cursor CLI 支持本地采集、工作图生成、搜索、读取和原生会话接力。Codex 配置兼容软链接；Cursor 的额度错误及完整 JSON 代码块输出得到更明确的处理。
 
-Cross-Agent conversion runs locally. Existing projects, connections and native histories remain in place. Restart Agents after upgrading to load the new integrations. npm publication status is listed on the Release page.
+Cross-Agent conversion runs locally. Existing projects, connections and native histories remain in place. Restart Agents after upgrading to load the new integrations. npm latest is 0.28.0; clean Registry installations passed on macOS arm64 and Linux amd64.
 
-跨 Agent 转换在本地执行。已有项目、连接及原生历史保留；升级后重新打开 Agent。npm 发布状态见 Release 页面。
+跨 Agent 转换在本地执行。已有项目、连接及原生历史保留；升级后重新打开 Agent。npm latest 已指向 0.28.0，macOS arm64 与 Linux amd64 的全新 Registry 安装通过。
 
 A Project ID grants joining access to a signed-in user: share it only with intended collaborators. Opening a link alone does not join the project.
 
