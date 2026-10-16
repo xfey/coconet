@@ -1,4 +1,6 @@
-# Coconet
+# <img src="apps/dashboard/assets/coconet-app-icon.svg" alt="" width="40" height="40" align="absmiddle"> Coconet
+
+[coconet.space](https://coconet.space/)
 
 English · [简体中文](README.zh-CN.md)
 
