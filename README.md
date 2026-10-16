@@ -10,7 +10,7 @@ This repository distributes release documentation and binaries. Implementation s
 
 ## 0.27.2: clearer Agent context / 更清晰的协作上下文
 
-Client, npm, Plugins and Server are **0.27.2**. Normal collaboration tools keep their responses focused on the requested work. Current-project health is compact; detailed background errors remain available through local diagnostics. See [release notes](RELEASE_NOTES_v0.27.2.md).
+Client, npm, Plugins and Server are **0.27.2**. Normal collaboration tools keep their responses focused on the requested work. Current-project health is compact; detailed background errors remain available through local diagnostics. See [release notes](https://github.com/xfey/coconet/releases/tag/v0.27.2).
 
 客户端、npm、双 Agent 插件及服务端更新为 **0.27.2**。协作工具减少重复提醒，健康状态按当前项目汇总；详细后台错误可通过本地诊断查看。升级后重新打开 Agent 加载新插件。
 
