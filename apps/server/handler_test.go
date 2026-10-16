@@ -44,7 +44,7 @@ func TestHealthRejectsMutationMethods(t *testing.T) {
 
 func TestServerOperationNamesCoverContextPullForkAndArtifactTransfers(t *testing.T) {
 	tests := map[string]string{
-		"POST /v1/connections":                                 "project.join",
+		"POST /v1/connections":                                  "project.join",
 		"DELETE /v1/projects/coco_fixture/membership":           "membership.leave",
 		"POST /v1/projects/coco_fixture/work-graph":             "work_graph.read",
 		"POST /v1/projects/coco_fixture/sessions/pull":          "session.pull",
@@ -52,8 +52,8 @@ func TestServerOperationNamesCoverContextPullForkAndArtifactTransfers(t *testing
 		"POST /v1/projects/coco_fixture/sessions/search":        "session.search",
 		"POST /v1/projects/coco_fixture/sessions/fork/prepare":  "session.fork.prepare",
 		"POST /v1/projects/coco_fixture/sessions/fork/complete": "session.fork.complete",
-		"PUT /v1/artifacts/objects/chunk_fixture":              "artifact.upload",
-		"GET /v1/artifacts/objects/chunk_fixture":              "artifact.download",
+		"PUT /v1/artifacts/objects/chunk_fixture":               "artifact.upload",
+		"GET /v1/artifacts/objects/chunk_fixture":               "artifact.download",
 	}
 	for requestLine, expected := range tests {
 		parts := strings.SplitN(requestLine, " ", 2)
