@@ -84,6 +84,7 @@ func TestMCPArgumentFailuresIdentifyFieldsAndGuideRecovery(t *testing.T) {
 }
 
 func TestMCPValidInputSeparatesDisconnectedWorkspaceFromParameterErrors(t *testing.T) {
+	t.Setenv("CODEX_HOME", t.TempDir())
 	managedMCPConfig(t, t.TempDir(), nil)
 	chdirMCPTest(t, t.TempDir())
 	for name, args := range map[string]any{
