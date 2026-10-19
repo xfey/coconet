@@ -158,6 +158,6 @@ document.addEventListener('focusin', () => { focused = true; schedule(); });
 document.addEventListener('focusout', () => { focused = false; schedule(); });
 document.addEventListener('visibilitychange', schedule);
 motion.addEventListener('change', () => { if (motion.matches) playing = false; render(); schedule(); });
-function fitPoster() { frame.style.setProperty('--poster-scale', frame.clientWidth / 1440); }
+function fitPoster() { frame.style.setProperty('--poster-scale', frame.clientWidth / 1296); }
 new ResizeObserver(fitPoster).observe(frame);
 fitPoster(); render(); schedule();

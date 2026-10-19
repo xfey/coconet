@@ -1,10 +1,10 @@
 <a href="https://coconet.space/"><img src="docs/assets/readme/promo-en.gif" alt="Coconet: follow a team's work graph, ask about progress, and continue a teammate's session across Agents." width="100%"></a>
 
-# Coconet
+# <img src="apps/dashboard/assets/coconet-app-icon.svg" alt="" width="32" height="32"> Coconet
 
 <p>
-  <a href="https://coconet.space/" title="Open Coconet"><img src="docs/assets/readme/website.svg" alt="Website" width="36" height="36"></a>
-  <a href="README.zh-CN.md" title="切换到简体中文"><img src="docs/assets/readme/language.svg" alt="简体中文" width="36" height="36"></a>
+  <a href="https://coconet.space/" title="Open Coconet"><img src="docs/assets/readme/website-en.svg" alt="Website" width="168" height="48"></a>
+  <a href="README.zh-CN.md" title="阅读中文"><img src="docs/assets/readme/language-en.svg" alt="阅读中文" width="168" height="48"></a>
 </p>
 
 Share Agent sessions and build together. Follow your team's work graph, find
@@ -30,14 +30,7 @@ or connect their own local folders to collaborate.
 ## Explore
 
 <p>
-  <a href="docs/getting-started.md"><img src="docs/assets/readme/start-en.svg" alt="Getting started" width="168" height="60"></a>
   <a href="docs/README.md"><img src="docs/assets/readme/docs-en.svg" alt="Docs and help" width="168" height="60"></a>
-  <a href="docs/self-hosting.md"><img src="docs/assets/readme/server-en.svg" alt="Self-hosting" width="168" height="60"></a>
+  <a href="CONTRIBUTING.md"><img src="docs/assets/readme/contribute-en.svg" alt="Contributing" width="168" height="60"></a>
+  <a href="LICENSE"><img src="docs/assets/readme/license-en.svg" alt="MIT License" width="168" height="60"></a>
 </p>
-<p>
-  <a href="docs/architecture.md"><img src="docs/assets/readme/graph-en.svg" alt="How it works" width="168" height="60"></a>
-  <a href="docs/data-sharing.md"><img src="docs/assets/readme/data-en.svg" alt="Data sharing" width="168" height="60"></a>
-  <a href="docs/development.md"><img src="docs/assets/readme/code-en.svg" alt="Development" width="168" height="60"></a>
-</p>
-
-[Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [MIT](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.md)

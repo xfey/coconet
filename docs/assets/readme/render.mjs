@@ -10,7 +10,7 @@ const browser = await chromium.launch({ headless: true, ...(process.env.COCONET_
 const root = new URL('./', import.meta.url);
 const errors = [];
 try {
-  const page = await browser.newPage({ viewport: { width: 1496, height: 960 }, reducedMotion: 'reduce', deviceScaleFactor: 1 });
+  const page = await browser.newPage({ viewport: { width: 1352, height: 960 }, reducedMotion: 'reduce', deviceScaleFactor: 1 });
   page.on('pageerror', error => errors.push(error.message));
   page.on('request', request => { if (/^https?:/.test(request.url())) errors.push('Unexpected external request: ' + request.url()); });
   for (const language of ['zh', 'en']) for (const scene of ['graph', 'query', 'fork']) {
@@ -49,7 +49,7 @@ for language in ('zh','en'):
     target=root/f'promo-{language}.gif'
     frames[0].save(target,save_all=True,append_images=frames[1:],duration=6500,loop=0,disposal=2,optimize=True)
     with Image.open(target) as image:
-        assert image.n_frames==3 and image.size==(1440,760)
+        assert image.n_frames==3 and image.size==(1296,668)
     print(f'Rendered {target.name}: {target.stat().st_size//1024} KiB')
 `, fileURLToPath(root)], { stdio: 'inherit' });
 if (result.error) throw result.error;
