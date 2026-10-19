@@ -10,3 +10,10 @@ Follow [DESIGN.md](DESIGN.md) for bilingual text, shared controls, dialog hierar
 responsive layout and accessibility. `make npm-test` runs module tests; production
 handler browser regressions are documented in [development](../../docs/development.md).
 Vendor and font directories retain their upstream notices.
+
+Shared project links ask new members to confirm joining. The same dialog then
+confirms membership: **OK** closes it, while **How to connect a local folder**
+opens the project's connection instructions. Joining from the sidebar uses the
+same confirmation; existing members go straight to the project. Viewing the
+instructions does not join again or authorize a device. Commands retain the
+selected project and server address.

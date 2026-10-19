@@ -1,9 +1,8 @@
 import { projectConnectionCommand, sharingScope } from './connection.mjs';
 import { commandBlock } from './dialog.mjs';
 
-export function renderInstallation({ content, project, apiOrigin, joined = false, t, element, copyText }) {
+export function renderInstallation({ content, project, apiOrigin, t, element, copyText }) {
   const guide = element('div', undefined, 'dialog-stack installation-guide');
-  if (joined) guide.append(element('p', t('project_joined', { name: project.name }), 'dialog-lead'));
   const steps = element('ol', undefined, 'install-steps');
   const options = { t, element, copyText, buttonClass: '' };
   function step(title, text) {

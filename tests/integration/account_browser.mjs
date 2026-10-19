@@ -85,7 +85,33 @@ try {
       assert.equal(await target.locator('#modal-content').evaluate(el => el.scrollWidth > el.clientWidth + 1), false);
     }
   }
+  async function checkProjectNotice(target, language, joined, name = '') {
+    const title = joined ? (language === 'zh' ? '已加入「' + name + '」' : 'Joined ' + name)
+      : language === 'zh' ? '你受邀加入一个协作项目' : "You're invited to join a collaborative project";
+    await target.getByRole('heading', { name: title, exact: true }).waitFor();
+    assert.equal(await target.locator('.project-entry,.installation-guide').count(), 0);
+    assert.equal(await target.locator('#modal-content input').count(), 0);
+    assert.deepEqual(await target.locator('#modal-content button').allTextContents(), joined
+      ? language === 'zh' ? ['好的', '如何连接本地文件夹'] : ['OK', 'How to connect a local folder']
+      : [language === 'zh' ? '加入项目' : 'Join project']);
+    if (joined) assert.equal(await target.locator('#modal-content .dialog-description').textContent(), language === 'zh'
+      ? '你现在可以查看项目协作图，了解同事的工作进展。如需同步自己的进展，可以连接本地文件夹。'
+      : "You can now view the project's work graph to see your teammates' progress. To sync your own progress, connect a local folder.");
+    for (const width of [1280, 390, 320]) {
+      await target.setViewportSize({ width, height: 844 });
+      assert.equal(await target.locator('#modal-content').evaluate(node => node.scrollWidth > node.clientWidth + 1), false);
+      assert.equal(await target.locator('#session-modal').evaluate(node => {
+        const bounds = node.getBoundingClientRect(), close = node.querySelector('#modal-close').getBoundingClientRect();
+        return bounds.left >= 0 && bounds.right <= innerWidth && close.right <= bounds.right
+          && [...node.querySelectorAll('.ui-button')].every(button => {
+            const b = button.getBoundingClientRect(); return b.left >= bounds.left && b.right <= bounds.right && b.height >= 40;
+          });
+      }), true, 'Invitation and success actions must fit the viewport, including long names');
+      await screenshot(target, (joined ? 'project-joined-' : 'project-invitation-') + width + '-' + language);
+    }
+  }
   const memberAccounts = [];
+  const memberProjectName = 'Member collaboration ' + 'x'.repeat(70);
   let sharedInvitation;
   for (const id of ['member-a', 'member-b']) {
     const isolated = await browser.newContext({ ignoreHTTPSErrors: true, locale: 'en-US' });
@@ -108,22 +134,63 @@ try {
       assert.equal(token.status, 'ok'); assert.equal(token.account.account_id, account.account.account_id);
       await trial.locator('#project-manage').click();
       await checkProjectChoices(trial, 1280, false);
-      await trial.getByLabel('New project name', { exact: true }).fill('Member collaboration');
+      await trial.getByLabel('New project name', { exact: true }).fill(memberProjectName);
       await trial.getByRole('button', { name: 'Create project', exact: true }).click();
-      await trial.getByRole('button', { name: 'Member collaboration', exact: true }).waitFor();
+      await trial.getByRole('button', { name: memberProjectName, exact: true }).waitFor();
       await trial.locator('#project-share').click();
       await trial.getByRole('button', { name: 'Copy project link', exact: true }).waitFor();
       sharedInvitation = await trial.locator('.share-result .copy-field:nth-child(2) pre').textContent();
       await trial.locator('#modal-close').click();
     } else {
+      await checkProjectNotice(trial, 'en', false);
+      assert.equal((await (await isolated.request.get(fixture.url + '/v1/dashboard/projects')).json()).projects.length, 0);
+      await trial.route('**/v1/dashboard/connections', route => route.fulfill({ status: 503, json: { code: 'temporarily_unavailable' } }));
       await trial.getByRole('button', { name: 'Join project', exact: true }).click();
-      await trial.locator('.installation-guide').waitFor();
-      await trial.locator('#modal-close').click();
+      await trial.locator('.account-error').filter({ hasText: /.+/ }).waitFor();
+      assert.equal(await trial.getByRole('button', { name: 'Join project', exact: true }).isEnabled(), true);
+      assert.equal((await (await isolated.request.get(fixture.url + '/v1/dashboard/projects')).json()).projects.length, 0);
+      await trial.unroute('**/v1/dashboard/connections');
+      // Closing while the joined project's canvas loads must not later reopen
+      // a success screen or replace a newly opened dialog with instructions.
+      let releaseProjectList, projectListStarted;
+      const projectListGate = new Promise(resolve => { releaseProjectList = resolve; });
+      const projectListPending = new Promise(resolve => { projectListStarted = resolve; });
+      await trial.route('**/v1/dashboard/projects', async route => { projectListStarted(); await projectListGate; await route.continue(); });
+      await trial.getByRole('button', { name: 'Join project', exact: true }).click();
+      await projectListPending;
+      assert.equal(await trial.getByRole('button', { name: 'Join project', exact: true }).isDisabled(), true);
+      assert.equal(await trial.getByRole('button', { name: 'Join project', exact: true }).getAttribute('aria-busy'), 'true');
+      await trial.keyboard.press('Escape');
+      await trial.locator('#session-modal').waitFor({ state: 'hidden' });
+      await trial.locator('#project-manage').click();
+      releaseProjectList();
+      await trial.unrouteAll({ behavior: 'wait' });
+      await trial.getByRole('button', { name: memberProjectName, exact: true }).waitFor();
+      assert.equal(await trial.locator('.project-entry').isVisible(), true);
+      assert.equal(await trial.locator('.installation-guide').count(), 0);
+      assert.equal(await trial.locator('.account-error').textContent(), '');
+      await chooseEntry(trial, 'join');
+      await trial.getByLabel('Shared link or Project ID', { exact: true }).fill(sharedInvitation);
+      await trial.evaluate(() => { window.invitationCloseCount = 0; document.querySelector('#session-modal').addEventListener('close', () => window.invitationCloseCount++); });
+      await trial.getByRole('button', { name: 'Join project', exact: true }).click();
+      await checkProjectNotice(trial, 'en', true, memberProjectName);
+      assert.equal(await trial.evaluate(() => window.invitationCloseCount), 0, 'Success stays in the same open dialog');
+      assert.equal(await trial.locator('.account-error').textContent(), '');
+      assert.equal(await trial.getByRole('button', { name: 'OK', exact: true }).evaluate(node => node === document.activeElement), true);
+      await trial.keyboard.press('Tab');
+      assert.equal(await trial.getByRole('button', { name: 'How to connect a local folder', exact: true }).evaluate(node => node === document.activeElement), true);
+      await trial.keyboard.press('Shift+Tab');
+      await trial.keyboard.press('Enter');
+      await trial.locator('#session-modal').waitFor({ state: 'hidden' });
+      assert.equal(await trial.locator('#project-manage').evaluate(node => node === document.activeElement), true);
+      assert.equal(await trial.locator('.installation-guide').count(), 0);
       assert.equal((await (await isolated.request.get(fixture.url + '/v1/dashboard/projects')).json()).projects.length, 1);
 
     }
     await trial.reload(); await trial.locator('#workspace').waitFor();
     assert.equal(await trial.locator('#account-label').innerText(), id);
+    await trial.getByRole('button', { name: memberProjectName, exact: true }).waitFor();
+    assert.equal(await trial.locator('#session-modal').isVisible(), false, 'Existing members go straight to the project');
     await isolated.close();
   }
   assert.notEqual(memberAccounts[0], memberAccounts[1]);
@@ -577,11 +644,22 @@ try {
   const teammate = await (await second.request.get(fixture.url + '/v1/dashboard/session')).json();
   assert.notEqual(teammate.account.account_id, me.account.account_id);
   assert.equal((await (await second.request.get(fixture.url + '/v1/dashboard/projects')).json()).projects.length, 0);
+  await checkProjectNotice(otherPage, 'zh', false);
+  let invitationJoins = 0, invitationDirectoryRequests = 0;
+  otherPage.on('request', request => {
+    if (request.url().endsWith('/v1/dashboard/connections')) invitationJoins++;
+    if (request.url().endsWith('/v1/dashboard/authorize')) invitationDirectoryRequests++;
+  });
   await otherPage.getByRole('button', { name: '加入项目', exact: true }).click();
+  await checkProjectNotice(otherPage, 'zh', true, projects.projects[0].name);
+  assert.equal((await (await second.request.get(fixture.url + '/v1/dashboard/projects')).json()).projects.length, 1);
+  await otherPage.getByRole('button', { name: '如何连接本地文件夹', exact: true }).click();
   await otherPage.locator('.command-block').filter({ hasText: 'coconet connect' }).getByRole('button', { name: '复制命令', exact: true }).waitFor();
   const joinCommand = await otherPage.locator('.installation-guide pre').filter({ hasText: 'coconet connect' }).textContent();
   assert.match(joinCommand, /^coconet connect 'coco_/);
   assert.ok(joinCommand.includes(" --server '" + fixture.cli_url + "'"), 'Copied commands must target the API origin');
+  assert.equal(invitationJoins, 1, 'Opening instructions must not join the project again');
+  assert.equal(invitationDirectoryRequests, 0, 'Viewing instructions must not authorize a device');
   await otherPage.locator('#modal-close').click();
   assert.equal(await otherPage.locator('.project-item').count(), 1);
 
@@ -624,8 +702,11 @@ try {
   await chooseEntry(otherPage, 'join');
   await otherPage.getByLabel('分享链接或项目 ID', { exact: true }).fill(invitation.replace(fixture.url, fixture.cli_url));
   await otherPage.getByLabel('分享链接或项目 ID', { exact: true }).press('Enter');
-  await otherPage.locator('.command-block').filter({ hasText: 'coconet connect' }).getByRole('button', { name: '复制命令', exact: true }).waitFor();
-  await otherPage.locator('#modal-close').click();
+  await otherPage.getByRole('heading', { name: '已加入「' + projects.projects[0].name + '」', exact: true }).waitFor();
+  assert.equal(await otherPage.locator('.installation-guide').count(), 0);
+  await otherPage.keyboard.press('Escape');
+  await otherPage.locator('#session-modal').waitFor({ state: 'hidden' });
+  await otherPage.locator('.project-item').waitFor();
   assert.equal(await otherPage.locator('.project-item').count(), 1);
   assert.equal(joinDirectoryRequests, 0, 'Joining from the sidebar must never authorize a device');
   await page.locator('#account-name').click();

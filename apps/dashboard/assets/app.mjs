@@ -159,9 +159,9 @@ function renderAction() {
   footer.append(element('p', t('copy_fallback'), 'muted'), copy);
   content.replaceChildren(element('p', t(action.descriptionKey), 'modal-description'), pre, footer); content.scrollTop = scroll;
 }
-function openInstallation({ project, joined = false, trigger = 'install-open' } = {}) {
+function openInstallation({ project, trigger = 'install-open' } = {}) {
   openModal('installation', t('install_title'), trigger);
-  modal.installation = { project, joined }; renderInstall();
+  modal.installation = { project }; renderInstall();
 }
 function renderInstall() {
   $('modal-title').textContent = t('install_title');

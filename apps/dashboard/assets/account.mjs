@@ -9,10 +9,11 @@ export function createAccountUI({ state, api, t, element, statusMessage, openMod
   let provider = null;
   let activeCode = '';
   let authorizationContent = null;
+  let refreshProjectNotice = () => {};
   const request = (path, method, data) => api(path, { method, ...(data === undefined ? {} : { body: JSON.stringify(data) }) });
   const failure = node => error => { if (node.isConnected) node.textContent = t(connectionErrorKey(error)); };
   function action(label, run, className = '') {
-    const glyph = { save_profile: 'check', revoke_device: 'close', retry: 'refresh', load_more: 'chevronDown', logout: 'logout', leave_project: 'logout', confirm_leave_project: 'logout', authorize_approve: 'check', authorize_decline: 'close', cancel: 'close', join_project: 'login', connect_my_folder: 'folder' }[label];
+    const glyph = { save_profile: 'check', revoke_device: 'close', retry: 'refresh', load_more: 'chevronDown', logout: 'logout', leave_project: 'logout', confirm_leave_project: 'logout', authorize_approve: 'check', authorize_decline: 'close', cancel: 'close', join_project: 'login', connect_my_folder: 'folder', project_joined_ok: 'check', project_connection_help: 'folder' }[label];
     const button = createButton(t(label), { glyph, className });
     button.type = 'button';
     button.addEventListener('click', async () => {
@@ -118,8 +119,25 @@ export function createAccountUI({ state, api, t, element, statusMessage, openMod
       }
     } catch (caught) { failure(error)(caught); }
   }
-  function connectionHelp(project, joined = false, trigger = 'project-manage') {
-    openInstallation({ project, joined, trigger });
+  function connectionHelp(project, trigger = 'project-manage') {
+    openInstallation({ project, trigger });
+  }
+  function projectJoined(content, error, project) {
+    const description = element('p', '', 'dialog-description');
+    const ok = action('project_joined_ok', closeModal, 'primary');
+    const help = action('project_connection_help', () => connectionHelp(project));
+    content.replaceChildren(description, actions(ok, help));
+    error.textContent = '';
+    setModalDismiss(closeModal);
+    refreshProjectNotice = () => {
+      if (!content.isConnected) return;
+      $('modal-title').textContent = t('project_joined', { name: project.name });
+      description.textContent = t('project_joined_description');
+      setButtonLabel(ok, t('project_joined_ok'));
+      setButtonLabel(help, t('project_connection_help'));
+    };
+    refreshProjectNotice();
+    ok.focus({ preventScroll: true });
   }
   function shareProject(project, trigger = 'project-manage') {
     if (!project) return;
@@ -134,7 +152,7 @@ export function createAccountUI({ state, api, t, element, statusMessage, openMod
     folders.append(element('h3', t('connected_folders')));
     const folderList = element('div', undefined, 'project-folders');
     folders.append(folderList);
-    if (project.status === 'active') folders.append(actions(action('connect_my_folder', () => connectionHelp(project, false, trigger), 'primary')));
+    if (project.status === 'active') folders.append(actions(action('connect_my_folder', () => connectionHelp(project, trigger), 'primary')));
     content.append(sharing, folders);
     renderProjectFolders(folderList, project.project_id);
     if (project.status !== 'active') return;
@@ -150,20 +168,37 @@ export function createAccountUI({ state, api, t, element, statusMessage, openMod
   }
 
   function projects(suggestedID = '') {
-    const { content, error } = panel('add_project', 'project-manage', 'projects');
-    const choices = mountProjectChoices({ content, error, suggestedID, projects: state.projects, request, t, element,
-      cancel: closeModal,
-      select: async (id, created) => {
-        // Creation already grants membership. Joining grants membership only;
-        // a folder connection requires a separate CLI authorization.
-        const project = created ? null : (await request('/connections', 'POST', {
-          request_id: crypto.randomUUID(), schema_version: 1, project_id: id,
-        })).project;
-        if (!content.isConnected) return;
-        history.pushState(null, '', workspaceLocation(id));
-        closeModal(); await openWorkspace(state.session);
-        if (project) connectionHelp(project, true);
-      },
+    const { content, error } = panel(suggestedID ? 'project_invitation' : 'add_project', 'project-manage', 'projects');
+    refreshProjectNotice = () => {};
+    async function select(id, created = false) {
+      // Creation already grants membership. Joining grants membership only;
+      // a folder connection requires a separate CLI authorization.
+      const project = created ? null : (await request('/connections', 'POST', {
+        request_id: crypto.randomUUID(), schema_version: 1, project_id: id,
+      })).project;
+      if (!content.isConnected) return;
+      history.pushState(null, '', workspaceLocation(id));
+      if (!project) closeModal();
+      await openWorkspace(state.session);
+      if (project && content.isConnected) projectJoined(content, error, project);
+    }
+    if (suggestedID) {
+      const join = action('join_project', async () => {
+        error.textContent = ''; join.setAttribute('aria-busy', 'true');
+        try { await select(suggestedID); }
+        catch (caught) { failure(error)(caught); }
+        finally { join.removeAttribute('aria-busy'); }
+      }, 'primary');
+      content.append(actions(join));
+      refreshProjectNotice = () => {
+        if (!join.isConnected) return;
+        $('modal-title').textContent = t('project_invitation');
+        setButtonLabel(join, t('join_project'));
+      };
+      return;
+    }
+    const choices = mountProjectChoices({ content, error, projects: state.projects, request, t, element,
+      cancel: closeModal, select,
     });
     setModalDismiss(choices.dismiss);
   }
@@ -233,5 +268,8 @@ export function createAccountUI({ state, api, t, element, statusMessage, openMod
   $('account-name').addEventListener('click', settings);
   $('project-manage').addEventListener('click', () => projects());
   $('project-share').addEventListener('click', () => shareProject(state.projects.find(project => project.project_id === state.project), 'project-share'));
-  return { loadLogin, afterLogin, renderProjectSettings, refreshLanguage() { if (provider) setButtonLabel($('provider-login'), t('login_with', { provider: provider.label })); } };
+  return { loadLogin, afterLogin, renderProjectSettings, refreshLanguage() {
+    if (provider) setButtonLabel($('provider-login'), t('login_with', { provider: provider.label }));
+    refreshProjectNotice();
+  } };
 }
