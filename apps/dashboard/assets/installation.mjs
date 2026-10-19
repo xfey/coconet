@@ -6,7 +6,6 @@ export function renderInstallation({ content, project, apiOrigin, t, element, co
   const options = { t, element, copyText, buttonClass: '' };
   const connect = element('section', undefined, 'dialog-section');
   connect.append(element('p', t('connect_guide_intro'), 'dialog-description'));
-  if (project) connect.append(element('p', t('connect_target', { name: project.name }), 'dialog-description'));
   connect.append(commandBlock(projectConnectionCommand(project?.project_id, apiOrigin), options));
   connect.append(element('p', t('connect_guide_next'), 'dialog-description'));
   const install = disclosure(t('connect_first_use'), { element, key: 'first-use' });

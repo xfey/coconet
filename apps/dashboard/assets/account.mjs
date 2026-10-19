@@ -161,10 +161,9 @@ export function createAccountUI({ state, api, t, element, statusMessage, openMod
       element, t,
       copyText: async text => { try { await navigator.clipboard.writeText(text); if (content.isConnected) toast('copy_success'); } catch { if (content.isConnected) toast('copy_failed'); } },
     };
-    for (const [label, value, copy] of [['project_id', project.project_id, 'copy_project_id'], ['project_link', url, 'copy_project_link']]) {
-      const group = element('div', undefined, 'copy-field');
-      group.append(element('h3', t(label)), commandBlock(value, { ...copyOptions, label: copy, buttonClass: '' })); resultArea.append(group);
-    }
+    const group = element('div', undefined, 'copy-field');
+    group.append(element('h3', t('project_link')), commandBlock(url, { ...copyOptions, label: 'copy_project_link', buttonClass: '' }));
+    resultArea.append(group);
   }
 
   function projects(suggestedID = '') {
@@ -178,9 +177,10 @@ export function createAccountUI({ state, api, t, element, statusMessage, openMod
       })).project;
       if (!content.isConnected) return;
       history.pushState(null, '', workspaceLocation(id));
-      if (!project) closeModal();
       await openWorkspace(state.session);
-      if (project && content.isConnected) projectJoined(content, error, project);
+      if (!content.isConnected) return;
+      if (created) connectionHelp({ project_id: id });
+      else if (project) projectJoined(content, error, project);
     }
     if (suggestedID) {
       let preview = null, loading = false, errorKey = '';

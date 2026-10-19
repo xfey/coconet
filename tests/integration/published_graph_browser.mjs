@@ -322,6 +322,7 @@ try {
     assert.equal(await p.locator('.installation-guide .command-block:visible').count(), 1);
     assert.equal(await p.locator('[data-disclosure="first-use"]').evaluate(el => el.open), false);
     assert.doesNotMatch(await p.locator('.installation-guide').innerText(), /npm install/);
+    assert.doesNotMatch(await p.locator('.installation-guide').innerText(), /连接到：|Connect to:/);
     assert.match(await p.locator('.installation-guide').innerText(), locale === 'en-US' ? /Confirm the connection in your browser/ : /按浏览器提示确认连接/);
     await screenshot(p, `published-install-compact-${locale}`);
     await p.locator('[data-disclosure="first-use"] summary').focus();

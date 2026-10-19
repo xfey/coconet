@@ -171,11 +171,27 @@ try {
       await trial.locator('#project-manage').click();
       await checkProjectChoices(trial, 1280, false);
       await trial.getByLabel('New project name', { exact: true }).fill(memberProjectName);
+      // Closing during post-creation navigation must not reopen the folder guide.
+      let releaseCreatedProjects, createdProjectsStarted;
+      const createdProjectsGate = new Promise(resolve => { releaseCreatedProjects = resolve; });
+      const createdProjectsPending = new Promise(resolve => { createdProjectsStarted = resolve; });
+      await trial.route('**/v1/dashboard/projects', async route => {
+        if (route.request().method() === 'GET') { createdProjectsStarted(); await createdProjectsGate; }
+        await route.continue();
+      });
       await trial.getByRole('button', { name: 'Create project', exact: true }).click();
+      await createdProjectsPending;
+      await trial.keyboard.press('Escape');
+      await trial.locator('#project-manage').click();
+      releaseCreatedProjects();
+      await trial.unrouteAll({ behavior: 'wait' });
       await trial.getByRole('button', { name: memberProjectName, exact: true }).waitFor();
+      assert.equal(await trial.locator('.project-entry').isVisible(), true);
+      assert.equal(await trial.locator('.installation-guide').count(), 0);
+      await trial.keyboard.press('Escape');
       await trial.locator('#project-share').click();
       await trial.getByRole('button', { name: 'Copy project link', exact: true }).waitFor();
-      sharedInvitation = await trial.locator('.share-result .copy-field:nth-child(2) pre').textContent();
+      sharedInvitation = await trial.locator('.share-result .copy-field pre').textContent();
       await trial.locator('#modal-close').click();
     } else {
       await trial.getByText('Could not load project details. Please retry.', { exact: true }).waitFor();
@@ -287,7 +303,7 @@ try {
   assert.equal((await memberships()).length, 0);
   await newcomerInput.fill('not-a-project');
   await newcomerPage.getByRole('button', { name: 'Join project', exact: true }).click();
-  await newcomerPage.getByText('Invalid Project ID. Copy it from Share.', { exact: true }).waitFor();
+  await newcomerPage.getByText('Invalid Project ID. Use the full project link from Share.', { exact: true }).waitFor();
   await newcomerInput.fill(sharedInvitation.replace(fixture.url, 'https://another.example'));
   await newcomerPage.getByRole('button', { name: 'Join project', exact: true }).click();
   await newcomerPage.getByText('Enter a project link from this server.', { exact: true }).waitFor();
@@ -331,8 +347,11 @@ try {
   await page.locator('#canvas-settings').click();
   assert.equal(await page.locator('.project-settings').count(), 0);
   await page.locator('#modal-close').click();
-  let unauthorizedDirectoryRequests = 0;
-  const trackDirectory = request => { if (request.url().endsWith('/v1/dashboard/authorize')) unauthorizedDirectoryRequests++; };
+  let unauthorizedDirectoryRequests = 0, creationJoins = 0;
+  const trackDirectory = request => {
+    if (request.url().endsWith('/v1/dashboard/authorize')) unauthorizedDirectoryRequests++;
+    if (request.url().endsWith('/v1/dashboard/connections')) creationJoins++;
+  };
   page.on('request', trackDirectory);
   await page.locator('#project-manage').click();
   assert.equal(await page.getByRole('button', { name: 'Leave project', exact: true }).count(), 0);
@@ -370,9 +389,27 @@ try {
   assert.equal(createRequests.length, 2); assert.deepEqual(createRequests[0], createRequests[1], 'Creation retry preserves the idempotency key');
   await page.unroute('**/v1/dashboard/projects');
   assert.equal(unauthorizedDirectoryRequests, 0, 'Sidebar creation must never authorize a device');
+  assert.equal(creationJoins, 0, 'A newly created project must not be joined a second time');
   page.off('request', trackDirectory);
   const projects = await (await context.request.get(fixture.url + '/v1/dashboard/projects')).json();
   assert.equal(projects.projects.length, 1);
+  await page.locator('.installation-guide').waitFor();
+  assert.equal(await page.locator('.installation-guide pre:visible').textContent(), "coconet connect '" + projects.projects[0].project_id + "' --server '" + fixture.cli_url + "'");
+  for (const language of ['zh', 'en']) {
+    await page.locator('#login [data-language]').evaluate((select, value) => {
+      select.value = value; select.dispatchEvent(new Event('change', { bubbles: true }));
+    }, language);
+    assert.equal(await page.locator('#modal-title').textContent(), language === 'zh' ? '连接本地文件夹' : 'Connect a local folder');
+    assert.doesNotMatch(await page.locator('.installation-guide').innerText(), /连接到：|Connect to:|Shared repository/);
+    for (const width of [1280, 390, 320]) {
+      await page.setViewportSize({ width, height: 844 });
+      assert.equal(await page.locator('#modal-content').evaluate(node => node.scrollWidth > node.clientWidth + 1), false);
+      await screenshot(page, 'created-project-guide-' + language + '-' + width);
+    }
+  }
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('#project-manage').evaluate(node => node === document.activeElement), true);
+  await page.setViewportSize({ width: 1280, height: 844 });
   await page.locator('#project-manage').click();
   assert.equal(await page.getByRole('button', { name: 'Leave project', exact: true }).count(), 0);
   assert.equal(await page.getByRole('button', { name: 'Connect a local folder', exact: true }).count(), 0);
@@ -634,7 +671,9 @@ try {
   await folder.locator('summary').focus(); await page.keyboard.press('Enter');
   assert.equal(await folder.locator('code').isVisible(), true);
   await page.keyboard.press('Enter'); assert.equal(await folder.locator('code').isVisible(), false);
-  for (const name of ['Copy Project ID', 'Copy project link']) {
+  assert.equal(await page.getByRole('button', { name: 'Copy Project ID', exact: true }).count(), 0);
+  assert.equal(await page.locator('.share-result .copy-field').count(), 1);
+  for (const name of ['Copy project link']) {
     const control = page.getByRole('button', { name, exact: true });
     assert.equal(await control.evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(255, 255, 255)');
     assert.equal(await control.evaluate(node => node.getBoundingClientRect().height), 40);
@@ -659,8 +698,8 @@ try {
   await page.locator('#project-share').click();
   await page.getByRole('heading', { name: 'Share project', exact: true }).waitFor();
   await page.getByRole('button', { name: 'Copy project link', exact: true }).waitFor();
-  const invitation = await page.locator('.share-result .copy-field:nth-child(2) pre').textContent();
-  assert.equal(await page.locator('.share-result .copy-field:nth-child(2) pre').isVisible(), true);
+  const invitation = await page.locator('.share-result .copy-field pre').textContent();
+  assert.equal(await page.locator('.share-result .copy-field pre').isVisible(), true);
   await page.evaluate(() => { navigator.clipboard.writeText = async () => { throw new Error('fixture clipboard failure'); }; });
   await page.getByRole('button', { name: 'Copy project link', exact: true }).click();
   await page.getByText('Could not copy. Please try again.', { exact: true }).waitFor();
@@ -671,7 +710,7 @@ try {
   assert.equal(await page.evaluate(() => window.fixtureClipboard), invitation);
   await screenshot(page, 'share-collapsed');
 
-  assert.equal(await page.locator('.share-result .copy-field:nth-child(2) pre').isVisible(), true);
+  assert.equal(await page.locator('.share-result .copy-field pre').isVisible(), true);
   await screenshot(page, 'share-expanded');
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 844 });
@@ -679,7 +718,7 @@ try {
     await screenshot(page, 'share-expanded-' + width);
   }
 
-  assert.equal(await page.locator('.share-result .copy-field:nth-child(2) pre').isVisible(), true);
+  assert.equal(await page.locator('.share-result .copy-field pre').isVisible(), true);
   await screenshot(page, 'share-collapsed-320');
   await page.locator('#modal-close').click();
   assert.equal(await page.locator('#project-share').evaluate(node => node === document.activeElement), true);

@@ -20,9 +20,13 @@ and offers local folder connection: **OK** closes it, while **How to connect a l
 opens the project's connection instructions. Joining from the sidebar uses the
 same confirmation; existing members go straight to the project. Viewing the
 instructions does not join again or authorize a device. Commands retain the
-selected project and server address.
+selected project and server address. Creating a project from the website opens
+the connection guide directly; creating one during a CLI folder connection still
+completes that connection. Closing a pending dialog prevents a late response from
+opening the guide.
 
-Connection instructions show a single `coconet connect` command by default,
+Share offers one project link to copy. Connection instructions omit the separate
+project-name caption and show a single `coconet connect` command by default,
 including the selected project and the API address for self-hosted deployments.
 The **First time here?** disclosure contains installation and Hook guidance.
 Open the guide from Share, the membership confirmation, or the sign-in page;
