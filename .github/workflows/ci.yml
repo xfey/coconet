@@ -26,6 +26,8 @@ jobs:
       - name: Install SDK for offline adapter tests
         run: npm ci --ignore-scripts --prefix apps/release/dependencies/claude-sdk
       - name: Tests, vet and build
+        env:
+          COCONET_TEST_CLAUDE_SDK: ${{ github.workspace }}/apps/release/dependencies/claude-sdk/node_modules/@anthropic-ai/claude-agent-sdk/sdk.mjs
         run: make check
   secrets:
     runs-on: ubuntu-latest

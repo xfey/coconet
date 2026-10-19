@@ -19,6 +19,17 @@ the offline native-history adapter test; it does not call a model. Browser regre
 their environment variables are described at the top of each script. These tests
 start an isolated production handler with generated fixtures, not a real account.
 
+For SDK updates, also run the offline import and Fork round trips, including long
+conversations and rewound branches. CI enables these with the installed SDK:
+
+```sh
+COCONET_TEST_CLAUDE_SDK="$PWD/apps/release/dependencies/claude-sdk/node_modules/@anthropic-ai/claude-agent-sdk/sdk.mjs" \
+  go test -count=1 ./adapters/claude
+```
+
+These checks use generated histories and temporary profiles without starting an
+Agent or calling a model.
+
 For example, install browser tools outside the source checkout:
 
 ```sh
