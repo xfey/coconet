@@ -7,7 +7,7 @@ require github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 require (
 	github.com/coreos/go-oidc/v3 v3.12.0
 	github.com/go-jose/go-jose/v4 v4.1.4
-	github.com/jackc/pgx/v5 v5.9.2
+	github.com/jackc/pgx/v5 v5.11.0
 	github.com/minio/minio-go/v7 v7.0.83
 	go.etcd.io/bbolt v1.3.11
 	golang.org/x/oauth2 v0.27.0
