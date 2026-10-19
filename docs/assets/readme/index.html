@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Coconet · README 宣传图样张</title>
+  <link rel="icon" href="../../../apps/dashboard/assets/coconet-logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../agent-marks/marks.css">
+  <link rel="stylesheet" href="preview.css">
+  <script src="preview.js" defer></script>
+</head>
+<body>
+  <header class="preview-toolbar">
+    <p data-copy="preview">README 宣传图样张</p>
+    <div class="preview-controls">
+      <a id="image-link" href="promo-zh.png" data-copy="image">查看当前图片</a>
+      <a id="animation-link" href="promo-zh.gif" data-copy="animation">查看动图</a>
+      <label><span class="sr-only" data-copy="language">语言</span><select id="language"><option value="zh">中文</option><option value="en">English</option></select></label>
+    </div>
+  </header>
+
+  <main class="preview-frame">
+    <article class="poster" data-scene="graph" aria-labelledby="headline">
+      <div class="dots" aria-hidden="true"></div>
+      <div class="brand" aria-label="Coconet">
+        <img src="../../../apps/dashboard/assets/coconet-app-icon.svg" width="42" height="42" alt="">
+        <span>coconet</span>
+      </div>
+
+      <h1 id="headline"><span data-copy="headline1">共享会话，</span><span data-copy="headline2">接力工作。</span></h1>
+
+      <aside class="conversation-note" hidden aria-label="示例对话">
+        <div class="chat-message user-message">
+          <span class="chat-speaker" data-copy="you">你</span>
+          <p class="chat-bubble question"></p>
+        </div>
+        <div class="chat-message assistant-message">
+          <span class="chat-speaker">Agent</span>
+          <p class="chat-bubble answer"></p>
+        </div>
+        <p class="handoff-caption" hidden></p>
+      </aside>
+
+      <figure class="workflow" role="img" aria-label="周末徒步报名页：活动介绍与报名表单并行实现，完成手机适配和报名成功页后，共同测试报名流程。">
+        <figcaption><span class="project-label" data-copy="projectLabel">项目</span><strong data-copy="project">周末徒步报名页</strong></figcaption>
+        <svg class="connections" viewBox="0 0 900 520" fill="none" aria-hidden="true">
+          <defs>
+            <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1L5 4L1 7" fill="none" stroke="context-stroke" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></marker>
+          </defs>
+          <g id="edges"></g>
+        </svg>
+        <div id="nodes" aria-hidden="true"></div>
+      </figure>
+
+      <footer class="poster-footer">
+        <p class="agents"><span class="support-label" data-copy="supports">支持</span>Codex<span class="separator">/</span>Claude Code<span class="separator">/</span>Cursor CLI</p>
+      </footer>
+    </article>
+  </main>
+  <nav class="carousel-controls" aria-label="宣传图轮播">
+    <div class="scene-controls">
+      <button type="button" data-scene="graph" aria-pressed="true">工作图</button>
+      <button type="button" data-scene="query" aria-pressed="false">查询进展</button>
+      <button type="button" data-scene="fork" aria-pressed="false">接力会话</button>
+    </div>
+    <button id="playback" type="button"><span class="playback-icon" aria-hidden="true"></span><span id="playback-label">暂停轮播</span></button>
+  </nav>
+  <p class="sr-only" id="slide-announcement" role="status" aria-live="off"></p>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "repository": "https://github.com/lobehub/lobe-icons",
+  "revision": "8a1b2821bb768c484fe8da20c5e1838b6bf551a9",
+  "license": "MIT",
+  "changes": "White fill and fixed dimensions; paths unchanged.",
+  "files": [
+    {
+      "file": "openai.svg",
+      "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/8a1b2821bb768c484fe8da20c5e1838b6bf551a9/packages/static-svg/icons/openai.svg",
+      "source_sha256": "a595df6b423920c67a7f8f73c063e4bfb72d415948097b6cac063a2366bb5186"
+    },
+    {
+      "file": "claude.svg",
+      "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/8a1b2821bb768c484fe8da20c5e1838b6bf551a9/packages/static-svg/icons/claude.svg",
+      "source_sha256": "365a70a7eb3956d9b9a96086058ebe04e1dbd8e291a756ad964e8a283fbd6d38"
+    },
+    {
+      "file": "cursor.svg",
+      "source": "https://raw.githubusercontent.com/lobehub/lobe-icons/8a1b2821bb768c484fe8da20c5e1838b6bf551a9/packages/static-svg/icons/cursor.svg",
+      "source_sha256": "0cb51bddf264ae108926fd554c063ef40fc1aac3c5c921ddb39ad184e4e5d0ef"
+    }
+  ]
+}
