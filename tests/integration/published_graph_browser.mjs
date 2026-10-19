@@ -236,14 +236,16 @@ try {
   await page.goForward();
   await page.locator('.work-node').filter({ hasText: '简化停止条件说明' }).waitFor();
   assert.equal(new URL(page.url()).pathname, '/' + fixture.project_id);
-  await page.locator('#install-open').click();
+  assert.equal(await page.locator('#install-open').count(), 0);
+  await page.locator('#project-share').click();
+  await page.getByRole('button', { name: '连接本地文件夹', exact: true }).click();
   await page.locator('[data-disclosure="sharing-scope"] summary').click();
   assert.doesNotMatch(await page.locator('#modal-content').innerText(), /加密|模型额度|模型用量|默认模型|支持 macOS/);
   assert.match(await page.locator('#modal-content').innerText(), /已有历史不会自动导入|工具调用/);
   assert.equal(await page.locator('#modal-content button.primary').count(), 0, 'installation copy controls must stay secondary');
   await screenshot(page, 'published-install-desktop-zh');
   await page.keyboard.press('Escape');
-  assert.equal(await page.evaluate(() => document.activeElement.id), 'install-open');
+  assert.equal(await page.evaluate(() => document.activeElement.id), 'project-share');
   // The status dialog needs no remote device report, even when opened again.
   await page.locator('#notice').getByRole('button', { name: '查看同步状态', exact: true }).click();
   assert.equal(requests.filter(path => path.endsWith('/replicas')).length, 0);
@@ -310,15 +312,22 @@ try {
       await screenshot(p, `published-status-${locale}-${width}`);
     }
     await p.keyboard.press('Escape');
-    assert.equal(await p.locator('#install-open').innerText(), locale === 'en-US' ? 'Install Coconet' : '安装 Coconet');
-    await p.locator('#install-open').click();
-    assert.equal(await p.locator('#modal-title').innerText(), locale === 'en-US' ? 'Get started with Coconet' : '开始使用 Coconet');
+    assert.equal(await p.locator('#install-open').count(), 0);
+    await p.locator('#project-share').click();
+    await p.getByRole('button', { name: locale === 'en-US' ? 'Connect a local folder' : '连接本地文件夹', exact: true }).click();
+    assert.equal(await p.locator('#modal-title').innerText(), locale === 'en-US' ? 'Connect a local folder' : '连接本地文件夹');
     const scope = p.locator('[data-disclosure="sharing-scope"]');
     assert.equal(await scope.evaluate(el => el.open), false);
     assert.equal(await p.locator('.installation-guide .command-block').count(), 2);
-    assert.equal(await p.locator('.installation-guide a,.installation-guide > .dialog-description').count(), 0);
-    assert.match(await p.locator('.install-steps > li:last-child').innerText(), locale === 'en-US' ? /Some Agents may ask for Hook permission/ : /部分 Agent 可能需要允许 Hook/);
+    assert.equal(await p.locator('.installation-guide .command-block:visible').count(), 1);
+    assert.equal(await p.locator('[data-disclosure="first-use"]').evaluate(el => el.open), false);
+    assert.doesNotMatch(await p.locator('.installation-guide').innerText(), /npm install/);
+    assert.match(await p.locator('.installation-guide').innerText(), locale === 'en-US' ? /Confirm the connection in your browser/ : /按浏览器提示确认连接/);
     await screenshot(p, `published-install-compact-${locale}`);
+    await p.locator('[data-disclosure="first-use"] summary').focus();
+    await p.keyboard.press('Enter');
+    assert.equal(await p.locator('.installation-guide .command-block:visible').count(), 2);
+    assert.match(await p.locator('[data-disclosure="first-use"]').innerText(), locale === 'en-US' ? /If your Agent asks for Hook permission/ : /如 Agent 提示允许 Hook/);
     await p.locator('[data-disclosure="sharing-scope"] summary').click();
     assert.match(await scope.innerText(), /已有历史不会自动导入|Existing history is not imported automatically/);
     assert.doesNotMatch(await p.locator('#modal-content').innerText(), /加密|模型用量|模型额度|默认模型|encryption|model usage|default model|Requires macOS/i);
@@ -329,7 +338,7 @@ try {
       await screenshot(p, `published-install-${locale}-${width}`);
     }
     await p.keyboard.press('Escape');
-    assert.equal(await p.evaluate(() => document.activeElement.id), 'install-open');
+    assert.equal(await p.evaluate(() => document.activeElement.id), 'project-share');
     await mobile.close();
   }
   assert.deepEqual(failures, []);

@@ -1,24 +1,24 @@
 import { projectConnectionCommand, sharingScope } from './connection.mjs';
-import { commandBlock } from './dialog.mjs';
+import { commandBlock, disclosure } from './dialog.mjs';
 
 export function renderInstallation({ content, project, apiOrigin, t, element, copyText }) {
   const guide = element('div', undefined, 'dialog-stack installation-guide');
-  const steps = element('ol', undefined, 'install-steps');
   const options = { t, element, copyText, buttonClass: '' };
-  function step(title, text) {
-    const row = element('li', undefined, 'dialog-section');
-    row.append(element('h3', t(title)));
-    if (text) row.append(element('p', t(text), 'dialog-description'));
-    steps.append(row); return row;
-  }
-  const install = step('install_step');
-  install.append(commandBlock('npm install -g coconet', options));
-  const connect = step('install_connect_step', 'install_connect_help');
-  if (project) connect.append(element('p', t('install_target', { name: project.name }), 'muted'));
+  const connect = element('section', undefined, 'dialog-section');
+  connect.append(element('p', t('connect_guide_intro'), 'dialog-description'));
+  if (project) connect.append(element('p', t('connect_target', { name: project.name }), 'dialog-description'));
   connect.append(commandBlock(projectConnectionCommand(project?.project_id, apiOrigin), options));
-  step('install_agent_step', 'install_agent_help');
+  connect.append(element('p', t('connect_guide_next'), 'dialog-description'));
+  const install = disclosure(t('connect_first_use'), { element, key: 'first-use' });
+  install.body.append(element('p', t('connect_install_help'), 'dialog-description'),
+    commandBlock('npm install -g coconet', options),
+    element('p', t('connect_hook_help'), 'dialog-description'));
   const scope = sharingScope({ t, element });
   scope.querySelector('.disclosure-body').prepend(element('p', t('connect_folder_explanation'), 'dialog-description'));
-  guide.append(steps, scope);
+  guide.append(connect, install.details, scope);
+  for (const previous of content.querySelectorAll('details[data-disclosure]')) {
+    const current = [...guide.querySelectorAll('details[data-disclosure]')].find(node => node.dataset.disclosure === previous.dataset.disclosure);
+    if (current) current.open = previous.open;
+  }
   content.replaceChildren(guide);
 }

@@ -17,3 +17,10 @@ opens the project's connection instructions. Joining from the sidebar uses the
 same confirmation; existing members go straight to the project. Viewing the
 instructions does not join again or authorize a device. Commands retain the
 selected project and server address.
+
+Connection instructions show a single `coconet connect` command by default,
+including the selected project and the API address for self-hosted deployments.
+The **First time here?** disclosure contains installation and Hook guidance.
+Open the guide from Share, the membership confirmation, or the sign-in page;
+there is no separate sidebar installation entry. Interface copy uses **project**
+for the shared collaboration space and **local folder** for a device path.

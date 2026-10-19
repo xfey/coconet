@@ -159,12 +159,12 @@ function renderAction() {
   footer.append(element('p', t('copy_fallback'), 'muted'), copy);
   content.replaceChildren(element('p', t(action.descriptionKey), 'modal-description'), pre, footer); content.scrollTop = scroll;
 }
-function openInstallation({ project, trigger = 'install-open' } = {}) {
-  openModal('installation', t('install_title'), trigger);
+function openInstallation({ project, trigger = 'login-install' } = {}) {
+  openModal('installation', t('connect_my_folder'), trigger);
   modal.installation = { project }; renderInstall();
 }
 function renderInstall() {
-  $('modal-title').textContent = t('install_title');
+  $('modal-title').textContent = t('connect_my_folder');
   renderInstallation({ content: $('modal-content'), ...modal.installation, apiOrigin: document.querySelector('meta[name="coconet-api-origin"]').content, t, element, copyText });
 }
 function openSettings() { openModal('settings', t('settings'), 'canvas-settings'); renderSettings(); }
@@ -523,7 +523,6 @@ const outsideModal = event => {
 $('session-modal').addEventListener('pointerdown', event => { backdropDown = event.target === $('session-modal') && outsideModal(event); });
 $('session-modal').addEventListener('click', event => { if (backdropDown && event.target === $('session-modal') && outsideModal(event)) closeModal(); backdropDown = false; });
 $('canvas-settings').addEventListener('click', openSettings);
-$('install-open').addEventListener('click', () => openInstallation({ project: state.projects.find(item => item.project_id === state.project && item.status === 'active') }));
 $('login-install').addEventListener('click', () => openInstallation({ trigger: 'login-install' }));
 $('library-open').addEventListener('click', () => toggleLibraryDrawer($('library-drawer').hidden));
 $('library-close').addEventListener('click', () => toggleLibraryDrawer(false, true));

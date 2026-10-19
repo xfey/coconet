@@ -56,9 +56,37 @@ try {
       assert.ok(layout.buttonWidth >= 240);
       assert.equal(layout.x > 0, width > 760);
       assert.equal(await page.locator('#login-form').isVisible(), false);
+      assert.equal(await page.locator('#login-title').innerText(), language === 'zh' ? '打开项目' : 'Open your projects');
       await screenshot(page, 'login-' + width + '-' + language);
+      await page.locator('#login-install').click();
+      assert.equal(await page.locator('#modal-title').innerText(), language === 'zh' ? '连接本地文件夹' : 'Connect a local folder');
+      assert.equal(await page.locator('.installation-guide .command-block:visible').count(), 1);
+      const connectCommand = "coconet connect --server '" + fixture.cli_url + "'";
+      assert.equal(await page.locator('.installation-guide pre:visible').textContent(), connectCommand);
+      assert.doesNotMatch(await page.locator('#modal-content').innerText(), /npm install/);
+      await page.locator('.installation-guide .command-block:visible button').click();
+      assert.equal(await page.evaluate(() => window.fixtureClipboard), connectCommand);
+      assert.equal(await page.locator('#modal-content').evaluate(el => el.scrollWidth > el.clientWidth + 1), false);
+      await screenshot(page, 'connection-guide-' + width + '-' + language);
+      await page.locator('[data-disclosure="first-use"] summary').focus();
+      await page.keyboard.press('Enter');
+      await page.locator('[data-disclosure="first-use"] button').click();
+      assert.equal(await page.evaluate(() => window.fixtureClipboard), 'npm install -g coconet');
+      assert.equal(await page.locator('#modal-content').evaluate(el => el.scrollWidth > el.clientWidth + 1), false);
+      await page.keyboard.press('Escape');
+      assert.equal(await page.evaluate(() => document.activeElement.id), 'login-install');
     }
   }
+  // An unavailable clipboard still leaves the command selectable and can recover.
+  await page.locator('#login-install').click();
+  await page.evaluate(() => { navigator.clipboard.writeText = async () => { throw new Error('Clipboard unavailable'); }; });
+  await page.locator('.installation-guide .command-block:visible button').click();
+  await page.getByText('复制失败，请手动重试', { exact: true }).waitFor();
+  assert.equal(await page.locator('.installation-guide pre:visible').evaluate(node => getComputedStyle(node).userSelect), 'text');
+  await page.evaluate(() => { navigator.clipboard.writeText = async text => { window.fixtureClipboard = text; }; });
+  await page.locator('.installation-guide .command-block:visible button').click();
+  assert.equal(await page.evaluate(() => window.fixtureClipboard), "coconet connect --server '" + fixture.cli_url + "'");
+  await page.keyboard.press('Escape');
   async function chooseEntry(target, kind) {
     await target.locator('.project-entry > .project-entry-choices [data-choice="' + kind + '"]').click();
     await target.waitForFunction(() => [...document.querySelectorAll('.project-entry')].every(node => node.getAnimations({subtree:true}).every(a => a.playState !== 'running')));
@@ -303,7 +331,7 @@ try {
   assert.equal(projects.projects.length, 1);
   await page.locator('#project-manage').click();
   assert.equal(await page.getByRole('button', { name: 'Leave project', exact: true }).count(), 0);
-  assert.equal(await page.getByRole('button', { name: 'Connect a folder', exact: true }).count(), 0);
+  assert.equal(await page.getByRole('button', { name: 'Connect a local folder', exact: true }).count(), 0);
   await page.locator('#modal-close').click();
   await page.locator('#canvas-settings').click();
   assert.equal(await page.locator('#modal-content').getByRole('button', { name: 'View sync status', exact: true }).count(), 0);
@@ -318,7 +346,7 @@ try {
   await page.locator('#modal-close').click();
   await page.locator('#project-share').click();
   await page.getByText('No folders connected yet.', { exact: true }).waitFor();
-  await page.getByRole('button', { name: 'Connect a folder', exact: true }).click();
+  await page.getByRole('button', { name: 'Connect a local folder', exact: true }).click();
   assert.ok((await page.locator('.installation-guide pre').filter({ hasText: 'coconet connect' }).textContent()).includes(projects.projects[0].project_id));
   await screenshot(page, 'connection-instructions');
   await page.locator('#modal-close').click();
@@ -413,7 +441,7 @@ try {
         await chooseEntry(sharingPage, 'create');
         await sharingPage.getByLabel(language === 'zh' ? '新项目名称' : 'New project name', { exact: true }).fill('较长的协作项目名称 / Long collaboration project');
         assert.equal(await sharingPage.locator('[data-disclosure="sharing-scope"],.connection-modes').count(), 0);
-        assert.match(await sharingPage.locator('.connection-folder-line').innerText(), language === 'zh' ? /当前正在连接目录：/ : /Connecting folder:/);
+        assert.match(await sharingPage.locator('.connection-folder-line').innerText(), language === 'zh' ? /当前正在连接文件夹：/ : /Connecting folder:/);
         assert.doesNotMatch(await sharingPage.locator('#modal-content').innerText(), /已有历史|工具调用|Existing history|tool calls/);
         for (const width of [1440, 390, 320]) {
           await sharingPage.setViewportSize({ width, height: 900 });
@@ -618,7 +646,7 @@ try {
     await page.locator('#project-share').click();
     await page.locator('.folder-row').nth(2).waitFor();
     await page.getByRole('button', { name: language === 'zh' ? '复制项目链接' : 'Copy project link', exact: true }).waitFor();
-    assert.equal(await page.locator('.shared-folders h3').textContent(), language === 'zh' ? '已连接的工作目录' : 'Connected folders');
+    assert.equal(await page.locator('.shared-folders h3').textContent(), language === 'zh' ? '已连接的文件夹' : 'Connected folders');
     assert.equal(await page.locator('.share-content').evaluate(el => el.querySelector('.share-section').getBoundingClientRect().bottom < el.querySelector('.shared-folders').getBoundingClientRect().top), true);
     for (const width of [1280, 390, 320]) {
       await page.setViewportSize({ width, height: 844 });

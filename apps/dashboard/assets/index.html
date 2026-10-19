@@ -9,8 +9,8 @@
  <header class="login-brand"><a class="brand" href="/"><img class="brand-logo" src="/assets/coconet-app-icon.svg" width="34" height="34" alt=""><span class="brand-title">Coconet</span></a></header>
  <div class="login-visual" aria-hidden="true"><canvas id="login-ripple"></canvas></div>
  <aside class="login-panel" aria-labelledby="login-title">
-  <section class="login-form"><h1 id="login-title" data-i18n="login_title">打开工作区</h1><p class="login-description" data-i18n="login_intro">和同事一起协作。</p><button id="provider-login" data-button-icon="login" class="primary" hidden></button><form id="login-form" hidden><label for="account-key" data-i18n="account_key">Account Key</label><input id="account-key" name="account-key" type="password" autocomplete="off" spellcheck="false" required maxlength="512" data-i18n-placeholder="account_key_placeholder"><button id="login-button" data-button-icon="login" class="primary" type="submit" data-i18n="login_submit">进入工作区</button></form><p id="login-error" role="alert"></p><p id="key-help" data-i18n="admin_key_help" hidden>请向服务器管理员获取 Account Key。</p></section>
-  <div class="login-footer"><p class="login-install"><span data-i18n="install_login_hint">连接工作目录</span><span aria-hidden="true"> · </span><button id="login-install" class="text-button" data-i18n="install_client">安装 Coconet</button></p><label class="login-language language-setting"><span data-i18n="language_label">Language:</span><select data-language data-i18n-aria-label="language"><option value="zh">中文</option><option value="en">English</option></select></label></div>
+  <section class="login-form"><h1 id="login-title" data-i18n="login_title">打开项目</h1><p class="login-description" data-i18n="login_intro">和同事一起协作。</p><button id="provider-login" data-button-icon="login" class="primary" hidden></button><form id="login-form" hidden><label for="account-key" data-i18n="account_key">Account Key</label><input id="account-key" name="account-key" type="password" autocomplete="off" spellcheck="false" required maxlength="512" data-i18n-placeholder="account_key_placeholder"><button id="login-button" data-button-icon="login" class="primary" type="submit" data-i18n="login_submit">进入项目</button></form><p id="login-error" role="alert"></p><p id="key-help" data-i18n="admin_key_help" hidden>请向服务器管理员获取 Account Key。</p></section>
+  <div class="login-footer"><p class="login-install"><button id="login-install" class="text-button" data-i18n="connect_my_folder">连接本地文件夹</button></p><label class="login-language language-setting"><span data-i18n="language_label">Language:</span><select data-language data-i18n-aria-label="language"><option value="zh">中文</option><option value="en">English</option></select></label></div>
  </aside>
 </main>
 <main id="workspace" hidden>
@@ -18,7 +18,7 @@
   <div class="sidebar-top"><a class="brand" href="/"><img class="brand-logo" src="/assets/coconet-app-icon.svg" width="34" height="34" alt=""><span class="brand-title">Coconet</span></a></div>
   <div class="sidebar-heading section-bar"><span data-i18n="projects">项目</span><button id="project-manage" class="icon-button" data-i18n-aria-label="add_project" data-i18n-title="add_project" data-icon="plus"></button></div>
   <nav id="project-list" data-i18n-aria-label="all_projects"></nav>
-  <div class="sidebar-footer"><button id="install-open" class="sidebar-action"><span data-icon="terminal"></span><span data-i18n="install_client">安装 Coconet</span></button><div id="identity" hidden><button id="account-name" class="account-button" data-i18n-title="account_settings"><span data-icon="user"></span><span id="account-label"></span></button></div></div>
+  <div class="sidebar-footer"><div id="identity" hidden><button id="account-name" class="account-button" data-i18n-title="account_settings"><span data-icon="user"></span><span id="account-label"></span></button></div></div>
  </aside>
  <section class="canvas-workspace" data-i18n-aria-label="canvas">
   <div id="graph-viewport" tabindex="0" role="region" data-i18n-aria-label="canvas_accessibility"><div id="graph"><div id="graph-nodes"></div></div></div>
@@ -42,6 +42,6 @@
  </section>
 </main>
 <dialog id="session-modal" aria-labelledby="modal-title"><div class="section-bar"><h2 id="modal-title"></h2><button id="modal-close" class="icon-button" data-i18n-aria-label="close_modal" data-i18n-title="close" data-icon="close" autofocus></button></div><div id="modal-content" class="modal-content"></div></dialog>
-<p id="loading" class="empty" role="status" data-i18n="opening">正在打开工作区…</p><div id="notifications" popover="manual" hidden><div id="toast" class="notification" role="status" hidden></div><div id="notice" class="notification" role="status" hidden></div></div>
+<p id="loading" class="empty" role="status" data-i18n="opening">正在加载项目…</p><div id="notifications" popover="manual" hidden><div id="toast" class="notification" role="status" hidden></div><div id="notice" class="notification" role="status" hidden></div></div>
 </body>
 </html>

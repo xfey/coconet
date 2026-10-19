@@ -50,8 +50,6 @@ button,.project-name,h3,p,code { overflow-wrap:anywhere; }
 .project-item .icon { width:18px; height:18px; }
 .archived { color:var(--secondary); font-size:10px; }
 .sidebar-footer { display:flex; flex-direction:column; gap:4px; padding-top:12px; }
-.sidebar-action { display:flex; align-items:center; gap:12px; width:100%; min-height:44px; padding:10px 12px; border:0; background:transparent; text-align:left; font-weight:400; }
-.sidebar-action:hover { background:var(--selected); }
 #identity { min-width:0; }
 #account-name { display:flex; align-items:center; gap:12px; width:100%; min-height:44px; padding:10px 12px; border:0; background:transparent; text-align:left; }
 #account-name:hover { background:var(--selected); }
@@ -166,9 +164,6 @@ code { font-family:ui-monospace,monospace; font-size:12px; }
 .command-block pre { flex:1 1 240px; min-width:0; margin:0; white-space:pre-wrap; overflow-wrap:anywhere; line-height:22px; user-select:text; }
 .command-block > .dialog-actions { margin-left:auto; }
 
-.install-steps { display:flex; flex-direction:column; gap:24px; counter-reset:install; list-style:none; padding:0; margin:0; }
-.install-steps > li { counter-increment:install; }
-.install-steps h3::before { content:counter(install) ". "; color:var(--secondary); }
 .settings-version { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:8px 16px; padding-top:20px; border-top:1px solid var(--soft-line); color:var(--secondary); font-size:12px; line-height:20px; }
 .settings-content .project-settings { padding-top:0; margin-top:0; border-top:0; }
 .login-footer { grid-row:3; align-self:end; display:flex; flex-direction:column; gap:16px; padding-top:28px; }
@@ -207,8 +202,6 @@ code { font-family:ui-monospace,monospace; font-size:12px; }
   .sidebar-heading { grid-column:1/-1; margin:0; padding:0 4px; }
   #project-list { grid-row:3; }
   .sidebar-footer { grid-column:2; grid-row:1; align-items:flex-end; gap:0; padding:0; min-width:0; }
-  .sidebar-action { width:auto; min-height:32px; padding:4px 8px; gap:8px; font-size:12px; }
-  .sidebar-action .icon { width:16px; height:16px; }
   #identity { margin:0; padding:0; max-width:100%; }
   #account-name { max-width:min(160px,100%); min-height:36px; padding:6px 8px; gap:8px; }
   #account-label { font-size:12px; }
