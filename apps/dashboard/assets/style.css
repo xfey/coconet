@@ -269,7 +269,7 @@ code { font-family:ui-monospace,monospace; font-size:12px; }
 .share-summary,.share-result { display:flex; flex-direction:column; gap:24px; }
 .copy-field { display:flex; flex-direction:column; gap:8px; }
 .share-summary { gap:4px; }
-.share-summary strong { font-size:16px; line-height:24px; font-weight:500; overflow-wrap:anywhere; }
+.share-summary strong,.project-invitation strong { font-size:16px; line-height:24px; font-weight:500; overflow-wrap:anywhere; }
 #provider-login { width:100%; margin:0; }
 #key-help { color:var(--secondary); font-size:13px; margin-top:16px; }
 

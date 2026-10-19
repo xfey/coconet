@@ -183,18 +183,52 @@ export function createAccountUI({ state, api, t, element, statusMessage, openMod
       if (project && content.isConnected) projectJoined(content, error, project);
     }
     if (suggestedID) {
+      let preview = null, loading = false, errorKey = '';
+      const summary = element('section', undefined, 'dialog-section project-invitation');
+      const name = element('strong');
+      const progress = element('p', '', 'dialog-description'); progress.setAttribute('role', 'status');
+      const description = element('p', '', 'dialog-description');
+      summary.append(name, progress, description);
       const join = action('join_project', async () => {
-        error.textContent = ''; join.setAttribute('aria-busy', 'true');
+        errorKey = ''; error.textContent = ''; join.setAttribute('aria-busy', 'true');
         try { await select(suggestedID); }
-        catch (caught) { failure(error)(caught); }
+        catch (caught) { errorKey = connectionErrorKey(caught); failure(error)(caught); }
         finally { join.removeAttribute('aria-busy'); }
       }, 'primary');
-      content.append(actions(join));
+      const retry = action('retry', loadPreview);
+      content.append(summary, actions(retry, join));
       refreshProjectNotice = () => {
         if (!join.isConnected) return;
         $('modal-title').textContent = t('project_invitation');
+        name.hidden = !preview;
+        name.textContent = preview?.name || '';
+        progress.hidden = !loading;
+        progress.textContent = loading ? t('project_invitation_loading') : '';
+        description.textContent = t('project_invitation_description');
+        error.textContent = errorKey ? t(errorKey) : '';
+        retry.hidden = loading || !!preview;
+        join.disabled = !preview || loading || join.hasAttribute('aria-busy');
+        summary.setAttribute('aria-busy', String(loading));
+        setButtonLabel(retry, t('retry'));
         setButtonLabel(join, t('join_project'));
       };
+      async function loadPreview() {
+        loading = true; errorKey = ''; refreshProjectNotice();
+        try {
+          const result = await api('/projects/' + encodeURIComponent(suggestedID) + '/preview', { signal: AbortSignal.timeout(15000) });
+          if (!join.isConnected) return;
+          preview = result;
+        } catch (caught) {
+          if (!join.isConnected) return;
+          const key = connectionErrorKey(caught);
+          errorKey = key === 'account_action_error' ? 'project_invitation_load_failed'
+            : key === 'project_archived' ? 'project_invitation_archived' : key;
+        } finally {
+          loading = false;
+          if (join.isConnected) refreshProjectNotice();
+        }
+      }
+      loadPreview();
       return;
     }
     const choices = mountProjectChoices({ content, error, projects: state.projects, request, t, element,

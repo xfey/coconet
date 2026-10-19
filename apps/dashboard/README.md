@@ -11,8 +11,12 @@ responsive layout and accessibility. `make npm-test` runs module tests; producti
 handler browser regressions are documented in [development](../../docs/development.md).
 Vendor and font directories retain their upstream notices.
 
-Shared project links ask new members to confirm joining. The same dialog then
-confirms membership: **OK** closes it, while **How to connect a local folder**
+Shared project links show the project name and explain the shared progress and
+sessions before asking new members to join. A signed-in, read-only preview exposes
+only the project's ID, name and status; it does not grant membership or read access.
+Unavailable project details can be retried, and joining stays disabled until they
+load. Links do not identify an inviter. The same dialog then confirms membership
+and offers local folder connection: **OK** closes it, while **How to connect a local folder**
 opens the project's connection instructions. Joining from the sidebar uses the
 same confirmation; existing members go straight to the project. Viewing the
 instructions does not join again or authorize a device. Commands retain the

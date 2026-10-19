@@ -2710,6 +2710,42 @@
         },
         "summary": "List a bounded page of content metadata for client-side collection"
       }
+    },
+    "/v1/dashboard/projects/{project_id}/preview": {
+      "get": {
+        "operationId": "previewDashboardProject",
+        "description": "Preview a shared active project before joining. Requires a signed-in browser and the full Project ID. Returns only project_id, name and status; never grants membership or exposes accounts, folders, sessions or graph data. Limited to 60 requests per minute per account.",
+        "security": [
+          {
+            "dashboardSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active project label; Cache-Control: no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://schemas.coddis.dev/v1/dashboard.schema.json#/$defs/project_reference"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
     }
   },
   "components": {

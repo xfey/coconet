@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/xfey/coconet/packages/contracts"
+	"github.com/xfey/coconet/packages/projectlink"
 )
 
 const dashboardSessionTTL = 30 * 24 * time.Hour
@@ -114,6 +115,27 @@ func (a *authority) dashboardProjects(actor contracts.Account) (contracts.Dashbo
 			}
 			return result.Projects[i].Name < result.Projects[j].Name
 		})
+		return nil
+	})
+	return result, err
+}
+
+// A signed-in recipient may preview a shared project before explicitly joining.
+// Return only its public label, never membership, account or collaboration data.
+func (a *authority) dashboardProjectPreview(projectID string) (contracts.ProjectReference, error) {
+	var result contracts.ProjectReference
+	if _, ok := projectlink.ProjectUID(projectID); !ok {
+		return result, invalid("invalid_project_id", "enter a valid Project ID")
+	}
+	err := a.store.view(func(state databaseState) error {
+		project, ok := state.Projects.Lookup(projectID)
+		if !ok {
+			return notFound("project_not_found", "project was not found")
+		}
+		if project.Status != contracts.ProjectActive {
+			return conflict("project_archived", "archived projects do not accept connections")
+		}
+		result = contracts.ProjectReference{ProjectID: project.ProjectID, Name: project.Name, Status: project.Status}
 		return nil
 	})
 	return result, err
@@ -249,6 +271,14 @@ func (h *serverHandler) handleDashboardAPI(w http.ResponseWriter, r *http.Reques
 	if len(parts) >= 5 && parts[0] == "v1" && parts[1] == "dashboard" && parts[2] == "projects" {
 		projectID := parts[3]
 		switch {
+		case len(parts) == 5 && parts[4] == "preview" && r.Method == http.MethodGet:
+			if !h.limiter.allow("project.preview.account", actor.AccountID, 60, time.Minute) {
+				h.writeError(w, requestID, rateLimitError())
+				return
+			}
+			result, err := h.authority.dashboardProjectPreview(projectID)
+			h.writeResult(w, requestID, http.StatusOK, result, err)
+			return
 		case len(parts) == 5 && parts[4] == "events" && r.Method == http.MethodGet:
 			h.serveDashboardEvents(w, r, requestID, projectID, token)
 			return

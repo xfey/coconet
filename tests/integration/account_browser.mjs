@@ -119,19 +119,26 @@ try {
     await target.getByRole('heading', { name: title, exact: true }).waitFor();
     assert.equal(await target.locator('.project-entry,.installation-guide').count(), 0);
     assert.equal(await target.locator('#modal-content input').count(), 0);
-    assert.deepEqual(await target.locator('#modal-content button').allTextContents(), joined
+    if (!joined) {
+      await target.locator('.project-invitation strong').waitFor();
+      assert.equal(await target.locator('.project-invitation strong').textContent(), name);
+      assert.equal(await target.locator('.project-invitation .dialog-description:visible').textContent(), language === 'zh'
+        ? '加入后，可以查看项目协作图，了解同事的工作进展和共享会话。'
+        : 'Join to view the project’s work graph and explore your teammates’ progress and shared sessions.');
+    }
+    assert.deepEqual(await target.locator('#modal-content button:visible').allTextContents(), joined
       ? language === 'zh' ? ['好的', '如何连接本地文件夹'] : ['OK', 'How to connect a local folder']
       : [language === 'zh' ? '加入项目' : 'Join project']);
     if (joined) assert.equal(await target.locator('#modal-content .dialog-description').textContent(), language === 'zh'
-      ? '你现在可以查看项目协作图，了解同事的工作进展。如需同步自己的进展，可以连接本地文件夹。'
-      : "You can now view the project's work graph to see your teammates' progress. To sync your own progress, connect a local folder.");
+      ? '如需同步自己的工作进展，可以连接本地文件夹。'
+      : 'To sync your own work progress, connect a local folder.');
     for (const width of [1280, 390, 320]) {
       await target.setViewportSize({ width, height: 844 });
       assert.equal(await target.locator('#modal-content').evaluate(node => node.scrollWidth > node.clientWidth + 1), false);
       assert.equal(await target.locator('#session-modal').evaluate(node => {
         const bounds = node.getBoundingClientRect(), close = node.querySelector('#modal-close').getBoundingClientRect();
         return bounds.left >= 0 && bounds.right <= innerWidth && close.right <= bounds.right
-          && [...node.querySelectorAll('.ui-button')].every(button => {
+          && [...node.querySelectorAll('.ui-button:not([hidden])')].every(button => {
             const b = button.getBoundingClientRect(); return b.left >= bounds.left && b.right <= bounds.right && b.height >= 40;
           });
       }), true, 'Invitation and success actions must fit the viewport, including long names');
@@ -148,6 +155,7 @@ try {
     const start = id === 'member-a' ? await (await isolated.request.post(fixture.url + '/v1/auth/device', { data: {
       device_name: 'Member device', code_challenge: createHash('sha256').update(verifier).digest('base64url'),
     } })).json() : null;
+    if (!start) await trial.route('**/v1/dashboard/projects/*/preview', route => route.fulfill({ status: 503, json: { code: 'temporarily_unavailable' } }));
     await trial.goto(start ? start.verification_uri : sharedInvitation);
     await isolated.addCookies([{ name: 'fixture_identity', value: id, url: fixture.url, secure: true, httpOnly: true }]);
     await trial.getByRole('button', { name: 'Continue with GitHub' }).click();
@@ -170,7 +178,43 @@ try {
       sharedInvitation = await trial.locator('.share-result .copy-field:nth-child(2) pre').textContent();
       await trial.locator('#modal-close').click();
     } else {
-      await checkProjectNotice(trial, 'en', false);
+      await trial.getByText('Could not load project details. Please retry.', { exact: true }).waitFor();
+      assert.equal(await trial.getByRole('button', { name: 'Join project', exact: true }).isDisabled(), true);
+      await trial.unroute('**/v1/dashboard/projects/*/preview');
+      for (const [code, status, message] of [
+        ['project_not_found', 404, 'This project does not exist or is no longer accessible.'],
+        ['project_archived', 409, 'This project is archived and cannot be joined.'],
+      ]) {
+        await trial.route('**/v1/dashboard/projects/*/preview', route => route.fulfill({ status, json: { code } }));
+        await trial.getByRole('button', { name: 'Retry', exact: true }).click();
+        await trial.getByText(message, { exact: true }).waitFor();
+        assert.equal(await trial.getByRole('button', { name: 'Join project', exact: true }).isDisabled(), true);
+        await trial.unroute('**/v1/dashboard/projects/*/preview');
+      }
+      // A delayed preview must not overwrite another dialog after being closed.
+      let releasePreview, previewStarted;
+      const previewGate = new Promise(resolve => { releasePreview = resolve; });
+      const previewPending = new Promise(resolve => { previewStarted = resolve; });
+      await trial.route('**/v1/dashboard/projects/*/preview', async route => { previewStarted(); await previewGate; await route.continue(); });
+      await trial.getByRole('button', { name: 'Retry', exact: true }).click();
+      await previewPending;
+      await trial.getByText('Loading project details…', { exact: true }).waitFor();
+      assert.equal(await trial.getByRole('button', { name: 'Join project', exact: true }).isDisabled(), true);
+      await screenshot(trial, 'project-invitation-loading');
+      await trial.keyboard.press('Escape');
+      await trial.locator('#project-manage').click();
+      releasePreview();
+      await trial.unrouteAll({ behavior: 'wait' });
+      assert.equal(await trial.locator('.project-entry').isVisible(), true);
+      assert.equal(await trial.locator('.project-invitation').count(), 0);
+      await trial.reload();
+      await checkProjectNotice(trial, 'en', false, memberProjectName);
+      for (const language of ['zh', 'en']) {
+        await trial.locator('#login [data-language]').evaluate((select, value) => {
+          select.value = value; select.dispatchEvent(new Event('change', { bubbles: true }));
+        }, language);
+        await checkProjectNotice(trial, language, false, memberProjectName);
+      }
       assert.equal((await (await isolated.request.get(fixture.url + '/v1/dashboard/projects')).json()).projects.length, 0);
       await trial.route('**/v1/dashboard/connections', route => route.fulfill({ status: 503, json: { code: 'temporarily_unavailable' } }));
       await trial.getByRole('button', { name: 'Join project', exact: true }).click();
@@ -672,7 +716,7 @@ try {
   const teammate = await (await second.request.get(fixture.url + '/v1/dashboard/session')).json();
   assert.notEqual(teammate.account.account_id, me.account.account_id);
   assert.equal((await (await second.request.get(fixture.url + '/v1/dashboard/projects')).json()).projects.length, 0);
-  await checkProjectNotice(otherPage, 'zh', false);
+  await checkProjectNotice(otherPage, 'zh', false, projects.projects[0].name);
   let invitationJoins = 0, invitationDirectoryRequests = 0;
   otherPage.on('request', request => {
     if (request.url().endsWith('/v1/dashboard/connections')) invitationJoins++;
