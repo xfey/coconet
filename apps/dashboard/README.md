@@ -25,7 +25,7 @@ the connection guide directly; creating one during a CLI folder connection still
 completes that connection. Closing a pending dialog prevents a late response from
 opening the guide.
 
-Both the sidebar and folder-connection join forms ask for a **Shared link**, with
+Both the sidebar and folder-connection join forms are labeled **Join with a shared link**, with
 `https://coconet.space/...` as the placeholder. Invalid-link and missing-project
 messages guide users to check the shared link.
 

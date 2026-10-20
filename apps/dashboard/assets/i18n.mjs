@@ -112,7 +112,7 @@ export const messages = {
   project_entry_existing_short: ['已有项目', 'My projects'],
   project_entry_join_short: ['分享链接', 'Shared link'],
   project_entry_create_short: ['新建项目', 'New project'],
-  shared_project_link: ['分享链接', 'Shared link'],
+  shared_project_link: ['通过分享链接加入', 'Join with a shared link'],
   select_project: ['请选择一个项目', 'Select a project'],
   no_joined_projects: ['暂无已加入的项目', 'No joined projects'],
   project_name_exists: ['已有同名项目，请确认是否需要新建。', 'You already have a project with this name. Check before creating another.'],

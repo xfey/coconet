@@ -258,7 +258,7 @@ try {
       assert.equal(await trial.locator('.installation-guide').count(), 0);
       assert.equal(await trial.locator('.account-error').textContent(), '');
       await chooseEntry(trial, 'join');
-      await trial.getByLabel('Shared link', { exact: true }).fill(sharedInvitation);
+      await trial.getByRole('textbox', { name: 'Join with a shared link', exact: true }).fill(sharedInvitation);
       await trial.evaluate(() => { window.invitationCloseCount = 0; document.querySelector('#session-modal').addEventListener('close', () => window.invitationCloseCount++); });
       await trial.getByRole('button', { name: 'Join project', exact: true }).click();
       await checkProjectNotice(trial, 'en', true, memberProjectName);
@@ -297,7 +297,7 @@ try {
   await newcomerPage.locator('#workspace').waitFor();
   assert.equal(await newcomerPage.locator('[data-choice=existing]').isDisabled(), true);
   await chooseEntry(newcomerPage, 'join');
-  const newcomerInput = newcomerPage.getByLabel('Shared link', { exact: true });
+  const newcomerInput = newcomerPage.getByRole('textbox', { name: 'Join with a shared link', exact: true });
   await newcomerInput.waitFor();
   const memberships = async () => (await (await newcomer.request.get(fixture.url + '/v1/dashboard/projects')).json()).projects;
   assert.equal((await memberships()).length, 0);
@@ -367,7 +367,7 @@ try {
     const style = getComputedStyle(node);
     return node === document.activeElement && style.outlineStyle === 'solid' && style.outlineOffset === '-2px' && style.outlineColor === 'rgb(255, 255, 255)';
   }), true, 'Primary action must retain a visible inset keyboard cue');
-  assert.equal(await page.getByLabel('Shared link', { exact: true }).isVisible(), false);
+  assert.equal(await page.getByRole('textbox', { name: 'Join with a shared link', exact: true }).isVisible(), false);
   assert.equal(await page.getByLabel('New project name', { exact: true }).isVisible(), true);
   assert.equal(await page.getByLabel('New project name', { exact: true }).inputValue(), 'Shared repository');
   const createRequests = [];
@@ -793,13 +793,13 @@ try {
   await otherPage.locator('#project-list.projects-empty').waitFor();
   await otherPage.locator('#project-manage').click();
   await chooseEntry(otherPage, 'join');
-  await otherPage.getByLabel('分享链接', { exact: true }).fill(invitation.replace(fixture.url, fixture.cli_url));
+  await otherPage.getByRole('textbox', { name: '通过分享链接加入', exact: true }).fill(invitation.replace(fixture.url, fixture.cli_url));
   let joinDirectoryRequests = 0;
   otherPage.on('request', request => { if (request.url().endsWith('/v1/dashboard/authorize')) joinDirectoryRequests++; });
   let releaseMembership;
   const membershipGate = new Promise(resolve => { releaseMembership = resolve; });
   await otherPage.route('**/v1/dashboard/connections', async route => { await membershipGate; await route.fulfill({ status: 503, json: { code: 'temporarily_unavailable' } }); });
-  await otherPage.getByLabel('分享链接', { exact: true }).press('Enter');
+  await otherPage.getByRole('textbox', { name: '通过分享链接加入', exact: true }).press('Enter');
   assert.equal(await otherPage.getByRole('button', { name: '加入项目', exact: true }).isDisabled(), true);
   // Closing an in-flight operation must not affect a newly opened dialog.
   await otherPage.locator('#modal-close').focus();
@@ -811,8 +811,8 @@ try {
   assert.equal(await otherPage.locator('.project-entry').isVisible(), true);
   assert.equal(await otherPage.locator('.account-error').textContent(), '');
   await chooseEntry(otherPage, 'join');
-  await otherPage.getByLabel('分享链接', { exact: true }).fill(invitation.replace(fixture.url, fixture.cli_url));
-  await otherPage.getByLabel('分享链接', { exact: true }).press('Enter');
+  await otherPage.getByRole('textbox', { name: '通过分享链接加入', exact: true }).fill(invitation.replace(fixture.url, fixture.cli_url));
+  await otherPage.getByRole('textbox', { name: '通过分享链接加入', exact: true }).press('Enter');
   await otherPage.getByRole('heading', { name: '已加入「' + projects.projects[0].name + '」', exact: true }).waitFor();
   assert.equal(await otherPage.locator('.installation-guide').count(), 0);
   await otherPage.keyboard.press('Escape');
