@@ -20,6 +20,7 @@ Put flags after the command/subcommand. Required positional arguments such as `a
 | [login](#coconet-login) | Sign in on this device |
 | [logout](#coconet-logout) | Sign out this device; keep folder connections and pending work |
 | [whoami](#coconet-whoami) | Show the signed-in account and server |
+| [server](#coconet-server) | Select the default server and list known endpoints |
 | [agent](#coconet-agent) | Inspect and manage Agent integrations |
 | [inference](#coconet-inference) | Inspect, pause or resume automatic local processing |
 | [history](#coconet-history) | Preview and import explicitly selected historical sessions |
@@ -47,7 +48,7 @@ coconet connect [PROJECT_ID] [options]
 |---|---|---|
 | `--path DIRECTORY` | — | Folder to connect; defaults to the current directory (Git subdirectories use the repository root) |
 | `--project ID` | — | Preselect a coco_ project ID; equivalent to positional PROJECT_ID |
-| `--server URL` | — | Server origin; otherwise use the folder's server, COCONET_SERVER_URL, or https://api.coconet.space |
+| `--server URL` | — | Server origin; otherwise use the connected folder's server, the saved default, or https://api.coconet.space. Explicit http:// endpoints need no environment setup |
 | `--new` | false | Create a new project directly; mutually exclusive with a project ID |
 | `--no-browser` | false | Print the connection link without opening a browser; also automatic over SSH |
 | `--verbose` | false | Show account, connection and local processing details |
@@ -92,7 +93,7 @@ coconet login [options]
 
 | Option | Default | Meaning |
 |---|---|---|
-| `--server URL` | — | Server origin; otherwise use the folder's server, COCONET_SERVER_URL, or https://api.coconet.space |
+| `--server URL` | — | Server origin; otherwise use the connected folder's server, the saved default, or https://api.coconet.space. Explicit http:// endpoints need no environment setup |
 | `--no-browser` | false | Print the sign-in link without opening a browser; only used by login |
 
 ```sh
@@ -109,7 +110,7 @@ coconet logout [options]
 
 | Option | Default | Meaning |
 |---|---|---|
-| `--server URL` | — | Server origin; otherwise use the folder's server, COCONET_SERVER_URL, or https://api.coconet.space |
+| `--server URL` | — | Server origin; otherwise use the connected folder's server, the saved default, or https://api.coconet.space. Explicit http:// endpoints need no environment setup |
 | `--no-browser` | false | Print the sign-in link without opening a browser; only used by login |
 
 ```sh
@@ -126,12 +127,49 @@ coconet whoami [options]
 
 | Option | Default | Meaning |
 |---|---|---|
-| `--server URL` | — | Server origin; otherwise use the folder's server, COCONET_SERVER_URL, or https://api.coconet.space |
+| `--server URL` | — | Server origin; otherwise use the connected folder's server, the saved default, or https://api.coconet.space. Explicit http:// endpoints need no environment setup |
 | `--no-browser` | false | Print the sign-in link without opening a browser; only used by login |
 
 ```sh
 coconet whoami
 ```
+
+### `coconet server`
+
+Select the default server and list known endpoints
+
+```sh
+coconet server <use|list>
+```
+
+#### `coconet server use`
+
+Save a default server for new connections
+
+```sh
+coconet server use <URL|official>
+```
+
+Writes only default_server in the local config.json. Does not sign in, contact the server, move data or change connected folders. Use official to restore https://api.coconet.space.
+
+```sh
+coconet server use http://dev.example.com:7788
+coconet server use official
+```
+
+#### `coconet server list`
+
+List the default and servers from saved logins and folder connections
+
+```sh
+coconet server list [--json]
+```
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--json` | false | Write machine-readable JSON |
+
+Read-only and offline. Prints the configuration path; never prints credentials. The default only applies outside connected folders.
 
 ### `coconet agent`
 
@@ -644,7 +682,7 @@ coconet account <key|reset-key> [--server URL]
 
 | Option | Default | Meaning |
 |---|---|---|
-| `--server URL` | — | Deployment origin; defaults to the connected folder or the only stored deployment credential |
+| `--server URL` | — | Server origin; otherwise use the connected folder's server, the saved default, or https://api.coconet.space. Explicit http:// endpoints need no environment setup |
 
 #### `coconet account key`
 
@@ -722,7 +760,7 @@ coconet init [PROJECT_ID] [options]
 |---|---|---|
 | `--path DIRECTORY` | — | Folder to connect; defaults to the current directory (Git subdirectories use the repository root) |
 | `--project ID` | — | Preselect a coco_ project ID; equivalent to positional PROJECT_ID |
-| `--server URL` | — | Server origin; otherwise use the folder's server, COCONET_SERVER_URL, or https://api.coconet.space |
+| `--server URL` | — | Server origin; otherwise use the connected folder's server, the saved default, or https://api.coconet.space. Explicit http:// endpoints need no environment setup |
 | `--new` | false | Create a new project directly; mutually exclusive with a project ID |
 | `--no-browser` | false | Print the connection link without opening a browser; also automatic over SSH |
 | `--verbose` | false | Show account, connection and local processing details |
@@ -760,11 +798,11 @@ coconet-server init --data-dir DIR --advertised-endpoint URL [options]
 |---|---|---|
 | `--data-dir DIR` | — | Required: persistent deployment directory |
 | `--advertised-endpoint URL` | — | Required: canonical client-facing server origin |
-| `--listen ADDRESS` | 127.0.0.1:8080 | HTTP listen address |
+| `--listen ADDRESS` | 127.0.0.1:7788 | HTTP listen address |
 | `--artifact-store filesystem\|s3` | filesystem | Conversation transfer storage driver |
 | `--artifact-path DIR` | — | Absolute filesystem artifact directory; defaults to DATA_DIR/artifacts; invalid with s3 |
 
-Creates server.json, deployment identity and metadata. Refuses to replace an initialized deployment. Configure login and S3 credentials through the documented environment variables.
+Creates server.json, deployment identity and metadata. Refuses to replace an initialized deployment. Configure login and S3 credentials through the documented environment variables. The advertised endpoint explicitly selects HTTP or HTTPS. HTTP uses Account Key login; OAuth requires HTTPS.
 
 ```sh
 coconet-server init --data-dir /var/lib/coconet --advertised-endpoint https://coconet.example.com

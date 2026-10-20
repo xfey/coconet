@@ -40,6 +40,9 @@ func loginProviderFromEnvironment(ctx context.Context, origin string) (*loginPro
 	if kind != "github" && kind != "oidc" {
 		return nil, errors.New("COCONET_AUTH_PROVIDER must be github, oidc or key")
 	}
+	if !strings.HasPrefix(origin, "https://") {
+		return nil, errors.New("GitHub and OIDC login require HTTPS; use account-key login for trusted-network HTTP deployments")
+	}
 	provider.OAuth = oauth2.Config{ClientID: os.Getenv("COCONET_AUTH_CLIENT_ID"), ClientSecret: os.Getenv("COCONET_AUTH_CLIENT_SECRET"), RedirectURL: origin + "/v1/auth/callback"}
 	if provider.OAuth.ClientID == "" || provider.OAuth.ClientSecret == "" {
 		return nil, errors.New("login requires COCONET_AUTH_CLIENT_ID and COCONET_AUTH_CLIENT_SECRET")

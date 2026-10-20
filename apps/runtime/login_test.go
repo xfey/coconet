@@ -89,9 +89,9 @@ func TestLoginTwoDevicesConnectSameProjectAndLogoutLocally(t *testing.T) {
 	var bindings [2]*contracts.LocalBinding
 	for i := range paths {
 		directory := t.TempDir()
-		t.Setenv("COCONET_HOME", filepath.Join(directory, "runtime"))
+		setRuntimeTestHome(t, filepath.Join(directory, "runtime"))
 		t.Setenv("COCONET_CWD", directory)
-		t.Setenv("COCONET_SERVER_URL", server.URL)
+		setRuntimeTestServer(t, server.URL)
 		t.Setenv("COCONET_DISABLE_BACKGROUND_SYNC", "1")
 		t.Setenv("COCONET_CODEX_COMMAND", "coconet-test-no-codex")
 		t.Setenv("COCONET_CLAUDE_NODE", "coconet-test-no-claude")

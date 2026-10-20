@@ -15,7 +15,7 @@ func defaultSetupFixture(t *testing.T) runtimePaths {
 	t.Helper()
 	restoreAgentIntegrationStubs(t)
 	base := t.TempDir()
-	t.Setenv("COCONET_HOME", filepath.Join(base, "coconet"))
+	setRuntimeTestHome(t, filepath.Join(base, "coconet"))
 	t.Setenv("CODEX_HOME", filepath.Join(base, "codex"))
 	t.Setenv("CLAUDE_CONFIG_DIR", filepath.Join(base, "claude"))
 	t.Setenv("CURSOR_CONFIG_DIR", filepath.Join(base, "cursor"))

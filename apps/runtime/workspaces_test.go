@@ -14,7 +14,7 @@ import (
 )
 
 func TestWorkspaceSnapshotRegistrationRetryAndIsolation(t *testing.T) {
-	t.Setenv("COCONET_HOME", t.TempDir())
+	setRuntimeTestHome(t, t.TempDir())
 	paths, err := resolveRuntimePaths()
 	if err != nil {
 		t.Fatal(err)
@@ -165,7 +165,7 @@ func TestWorkspaceSnapshotRegistrationRetryAndIsolation(t *testing.T) {
 		t.Fatal("old server was sent unsupported registration")
 	}
 	// A distinct installation root has a new ID even on the same hostname/account.
-	t.Setenv("COCONET_HOME", t.TempDir())
+	setRuntimeTestHome(t, t.TempDir())
 	second, err := resolveRuntimePaths()
 	if err != nil {
 		t.Fatal(err)

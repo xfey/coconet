@@ -15,6 +15,7 @@ import (
 func TestCatalogCoversOperationalFlags(t *testing.T) {
 	routes := map[string]map[string][]string{
 		"runtime": {
+			"runServerCommand":       {"server list"},
 			"parseConnectionOptions": {"connect", "init"}, "runProjectStatus": {"status"},
 			"runLoginCommand": {"login", "logout", "whoami"},
 			"runAgentAdd":     {"agent add"}, "runAgentList": {"agent list"}, "runAgentRemove": {"agent remove"},

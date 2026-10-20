@@ -109,12 +109,12 @@ func runServerInit(args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("init", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	dataDir := flags.String("data-dir", "", "persistent operator directory")
-	listen := flags.String("listen", "127.0.0.1:8080", "HTTP listen address")
+	listen := flags.String("listen", "127.0.0.1:7788", "HTTP listen address")
 	advertisedEndpoint := flags.String("advertised-endpoint", "", "canonical client-facing Server origin")
 	artifactDriver := flags.String("artifact-store", "filesystem", "artifact storage driver: filesystem or s3")
 	configuredArtifactPath := flags.String("artifact-path", "", "absolute filesystem artifact directory")
 	if err := flags.Parse(args); err != nil || flags.NArg() != 0 || strings.TrimSpace(*dataDir) == "" || strings.TrimSpace(*advertisedEndpoint) == "" {
-		fmt.Fprintln(stderr, "usage: coconet-server init --data-dir /var/lib/coconet --advertised-endpoint https://coconet.example.com [--listen 127.0.0.1:8080] [--artifact-store filesystem|s3] [--artifact-path /data/coconet-artifacts]")
+		fmt.Fprintln(stderr, "usage: coconet-server init --data-dir /var/lib/coconet --advertised-endpoint https://coconet.example.com [--listen 127.0.0.1:7788] [--artifact-store filesystem|s3] [--artifact-path /data/coconet-artifacts]")
 		return 2
 	}
 	selectedArtifactDriver := strings.ToLower(strings.TrimSpace(*artifactDriver))
@@ -126,7 +126,7 @@ func runServerInit(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "--artifact-path can only be used with --artifact-store filesystem")
 		return 2
 	}
-	canonicalEndpoint, err := projectlink.ParseServerOrigin(strings.TrimSpace(*advertisedEndpoint), false)
+	canonicalEndpoint, err := projectlink.ParseServerOrigin(strings.TrimSpace(*advertisedEndpoint), true)
 	if err != nil {
 		fmt.Fprintf(stderr, "invalid --advertised-endpoint: %v\n", err)
 		return 2
@@ -477,7 +477,7 @@ func validateServerConfig(config serverConfig) error {
 		return errors.New("bbolt data_path and identity_path must differ")
 	}
 	if config.AdvertisedEndpoint != "" {
-		canonical, err := projectlink.ParseServerOrigin(config.AdvertisedEndpoint, false)
+		canonical, err := projectlink.ParseServerOrigin(config.AdvertisedEndpoint, true)
 		if err != nil || canonical != config.AdvertisedEndpoint {
 			return errors.New("advertised_endpoint must be a canonical supported Server origin")
 		}

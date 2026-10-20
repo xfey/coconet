@@ -56,7 +56,7 @@ func testCachedHookCommand(t *testing.T, agent, event, command string, wrapper [
 		cmd.Env = append([]string{
 			"HOME=" + root, "PATH=" + filepath.Join(root, "empty-path"),
 			"PLUGIN_ROOT=" + pluginRoot, "CLAUDE_PLUGIN_ROOT=" + pluginRoot,
-			"COCONET_EXECUTABLE=" + runtimePath, "COCONET_TEST_TRACE=" + trace,
+			installedRuntimeEnvironment(t, runtimePath), "COCONET_TEST_TRACE=" + trace,
 		}, extraEnv...)
 		cmd.Stdin = strings.NewReader(input)
 		if output, err := cmd.CombinedOutput(); err != nil || string(output) != want {

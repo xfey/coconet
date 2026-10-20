@@ -23,7 +23,9 @@ type pendingAccountKey struct {
 	NewKey       string `json:"new_key"`
 }
 
-func accountTarget(ctx context.Context, paths runtimePaths, server string) (deploymentTarget, error) {
+// Explicit choices override the current folder; the saved default is only used
+// without a binding. Unreadable bindings must never redirect account operations.
+func selectedDeployment(ctx context.Context, paths runtimePaths, server string) (deploymentTarget, error) {
 	if server != "" {
 		return discoverDeployment(ctx, server)
 	}
@@ -32,14 +34,11 @@ func accountTarget(ctx context.Context, paths runtimePaths, server string) (depl
 	} else if binding != nil {
 		return deploymentTargetFromBinding(*binding)
 	}
-	targets, err := loadCredentialTargets(paths)
+	endpoint, err := defaultServer(paths)
 	if err != nil {
 		return deploymentTarget{}, err
 	}
-	if len(targets) != 1 {
-		return deploymentTarget{}, errors.New("Run this from a connected project folder, or specify the server with --server")
-	}
-	return targets[0], nil
+	return discoverDeployment(ctx, endpoint)
 }
 
 func runAccount(ctx context.Context, args []string, stdout, stderr io.Writer) int {
@@ -60,7 +59,7 @@ func runAccount(ctx context.Context, args []string, stdout, stderr io.Writer) in
 		fmt.Fprintln(stderr, "Could not read the local Coconet configuration.")
 		return 1
 	}
-	target, err := accountTarget(ctx, paths, *server)
+	target, err := selectedDeployment(ctx, paths, *server)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1

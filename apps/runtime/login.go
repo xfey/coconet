@@ -31,14 +31,7 @@ func runLoginCommand(ctx context.Context, command string, args []string, stdout,
 		fmt.Fprintln(stderr, err)
 		return 1
 	}
-	var target deploymentTarget
-	if *server != "" {
-		target, err = discoverDeployment(ctx, *server)
-	} else if _, binding, _, bindingErr := currentProjectBinding(); bindingErr == nil && binding != nil {
-		target, err = deploymentTargetFromBinding(*binding)
-	} else {
-		target, err = discoverDeployment(ctx, environmentOr("COCONET_SERVER_URL", defaultServerURL))
-	}
+	target, err := selectedDeployment(ctx, paths, *server)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
@@ -130,13 +123,16 @@ func authorizeDeploymentWithChooser(ctx context.Context, paths runtimePaths, tar
 	}
 	verification, parseErr := url.Parse(started.VerificationURI)
 	var authorization string
+	validOrigin := false
 	if parseErr == nil {
+		_, originErr := normalizeServerURL(verification.Scheme + "://" + verification.Host)
+		validOrigin = originErr == nil
 		values, err := url.ParseQuery(verification.Fragment)
 		if err == nil && len(values) == 1 {
 			authorization = values.Get("authorize")
 		}
 	}
-	if parseErr != nil || verification.User != nil || verification.Host == "" || verification.Path != "/" || verification.RawQuery != "" || len(started.AuthorizationID) != 43 || authorization != started.AuthorizationID || verification.Scheme != "https" && !(verification.Scheme == "http" && (verification.Hostname() == "127.0.0.1" || verification.Hostname() == "localhost" || verification.Hostname() == "::1")) || started.DeviceCode == "" || started.Interval < 1 || started.Interval > 30 || started.ExpiresIn < 1 || started.ExpiresIn > 600 {
+	if parseErr != nil || !validOrigin || verification.User != nil || verification.Host == "" || verification.Path != "/" || verification.RawQuery != "" || len(started.AuthorizationID) != 43 || authorization != started.AuthorizationID || started.DeviceCode == "" || started.Interval < 1 || started.Interval > 30 || started.ExpiresIn < 1 || started.ExpiresIn > 600 {
 		return authorizedDevice{}, errors.New("Server returned an invalid authorization response")
 	}
 	// Verify an advertised browser origin independently when a CLI network override is used.

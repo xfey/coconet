@@ -4,13 +4,10 @@
       "command": "/bin/sh",
       "args": [
         "-c",
-        "for name in COCONET_EXECUTABLE COCONET_HOME COCONET_LOCAL_DAG_HOME COCONET_SERVER_URL COCONET_CURSOR_COMMAND CURSOR_CONFIG_DIR XDG_CONFIG_HOME XDG_DATA_HOME COCONET_CA_FILE CURSOR_API_KEY CURSOR_API_ENDPOINT; do eval \"value=\\${$name-}\"; if [ \"$value\" = \"\\${env:$name}\" ]; then unset \"$name\"; fi; done; runtime=\"$COCONET_EXECUTABLE\"; if [ -z \"$runtime\" ]; then data_root=\"$XDG_DATA_HOME\"; if [ -z \"$data_root\" ]; then data_root=\"$HOME/.local/share\"; fi; runtime=\"$data_root/coconet/current/bin/coconet\"; fi; if [ ! -x \"$runtime\" ] && command -v coconet >/dev/null 2>&1; then runtime=\"$(command -v coconet)\"; fi; exec \"$runtime\" mcp --agent cursor"
+        "for name in COCONET_LOCAL_DAG_HOME COCONET_CURSOR_COMMAND CURSOR_CONFIG_DIR XDG_CONFIG_HOME XDG_DATA_HOME COCONET_CA_FILE CURSOR_API_KEY CURSOR_API_ENDPOINT; do eval \"value=\\${$name-}\"; if [ \"$value\" = \"\\${env:$name}\" ]; then unset \"$name\"; fi; done; data_root=\"$XDG_DATA_HOME\"; if [ -z \"$data_root\" ]; then data_root=\"$HOME/.local/share\"; fi; runtime=\"$data_root/coconet/current/bin/coconet\"; if [ ! -x \"$runtime\" ] && command -v coconet >/dev/null 2>&1; then runtime=\"$(command -v coconet)\"; fi; exec \"$runtime\" mcp --agent cursor"
       ],
       "env": {
-        "COCONET_EXECUTABLE": "${env:COCONET_EXECUTABLE}",
-        "COCONET_HOME": "${env:COCONET_HOME}",
         "COCONET_LOCAL_DAG_HOME": "${env:COCONET_LOCAL_DAG_HOME}",
-        "COCONET_SERVER_URL": "${env:COCONET_SERVER_URL}",
         "COCONET_CURSOR_COMMAND": "${env:COCONET_CURSOR_COMMAND}",
         "CURSOR_CONFIG_DIR": "${env:CURSOR_CONFIG_DIR}",
         "XDG_CONFIG_HOME": "${env:XDG_CONFIG_HOME}",

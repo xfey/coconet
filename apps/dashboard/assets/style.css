@@ -167,7 +167,6 @@ code { font-family:ui-monospace,monospace; font-size:12px; }
 .settings-version { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:8px 16px; padding-top:20px; border-top:1px solid var(--soft-line); color:var(--secondary); font-size:12px; line-height:20px; }
 .settings-content .project-settings { padding-top:0; margin-top:0; border-top:0; }
 .login-footer { grid-row:3; align-self:end; display:flex; flex-direction:column; gap:16px; padding-top:28px; }
-.login-install { color:var(--secondary); font-size:12px; line-height:22px; }
 .text-button { display:inline; padding:0; min-height:0; border:0; border-radius:2px; background:transparent; font-size:inherit; font-weight:400; line-height:inherit; text-decoration:underline; text-underline-offset:3px; }
 .text-button:hover { background:transparent; color:var(--text); }
 .copy-footer { margin-top:24px; }

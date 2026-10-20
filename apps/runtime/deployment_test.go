@@ -16,6 +16,17 @@ import (
 	"github.com/xfey/coconet/packages/observability"
 )
 
+func TestExplicitHTTPServerNeedsNoEnvironmentFlag(t *testing.T) {
+	if got, err := normalizeServerURL("http://dev.example.test:7788"); err != nil || got != "http://dev.example.test:7788" {
+		t.Fatal(got, err)
+	}
+	for _, endpoint := range []string{"http://user:secret@dev.example.test:7788", "http://dev.example.test:7788/path", "ftp://dev.example.test"} {
+		if _, err := normalizeServerURL(endpoint); err == nil {
+			t.Fatal("accepted invalid origin")
+		}
+	}
+}
+
 func TestDiscoverDeploymentRejectsTamperedSignature(t *testing.T) {
 	_, privateKey, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {

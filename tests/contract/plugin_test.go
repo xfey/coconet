@@ -65,7 +65,7 @@ func TestPluginIdentityAndMCPStayAligned(t *testing.T) {
 		}
 		if agent == "codex" {
 			required := []string{
-				"HOME", "PATH", "XDG_DATA_HOME", "COCONET_EXECUTABLE", "COCONET_HOME", "COCONET_SERVER_URL",
+				"HOME", "PATH", "XDG_DATA_HOME", "XDG_CONFIG_HOME",
 				"COCONET_CODEX_COMMAND", "CODEX_HOME", "COCONET_CLAUDE_COMMAND", "CLAUDE_CONFIG_DIR",
 				"COCONET_CLAUDE_NODE", "COCONET_CLAUDE_HELPER", "COCONET_CLAUDE_SDK_ENTRY",
 			}
@@ -78,7 +78,7 @@ func TestPluginIdentityAndMCPStayAligned(t *testing.T) {
 		if agent == "cursor" {
 			// Cursor's stdio transport does not inherit custom profile/runtime
 			// variables unless the plugin explicitly forwards them.
-			for _, key := range []string{"COCONET_EXECUTABLE", "COCONET_HOME", "COCONET_LOCAL_DAG_HOME", "COCONET_SERVER_URL", "COCONET_CURSOR_COMMAND", "CURSOR_CONFIG_DIR", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "COCONET_CA_FILE", "CURSOR_API_KEY", "CURSOR_API_ENDPOINT"} {
+			for _, key := range []string{"COCONET_LOCAL_DAG_HOME", "COCONET_CURSOR_COMMAND", "CURSOR_CONFIG_DIR", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "COCONET_CA_FILE", "CURSOR_API_KEY", "CURSOR_API_ENDPOINT"} {
 				if server.Env[key] != "${env:"+key+"}" {
 					t.Fatalf("Cursor MCP does not forward %s", key)
 				}
@@ -107,7 +107,7 @@ func TestCursorMCPUnsetsUnresolvedOptionalEnvironment(t *testing.T) {
 			value := "literal $(exit 91) `exit 92` ; space"
 			body := "#!/bin/sh\n[ \"$*\" = 'mcp --agent cursor' ] || exit 93\n"
 			for key := range server.Env {
-				if key == "COCONET_EXECUTABLE" || key == "COCONET_HOME" {
+				if key == "XDG_CONFIG_HOME" {
 					continue
 				}
 				if placeholders {
@@ -116,14 +116,14 @@ func TestCursorMCPUnsetsUnresolvedOptionalEnvironment(t *testing.T) {
 					body += "[ \"$" + key + "\" = 'configured' ] || exit 95\n"
 				}
 			}
-			body += "printf '%s' \"$COCONET_HOME\"\n"
+			body += "printf '%s' \"$XDG_CONFIG_HOME\"\n"
 			if err := os.WriteFile(runtimePath, []byte(body), 0700); err != nil {
 				t.Fatal(err)
 			}
 			command := exec.Command(server.Command, server.Args...)
-			command.Env = []string{"PATH=" + root, "COCONET_EXECUTABLE=" + runtimePath, "COCONET_HOME=" + value}
+			command.Env = []string{"PATH=" + root, "XDG_CONFIG_HOME=" + value}
 			for key, placeholder := range server.Env {
-				if key == "COCONET_EXECUTABLE" || key == "COCONET_HOME" {
+				if key == "XDG_CONFIG_HOME" {
 					continue
 				}
 				setting := "configured"
@@ -296,7 +296,7 @@ func TestHookWrappersForwardContextOnlyForStartupEntry(t *testing.T) {
 					args = []string{"--context"}
 				}
 				cmd := exec.Command(wrapper, args...)
-				cmd.Env = []string{"COCONET_EXECUTABLE=" + runtimePath, "HOME=" + t.TempDir(), "PATH=" + t.TempDir()}
+				cmd.Env = []string{installedRuntimeEnvironment(t, runtimePath), "HOME=" + t.TempDir(), "PATH=" + t.TempDir()}
 				output, err := cmd.CombinedOutput()
 				if err != nil {
 					t.Fatal(err)
@@ -328,7 +328,7 @@ func TestCodexHookComputesInstalledSkillPathWithRepeatedDirectories(t *testing.T
 		t.Fatal(err)
 	}
 	cmd := exec.Command(wrapper, "--context")
-	cmd.Env = []string{"COCONET_EXECUTABLE=" + runtimePath, "HOME=" + t.TempDir(), "PATH=" + t.TempDir()}
+	cmd.Env = []string{installedRuntimeEnvironment(t, runtimePath), "HOME=" + t.TempDir(), "PATH=" + t.TempDir()}
 	input := `{"hook_event_name":"SessionStart"}`
 	cmd.Stdin = strings.NewReader(input)
 	output, err := cmd.CombinedOutput()
@@ -369,7 +369,7 @@ func TestPluginMCPWrappersResolveUserRuntimeWithoutPATH(t *testing.T) {
 	}
 }
 
-func TestPluginMCPWrappersPreferExplicitRuntime(t *testing.T) {
+func TestPluginMCPWrappersPreferManagedInstallation(t *testing.T) {
 	root := repositoryRoot(t)
 	runtimePath := filepath.Join(t.TempDir(), "custom-runtime", "coconet")
 	if err := os.MkdirAll(filepath.Dir(runtimePath), 0o700); err != nil {
@@ -393,8 +393,7 @@ func TestPluginMCPWrappersPreferExplicitRuntime(t *testing.T) {
 		command.Env = []string{
 			"HOME=" + t.TempDir(),
 			"PATH=" + t.TempDir(),
-			"XDG_DATA_HOME=" + t.TempDir(),
-			"COCONET_EXECUTABLE=" + runtimePath,
+			installedRuntimeEnvironment(t, runtimePath),
 		}
 		output, err := command.CombinedOutput()
 		if err != nil || string(output) != "mcp --agent "+agent+"\n" {
@@ -423,4 +422,17 @@ func repositoryRoot(t *testing.T) string {
 		t.Fatal("cannot resolve test file")
 	}
 	return filepath.Clean(filepath.Join(filepath.Dir(filename), "..", ".."))
+}
+
+func installedRuntimeEnvironment(t *testing.T, executable string) string {
+	t.Helper()
+	data := t.TempDir()
+	bin := filepath.Join(data, "coconet", "current", "bin")
+	if err := os.MkdirAll(bin, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(executable, filepath.Join(bin, "coconet")); err != nil {
+		t.Fatal(err)
+	}
+	return "XDG_DATA_HOME=" + data
 }

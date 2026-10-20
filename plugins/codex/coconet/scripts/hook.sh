@@ -1,10 +1,7 @@
 #!/bin/sh
 
-runtime="${COCONET_EXECUTABLE:-}"
-if [ -z "${runtime}" ]; then
-  data_root="${XDG_DATA_HOME:-${HOME}/.local/share}"
-  runtime="${data_root}/coconet/current/bin/coconet"
-fi
+data_root="${XDG_DATA_HOME:-${HOME}/.local/share}"
+runtime="${data_root}/coconet/current/bin/coconet"
 if [ ! -x "${runtime}" ] && command -v coconet >/dev/null 2>&1; then
   runtime="$(command -v coconet)"
 fi

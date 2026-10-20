@@ -61,15 +61,25 @@ type pendingOperationState struct {
 	Initializes   []pendingInitOperation `json:"initializes"`
 }
 
-func resolveRuntimePaths() (runtimePaths, error) {
-	root := os.Getenv("COCONET_HOME")
-	explicit := root != ""
-	if root == "" {
-		configRoot, err := os.UserConfigDir()
-		if err != nil {
-			return runtimePaths{}, fmt.Errorf("resolve user config directory: %w", err)
+var runtimeConfigDirectory = defaultRuntimeConfigDirectory
+
+func defaultRuntimeConfigDirectory() (string, bool, error) {
+	// Honor the standard config location on both supported platforms, including
+	// isolated test installations. Ordinary installs need no environment setup.
+	if configRoot := os.Getenv("XDG_CONFIG_HOME"); configRoot != "" {
+		if !filepath.IsAbs(configRoot) {
+			return "", false, errors.New("XDG_CONFIG_HOME must be an absolute directory")
 		}
-		root = filepath.Join(configRoot, "coconet")
+		return filepath.Join(configRoot, "coconet"), true, nil
+	}
+	configRoot, err := os.UserConfigDir()
+	return filepath.Join(configRoot, "coconet"), false, err
+}
+
+func resolveRuntimePaths() (runtimePaths, error) {
+	root, explicit, err := runtimeConfigDirectory()
+	if err != nil {
+		return runtimePaths{}, fmt.Errorf("resolve user config directory: %w", err)
 	}
 	canonical, err := filepath.Abs(root)
 	if err != nil {

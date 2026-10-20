@@ -1,3 +1,4 @@
+import { requestID } from './platform.mjs';
 import { disclosure, dialogActions } from './dialog.mjs';
 import { createButton } from './button.mjs';
 import { icon } from './icons.mjs';
@@ -132,7 +133,7 @@ export function mountProjectChoices({ content, error, projects = [], suggestedID
     try {
       if (newProject) {
         const text = fields.create.value.trim();
-        if (!pendingCreate || pendingCreate.name !== text) pendingCreate = { name: text, requestID: 'setup-' + crypto.randomUUID() };
+        if (!pendingCreate || pendingCreate.name !== text) pendingCreate = { name: text, requestID: 'setup-' + requestID() };
         if (!pendingCreate.id) {
           const result = await request('/projects', 'POST', { schema_version: 1, request_id: pendingCreate.requestID, name: text });
           pendingCreate.id = result.project.project_id;

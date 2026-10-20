@@ -26,7 +26,7 @@ var deleteNextKeychainCredential = func() ([]byte, error) {
 func purgeLocalState(paths runtimePaths) (purgeResult, error) {
 	result := purgeResult{Root: paths.root}
 	if filepath.Base(filepath.Clean(paths.root)) != "coconet" {
-		return result, errors.New("refusing to purge a COCONET_HOME whose final directory is not named coconet")
+		return result, errors.New("refusing to purge a configuration directory whose final directory is not named coconet")
 	}
 	info, err := os.Lstat(paths.root)
 	if errors.Is(err, os.ErrNotExist) {

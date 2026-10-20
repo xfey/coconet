@@ -76,7 +76,7 @@ func TestRuntimeCanRemoveItsVerifiedInstallWhileRunning(t *testing.T) {
 	)
 	command.Env = append(os.Environ(),
 		"HOME="+base,
-		"COCONET_HOME="+filepath.Join(base, "config", "coconet"),
+		"XDG_CONFIG_HOME="+filepath.Join(base, "config"),
 		"XDG_DATA_HOME="+filepath.Join(base, "data"),
 		"XDG_BIN_HOME="+binDirectory,
 	)

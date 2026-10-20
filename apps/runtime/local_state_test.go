@@ -12,9 +12,27 @@ import (
 	"github.com/xfey/coconet/packages/contracts"
 )
 
+func setRuntimeTestHome(t *testing.T, root string) {
+	t.Helper()
+	previous := runtimeConfigDirectory
+	runtimeConfigDirectory = func() (string, bool, error) { return root, true, nil }
+	t.Cleanup(func() { runtimeConfigDirectory = previous })
+}
+
+func setRuntimeTestServer(t *testing.T, server string) {
+	t.Helper()
+	paths, err := resolveRuntimePaths()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := saveDefaultServer(paths, server); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestCredentialsAndRuntimeStateAreIsolatedByDeployment(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("COCONET_HOME", home)
+	setRuntimeTestHome(t, home)
 	paths, err := resolveRuntimePaths()
 	if err != nil {
 		t.Fatal(err)
@@ -49,7 +67,7 @@ func TestCredentialsAndRuntimeStateAreIsolatedByDeployment(t *testing.T) {
 
 func TestCredentialAndBindingFilesAreUserOnlyAndScopeByLongestRoot(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("COCONET_HOME", home)
+	setRuntimeTestHome(t, home)
 	paths, err := resolveRuntimePaths()
 	if err != nil {
 		t.Fatal(err)
@@ -174,7 +192,7 @@ func TestWorktreeDiscoveryAndMovedRepositoryKeepLocalBindingIdentity(t *testing.
 		t.Fatalf("git init movable: %v: %s", err, output)
 	}
 	home := t.TempDir()
-	t.Setenv("COCONET_HOME", home)
+	setRuntimeTestHome(t, home)
 	paths, _ := resolveRuntimePaths()
 	account := fixtureAccount("acct_fixture01", "Fixture")
 	if err := saveBinding(paths, fixtureBinding(movable, "coco_movable001", account.AccountID)); err != nil {

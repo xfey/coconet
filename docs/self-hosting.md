@@ -7,7 +7,8 @@ Claude, Cursor or model-provider credentials.
 ## Initialize
 
 Choose a client-reachable HTTPS origin, for example `https://coconet.example.com`.
-The server may listen on loopback behind Nginx. Local HTTP is for loopback testing.
+New deployments listen on `127.0.0.1:7788` by default, behind Nginx.
+Use `--listen HOST:PORT` to override this; upgrades retain the saved listen address.
 
 ```sh
 sudo useradd --system --home /var/lib/coconet --shell /usr/sbin/nologin coconet
@@ -49,6 +50,27 @@ sudo systemctl enable --now coconet-server.service
 curl --fail https://coconet.example.com/healthz
 ```
 
+## Trusted-network HTTP testing
+
+For an isolated trusted network without TLS, initialize with `--listen 0.0.0.0:7788` and
+`--advertised-endpoint http://coconet.example.com:7788`. Limit access to that
+network. HTTP sends account keys and shared content without transport protection;
+use HTTPS for public deployment. GitHub and OIDC login require HTTPS.
+
+Use administrator-issued Account Keys for HTTP. With the server stopped, create
+one using `coconet-server account create --config /var/lib/coconet/server.json
+--name NAME`; keep the printed key private. Start the server and enter the key on
+the login page. Each member should have their own key.
+
+In the terminal used for Coconet and the Agent, run:
+
+```sh
+coconet connect --server 'http://coconet.example.com:7788'
+```
+
+The configured URL selects the protocol. Connected folders and Agent hooks use
+the saved endpoint, including after opening a new terminal or restarting the runtime.
+
 ## Connect members
 
 ```sh
@@ -59,6 +81,40 @@ Create or join a project in that deployment. Share its `coco_…` ID or
 `https://coconet.example.com/coco_…` link. The Dashboard includes `--server` in
 copied directory-connection commands. Each connected directory remembers its
 server; project IDs do not encode a server address.
+
+## Choose a default server
+
+For repeated connections to one deployment:
+
+```sh
+coconet server use https://coconet.example.com
+coconet connect
+coconet server list
+```
+
+`coconet server use official` restores the official default. `server use` only
+saves a preference: it does not contact a server or sign in. `connect --server URL`
+selects an endpoint for that connection without changing the default. Connected
+folders keep their own server regardless of the current default; disconnect a
+folder before connecting it to a different project or server.
+
+`server list` prints the configuration path and known endpoints from saved logins
+and folder bindings, without credentials. The editable `config.json` contains
+only `default_server`. It lives in the existing Coconet configuration directory:
+`~/Library/Application Support/coconet` on macOS, `$XDG_CONFIG_HOME/coconet` or
+`~/.config/coconet` on Linux. An explicitly set `XDG_CONFIG_HOME` is also honored
+on macOS for custom installations and isolated tests.
+
+```json
+{
+  "default_server": "https://coconet.example.com"
+}
+```
+
+Credentials remain in the credential store. DAGs, session replicas, indexes and
+pending work are scoped to the deployment identity and account, with projects
+inside that scope. Changing the default does not move or upload existing work.
+The same client and Agent plugins can serve multiple deployments.
 
 ## Storage and maintenance
 

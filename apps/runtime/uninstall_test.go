@@ -282,7 +282,7 @@ func configureUninstallTestEnvironment(t *testing.T) string {
 	t.Setenv("HOME", base)
 	t.Setenv("XDG_DATA_HOME", filepath.Join(base, "data"))
 	t.Setenv("XDG_BIN_HOME", filepath.Join(base, "bin"))
-	t.Setenv("COCONET_HOME", filepath.Join(base, "config", "coconet"))
+	setRuntimeTestHome(t, filepath.Join(base, "config", "coconet"))
 	t.Setenv("CODEX_HOME", filepath.Join(base, "codex"))
 	t.Setenv("CLAUDE_CONFIG_DIR", filepath.Join(base, "claude"))
 	return base

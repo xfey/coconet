@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"net"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"github.com/xfey/coconet/packages/localdag"
+	"github.com/xfey/coconet/packages/projectlink"
 	"github.com/xfey/coconet/packages/replication"
 	"github.com/xfey/coconet/packages/workgraph"
 )
@@ -74,10 +74,8 @@ func configureLocalDAGRelay(root, path, project string, engine *localdag.Engine)
 	if err != nil || endpoint.Host == "" || endpoint.User != nil || endpoint.RawQuery != "" || endpoint.Fragment != "" || config.SchemaVersion != 1 || !id.MatchString(config.AccountID) || !id.MatchString(config.DeviceID) || len(config.Projects) == 0 || len(config.Projects) > 100 {
 		return errors.New("invalid Relay configuration")
 	}
-	ip := net.ParseIP(endpoint.Hostname())
-	local := endpoint.Hostname() == "localhost" || ip != nil && ip.IsLoopback()
-	if endpoint.Scheme != "https" && !(endpoint.Scheme == "http" && local) {
-		return errors.New("Relay endpoint requires HTTPS except loopback")
+	if _, err := projectlink.ParseServerOrigin(config.Endpoint, true); err != nil {
+		return err
 	}
 	allowed := project == ""
 	for _, p := range config.Projects {

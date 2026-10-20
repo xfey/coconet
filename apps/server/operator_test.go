@@ -242,6 +242,8 @@ func TestOperatorConfigSchemaAndEndpointValidation(t *testing.T) {
 		"https://coconet.example.com:8443",
 		"https://192.0.2.10:8443",
 		"https://[2001:db8::10]:8443",
+		"http://192.0.2.10:7788",
+		"http://coconet.example.com:7788",
 		"http://127.0.0.1:8787",
 		"http://[::1]:8787",
 	}
@@ -256,9 +258,12 @@ func TestOperatorConfigSchemaAndEndpointValidation(t *testing.T) {
 			if err != nil || config.AdvertisedEndpoint != endpoint {
 				t.Fatalf("endpoint was not retained canonically: %#v %v", config, err)
 			}
+			if config.Listen != "127.0.0.1:7788" {
+				t.Fatalf("unexpected default listen address: %q", config.Listen)
+			}
 		})
 	}
-	for _, endpoint := range []string{"", "http://192.0.2.10:8787", "https://coconet.example.com/path", "HTTPS://coconet.example.com", "coconet.example.com"} {
+	for _, endpoint := range []string{"", "https://coconet.example.com/path", "HTTPS://coconet.example.com", "coconet.example.com"} {
 		t.Run("invalid-"+strings.ReplaceAll(endpoint, ":", "_"), func(t *testing.T) {
 			var output, stderr bytes.Buffer
 			arguments := []string{"init", "--data-dir", filepath.Join(t.TempDir(), "invalid")}

@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"os"
 	"regexp"
 	"strings"
 
@@ -135,9 +134,9 @@ func validateDeploymentTarget(target deploymentTarget) error {
 }
 
 func normalizeServerURL(value string) (string, error) {
-	normalized, err := projectlink.ParseServerOrigin(strings.TrimSpace(value), os.Getenv("COCONET_ALLOW_INSECURE_SERVER") == "1")
+	normalized, err := projectlink.ParseServerOrigin(strings.TrimSpace(value), true)
 	if err != nil {
-		return "", errors.New("Coconet Server URL must be a supported secure origin")
+		return "", fmt.Errorf("invalid Coconet Server URL: %w", err)
 	}
 	return normalized, nil
 }

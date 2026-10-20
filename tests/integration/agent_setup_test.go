@@ -76,7 +76,7 @@ func TestBootstrapAutomaticallyConfiguresDefaultAgents(t *testing.T) {
 				}
 			}
 			env := []string{
-				"PATH=" + commands, "HOME=" + root, "COCONET_HOME=" + state,
+				"PATH=" + commands, "HOME=" + root, "XDG_CONFIG_HOME=" + filepath.Dir(state),
 				"CODEX_HOME=" + codexRoot, "CLAUDE_CONFIG_DIR=" + claudeRoot,
 				"COCONET_TEST_FAIL_CLAUDE=" + scenario,
 			}

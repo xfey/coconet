@@ -97,7 +97,7 @@ func TestLocalDAGCaptureIsIdempotentAndReplayable(t *testing.T) {
 func TestInternalInferenceHookDoesNotReadInputOrCreateState(t *testing.T) {
 	t.Setenv("COCONET_INTERNAL_INFERENCE", "1")
 	root := filepath.Join(t.TempDir(), "absent")
-	t.Setenv("COCONET_HOME", root)
+	setRuntimeTestHome(t, root)
 	var output bytes.Buffer
 	if code := runHook([]string{"--agent", "codex"}, nil, &output, &output); code != 0 || output.Len() != 0 {
 		t.Fatal("internal hook was not silent")

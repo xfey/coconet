@@ -1,3 +1,4 @@
+import { requestID } from './platform.mjs';
 // A retry keeps its exact intent. UI updates always come from the published
 // graph; a receipt for an older edit must never overwrite a newer collection.
 export function createLibraryActions({ request, accepted = async () => {}, changed = () => {} }) {
@@ -13,7 +14,7 @@ export function createLibraryActions({ request, accepted = async () => {}, chang
       let attempt = attempts.get(id);
       if (attempt?.busy) return false;
       if (!attempt || attempt.input.remove !== remove || attempt.input.source.session_id !== node.source.session_id || attempt.input.source.version !== node.source.version) {
-        attempt = { input: { schema_version: 1, request_id: crypto.randomUUID(), work_node_id: node.id, source: { ...node.source }, remove }, busy: false };
+        attempt = { input: { schema_version: 1, request_id: requestID(), work_node_id: node.id, source: { ...node.source }, remove }, busy: false };
         attempts.set(id, attempt);
       }
       attempt.busy = true; changed();

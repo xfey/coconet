@@ -13,8 +13,7 @@ import (
 
 func TestAllCommandHelpIsOfflineAndReadOnly(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "uncreated")
-	t.Setenv("COCONET_HOME", root)
-	t.Setenv("COCONET_SERVER_URL", "http://127.0.0.1:1")
+	setRuntimeTestHome(t, root)
 	var visit func(clihelp.Command, []string)
 	visit = func(c clihelp.Command, path []string) {
 		for _, args := range [][]string{
@@ -45,7 +44,7 @@ func TestAllCommandHelpIsOfflineAndReadOnly(t *testing.T) {
 
 func TestConnectHelpDoesNotUpgradeRegisteredIntegrations(t *testing.T) {
 	restoreAgentIntegrationStubs(t)
-	t.Setenv("COCONET_HOME", t.TempDir())
+	setRuntimeTestHome(t, t.TempDir())
 	paths, err := resolveRuntimePaths()
 	if err != nil {
 		t.Fatal(err)

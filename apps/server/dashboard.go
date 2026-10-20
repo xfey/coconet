@@ -194,18 +194,27 @@ func (h *serverHandler) handleDashboardAPI(w http.ResponseWriter, r *http.Reques
 		h.writeError(w, requestID, forbidden("dashboard_origin_invalid", "use the configured browser origin"))
 		return
 	}
-	if !h.dashboardHTTPS(r) {
+	plainHTTP := h.dashboardHTTPAllowed(r)
+	if !h.dashboardHTTPS(r) && !plainHTTP {
 		h.writeError(w, requestID, invalid("dashboard_https_required", "Dashboard requires HTTPS"))
 		return
 	}
 	// SameSite plus exact Origin checks also protect login against session swapping.
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
-		if r.Header.Get("Origin") != "https://"+r.Host {
+		origin := "https://" + r.Host
+		if plainHTTP {
+			origin = h.browserOrigin()
+		}
+		if r.Header.Get("Origin") != origin {
 			h.writeError(w, requestID, forbidden("dashboard_origin_invalid", "same-origin Dashboard request required"))
 			return
 		}
 	}
-	cookie, _ := r.Cookie(dashboardCookieName)
+	cookieName := dashboardCookieName
+	if plainHTTP {
+		cookieName = "coconet_http_dashboard"
+	}
+	cookie, _ := r.Cookie(cookieName)
 	token := ""
 	if cookie != nil {
 		token = cookie.Value
@@ -232,7 +241,7 @@ func (h *serverHandler) handleDashboardAPI(w http.ResponseWriter, r *http.Reques
 				return
 			}
 			expires, _ := time.Parse(time.RFC3339Nano, result.ExpiresAt)
-			http.SetCookie(w, &http.Cookie{Name: dashboardCookieName, Value: created, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteStrictMode, MaxAge: int(dashboardSessionTTL.Seconds()), Expires: expires})
+			http.SetCookie(w, &http.Cookie{Name: cookieName, Value: created, Path: "/", Secure: !plainHTTP, HttpOnly: true, SameSite: http.SameSiteStrictMode, MaxAge: int(dashboardSessionTTL.Seconds()), Expires: expires})
 			h.writeJSON(w, 200, result)
 		case http.MethodGet:
 			result, err := h.authority.authenticateDashboard(token)
@@ -246,7 +255,7 @@ func (h *serverHandler) handleDashboardAPI(w http.ResponseWriter, r *http.Reques
 				h.writeError(w, requestID, err)
 				return
 			}
-			http.SetCookie(w, &http.Cookie{Name: dashboardCookieName, Value: "", Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteStrictMode, MaxAge: -1, Expires: time.Unix(1, 0)})
+			http.SetCookie(w, &http.Cookie{Name: cookieName, Value: "", Path: "/", Secure: !plainHTTP, HttpOnly: true, SameSite: http.SameSiteStrictMode, MaxAge: -1, Expires: time.Unix(1, 0)})
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			h.methodNotAllowed(w, requestID, "GET, POST, DELETE")

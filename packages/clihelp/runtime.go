@@ -2,7 +2,7 @@ package clihelp
 
 func Runtime() Command {
 	json := boolean("json", "Write machine-readable JSON")
-	server := option("server", "URL", "", "Server origin; otherwise use the folder's server, COCONET_SERVER_URL, or https://api.coconet.space")
+	server := option("server", "URL", "", "Server origin; otherwise use the connected folder's server, the saved default, or https://api.coconet.space. Explicit http:// endpoints need no environment setup")
 	root := option("root", "DIR", "", "Absolute private Runtime store; otherwise use the connected folder")
 	project := option("project", "ID", "", "Project ID when selecting an explicit Runtime store")
 	fixed := []Option{
@@ -26,6 +26,10 @@ func Runtime() Command {
 	logout, whoami := login, login
 	logout.Name, logout.Summary, logout.Examples = "logout", "Sign out this device; keep folder connections and pending work", []string{"coconet logout"}
 	whoami.Name, whoami.Summary, whoami.Examples = "whoami", "Show the signed-in account and server", []string{"coconet whoami"}
+	servers := Command{Name: "server", Summary: "Select the default server and list known endpoints", Usage: "<use|list>", Children: []Command{
+		{Name: "use", Summary: "Save a default server for new connections", Usage: "<URL|official>", Notes: []string{"Writes only default_server in the local config.json. Does not sign in, contact the server, move data or change connected folders. Use official to restore https://api.coconet.space."}, Examples: []string{"coconet server use http://dev.example.com:7788", "coconet server use official"}},
+		{Name: "list", Summary: "List the default and servers from saved logins and folder connections", Usage: "[--json]", Options: []Option{json}, Notes: []string{"Read-only and offline. Prints the configuration path; never prints credentials. The default only applies outside connected folders."}},
+	}}
 	agent := Command{Name: "agent", Summary: "Inspect and manage Agent integrations", Usage: "<list|add|remove>", Children: []Command{
 		{Name: "list", Summary: "List registered Agent integrations", Usage: "[options]", Options: []Option{json, boolean("verbose", "Show commands, configuration paths and setup errors")}, Examples: []string{"coconet agent list --verbose"}},
 		{Name: "add", Summary: "Install or retry the plugin for an Agent", Usage: "<codex|claude|cursor> [options]", Options: []Option{option("command", "CMD", "", "Agent executable; defaults to the chosen Agent name (codex or claude)"), option("config-root", "DIR", "", "Absolute Agent profile directory; defaults to the chosen Agent's normal profile"), json}, Examples: []string{"coconet agent add claude --command tclaude --config-root /path/to/claude-profile"}},
@@ -105,7 +109,7 @@ func Runtime() Command {
 		leaf("remove", "Remove a source from the collection", "--node ID --session ID --version N [--request-id ID] [--json]"),
 	}, Notes: []string{"Run in a connected folder. Collection updates are shared with the Dashboard star state."}}
 	fork := Command{Name: "fork", Summary: "Create an independent native session from a selected source", Usage: "--agent codex|claude|cursor --node ID --session ID --version N [options]", Options: append(append([]Option{}, fixed...), option("agent", "codex|claude|cursor", "", "Required: target Agent; Codex, Claude and Cursor sources support cross-Agent text continuation"), request, json), Notes: []string{"Run in a connected folder. Uses retained local source content, preserves the original history and prints a native continuation command. Same-Agent Fork preserves native history; cross-Agent Fork imports user/assistant text, excluding tools, reasoning and media. Publication can finish later in the background."}, Examples: []string{"coconet fork --agent claude --node NODE_ID --session SESSION_ID --version 3"}}
-	account := Command{Name: "account", Summary: "Inspect or replace your account key", Usage: "<key|reset-key> [--server URL]", Options: []Option{option("server", "URL", "", "Deployment origin; defaults to the connected folder or the only stored deployment credential")}, Children: []Command{
+	account := Command{Name: "account", Summary: "Inspect or replace your account key", Usage: "<key|reset-key> [--server URL]", Options: []Option{server}, Children: []Command{
 		leaf("key", "Print the stored account key", "[--server URL]", "Output contains a credential. Keep it private."),
 		leaf("reset-key", "Replace the account key", "[--server URL]", "Signs out other devices and browser sessions. If interrupted, repeat the command to complete the same reset."),
 	}}
@@ -117,7 +121,7 @@ func Runtime() Command {
 	return Command{Name: "coconet", Summary: "Coconet · share and continue AI sessions with your team", Usage: "<command> [options]", Children: []Command{
 		connect, {Name: "status", Summary: "Show account, project, uploads and Dashboard link", Usage: "[--verbose]", Options: []Option{boolean("verbose", "Show connection and local processing details")}},
 		leaf("disconnect", "Disconnect this folder; preserve native history and local session copies", ""),
-		login, logout, whoami, agent, inference, history, projection, diagnostics, storage, session, library, fork, account,
+		login, logout, whoami, servers, agent, inference, history, projection, diagnostics, storage, session, library, fork, account,
 		{Name: "health", Summary: "Show machine-readable Runtime and Agent health", Usage: "[--json]", Options: []Option{json}, Notes: []string{"Output is JSON with or without --json."}},
 		leaf("version", "Show the installed version (aliases: --version, -v)", ""), uninstall, init,
 		localDAGHelp(),

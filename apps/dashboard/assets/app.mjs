@@ -1,3 +1,4 @@
+import { copyToClipboard } from './platform.mjs';
 import { createPublishedGraphReader, publishedGraphStatus, publishedSessionActions, renderPublishedStatus } from "./published-graph.mjs";
 import { createProjectEvents } from "./events.mjs";
 import { renderInstallation } from './installation.mjs';
@@ -159,7 +160,7 @@ function renderAction() {
   footer.append(element('p', t('copy_fallback'), 'muted'), copy);
   content.replaceChildren(element('p', t(action.descriptionKey), 'modal-description'), pre, footer); content.scrollTop = scroll;
 }
-function openInstallation({ project, trigger = 'login-install' } = {}) {
+function openInstallation({ project, trigger = 'project-manage' } = {}) {
   openModal('installation', t('connect_my_folder'), trigger);
   modal.installation = { project }; renderInstall();
 }
@@ -419,7 +420,7 @@ function renderLibrary() {
 }
 async function copyText(text) {
   const epoch = modalEpoch, attempt = ++copyEpoch;
-  try { await navigator.clipboard.writeText(text); if (epoch === modalEpoch && attempt === copyEpoch) toast('copy_success'); }
+  try { await copyToClipboard(text); if (epoch === modalEpoch && attempt === copyEpoch) toast('copy_success'); }
   catch { if (epoch === modalEpoch && attempt === copyEpoch) toast('copy_failed'); }
 }
 function actionButton(text, glyph, action, className) {
@@ -523,7 +524,6 @@ const outsideModal = event => {
 $('session-modal').addEventListener('pointerdown', event => { backdropDown = event.target === $('session-modal') && outsideModal(event); });
 $('session-modal').addEventListener('click', event => { if (backdropDown && event.target === $('session-modal') && outsideModal(event)) closeModal(); backdropDown = false; });
 $('canvas-settings').addEventListener('click', openSettings);
-$('login-install').addEventListener('click', () => openInstallation({ trigger: 'login-install' }));
 $('library-open').addEventListener('click', () => toggleLibraryDrawer($('library-drawer').hidden));
 $('library-close').addEventListener('click', () => toggleLibraryDrawer(false, true));
 document.addEventListener('pointerdown', event => {

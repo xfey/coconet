@@ -33,6 +33,7 @@ Share offers one project link to copy. Connection instructions omit the separate
 project-name caption and show a single `coconet connect` command by default,
 including the selected project and the API address for self-hosted deployments.
 The **First time here?** disclosure contains installation and Hook guidance.
-Open the guide from Share, the membership confirmation, or the sign-in page;
-there is no separate sidebar installation entry. Interface copy uses **project**
+Open the guide from Share or the membership confirmation after signing in.
+Hosted and self-hosted sign-in pages omit folder-connection guidance, and there
+is no separate sidebar installation entry. Interface copy uses **project**
 for the shared collaboration space and **local folder** for a device path.

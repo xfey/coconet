@@ -343,7 +343,7 @@ func TestInferenceDeadlineTerminatesProcess(t *testing.T) {
 }
 
 func TestInferenceEnvironmentDoesNotInheritCaptureSettings(t *testing.T) {
-	t.Setenv("COCONET_HOME", "must-not-inherit")
+	t.Setenv("COCONET_TEST_UNRELATED", "must-not-inherit")
 	t.Setenv("MAX_THINKING_TOKENS", "10000")
 	t.Setenv("CLAUDE_CODE_DISABLE_THINKING", "0")
 	t.Setenv("CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING", "1")

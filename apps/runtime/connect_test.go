@@ -442,9 +442,9 @@ func fixtureError(code string, status contracts.Status) contracts.ErrorEnvelope 
 
 func configureRuntimeTest(t *testing.T, home, cwd, serverURL string) {
 	t.Helper()
-	t.Setenv("COCONET_HOME", home)
+	setRuntimeTestHome(t, home)
 	t.Setenv("COCONET_CWD", cwd)
-	t.Setenv("COCONET_SERVER_URL", serverURL)
+	setRuntimeTestServer(t, serverURL)
 	t.Setenv("COCONET_CODEX_COMMAND", "coconet-test-no-codex")
 	t.Setenv("CODEX_HOME", filepath.Join(home, "codex-fixture-test-only"))
 	t.Setenv("COCONET_CLAUDE_COMMAND", "coconet-test-no-claude")

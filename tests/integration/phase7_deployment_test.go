@@ -59,6 +59,21 @@ func TestPhase7OneRuntimeKeepsTwoDeploymentsAuthoritativeAndIsolated(t *testing.
 	if credentials.SchemaVersion != 2 || len(credentials.Credentials) != 2 {
 		t.Fatalf("multi-Deployment credentials were not retained: %#v", credentials)
 	}
+	// Switching the default persists across fresh CLI processes. Existing folder
+	// bindings still select their original endpoint and credential.
+	runCoconet(t, runtimeBinary, repositoryA, clientHome, serverA, "", "", "server", "use", serverB)
+	if output := runCoconet(t, runtimeBinary, temporaryRoot, clientHome, serverA, "", "", "whoami"); !strings.Contains(output, serverB) {
+		t.Fatal("unbound command did not use saved default", output)
+	}
+	if output := runCoconet(t, runtimeBinary, repositoryA, clientHome, serverA, "", "", "whoami"); !strings.Contains(output, serverA) {
+		t.Fatal("default switch changed folder authority", output)
+	}
+	if output := runCoconet(t, runtimeBinary, temporaryRoot, clientHome, serverA, "", "", "whoami", "--server", serverA); !strings.Contains(output, serverA) {
+		t.Fatal("explicit endpoint did not take precedence", output)
+	}
+	if output := runCoconet(t, runtimeBinary, temporaryRoot, clientHome, serverA, "", "", "whoami"); !strings.Contains(output, serverB) {
+		t.Fatal("explicit endpoint changed saved default", output)
+	}
 	serverAOrigin, err := url.Parse(serverA)
 	if err != nil {
 		t.Fatal(err)
@@ -80,8 +95,9 @@ func TestPhase7OneRuntimeKeepsTwoDeploymentsAuthoritativeAndIsolated(t *testing.
 		})
 		return string(content)
 	}
-	// Both hooks intentionally inherit Server A through the environment. Repository B
-	// must still use its local binding and write only to Deployment B's local database.
+	runCoconet(t, runtimeBinary, temporaryRoot, clientHome, serverA, "", "", "server", "use", "official")
+	// Even with the default switched to the official service, both hooks write
+	// only to their original server/account stores, without contacting the default.
 	runCoconet(t, runtimeBinary, repositoryA, clientHome, serverA, "", hookPayload(repositoryA, "event-deployment-a"), "hook", "--agent", "codex")
 	runCoconet(t, runtimeBinary, repositoryB, clientHome, serverA, "", hookPayload(repositoryB, "event-deployment-b"), "hook", "--agent", "codex")
 	for _, binding := range []localBindingFixture{bindingA, bindingB} {
@@ -153,6 +169,14 @@ func sameFixturePath(left, right string) bool {
 
 func runtimeEnvironment(t *testing.T, cwd, home, serverURL, registrationToken string) []string {
 	seedFixtureLogin(t, home, serverURL)
+	configPath := filepath.Join(home, "config.json")
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		data, _ := json.Marshal(map[string]string{"default_server": serverURL})
+		if err := os.WriteFile(configPath, data, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
 	for _, name := range []string{"codex-fixture-test-only", "tclaude-test-only"} {
 		if err := os.MkdirAll(filepath.Join(home, name), 0700); err != nil {
 			t.Fatal(err)
@@ -160,8 +184,7 @@ func runtimeEnvironment(t *testing.T, cwd, home, serverURL, registrationToken st
 	}
 	return append(os.Environ(),
 		"COCONET_CWD="+cwd,
-		"COCONET_HOME="+home,
-		"COCONET_SERVER_URL="+serverURL,
+		"XDG_CONFIG_HOME="+runtimeFixtureConfigHome(t, home),
 		"COCONET_REGISTRATION_TOKEN="+registrationToken,
 		"COCONET_CODEX_COMMAND=coconet-test-no-codex",
 		"CODEX_HOME="+filepath.Join(home, "codex-fixture-test-only"),
@@ -171,4 +194,17 @@ func runtimeEnvironment(t *testing.T, cwd, home, serverURL, registrationToken st
 		"COCONET_DISABLE_BACKGROUND_SYNC=1",
 		"SSH_CONNECTION=isolated-test",
 	)
+}
+
+// Processes use the standard config location without touching the real user's state.
+func runtimeFixtureConfigHome(t *testing.T, home string) string {
+	t.Helper()
+	configRoot := t.TempDir()
+	if err := os.MkdirAll(home, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(home, filepath.Join(configRoot, "coconet")); err != nil {
+		t.Fatal(err)
+	}
+	return configRoot
 }

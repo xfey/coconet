@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	"github.com/xfey/coconet/packages/contracts"
+	"github.com/xfey/coconet/packages/projectlink"
 )
 
 type HTTP struct {
@@ -39,10 +39,8 @@ func (t HTTP) request(ctx context.Context, method, project, suffix string, body 
 	if err != nil || base.Host == "" || base.User != nil || base.RawQuery != "" || base.Fragment != "" || token == "" {
 		return nil, errors.New("invalid relay endpoint or credential")
 	}
-	ip := net.ParseIP(base.Hostname())
-	local := base.Hostname() == "localhost" || ip != nil && ip.IsLoopback()
-	if base.Scheme != "https" && !(base.Scheme == "http" && local) {
-		return nil, errors.New("relay requires HTTPS except for loopback development")
+	if _, err := projectlink.ParseServerOrigin(t.BaseURL, true); err != nil {
+		return nil, fmt.Errorf("invalid relay endpoint: %w", err)
 	}
 	endpoint := strings.TrimRight(base.String(), "/") + "/v1/projects/" + url.PathEscape(project) + "/relay/" + suffix
 	request, err := http.NewRequestWithContext(ctx, method, endpoint, body)

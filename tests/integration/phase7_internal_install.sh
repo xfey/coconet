@@ -201,17 +201,17 @@ assert_runtime_version "${current_version}"
 runtime="${install_root}/current/bin/coconet"
 state_root="${test_root}/state/coconet"
 set +e
-COCONET_HOME="${state_root}" "${runtime}" agent add codex --command "${failing_codex_fixture}" --config-root "${test_root}/agents/failed" --json >"${result_root}/agent-failed.json"
+XDG_CONFIG_HOME="${state_root%/*}" "${runtime}" agent add codex --command "${failing_codex_fixture}" --config-root "${test_root}/agents/failed" --json >"${result_root}/agent-failed.json"
 failed_exit=$?
 set -e
 [[ "${failed_exit}" == "1" ]] || fail "failed Agent registration returned ${failed_exit}, expected 1"
 
-COCONET_HOME="${state_root}" "${runtime}" agent add codex --command "${working_codex_fixture}" --config-root "${test_root}/agents/one" --json >"${result_root}/agent-one.json"
+XDG_CONFIG_HOME="${state_root%/*}" "${runtime}" agent add codex --command "${working_codex_fixture}" --config-root "${test_root}/agents/one" --json >"${result_root}/agent-one.json"
 working_codex_fixture_two="${mock_root}/codex-fixture-internal-ok-two"
 cp "${working_codex_fixture}" "${working_codex_fixture_two}"
 chmod 0700 "${working_codex_fixture_two}"
-COCONET_HOME="${state_root}" "${runtime}" agent add codex --command "${working_codex_fixture_two}" --config-root "${test_root}/agents/two" --json >"${result_root}/agent-two.json"
-COCONET_HOME="${state_root}" "${runtime}" agent list --json >"${result_root}/agent-list.json"
+XDG_CONFIG_HOME="${state_root%/*}" "${runtime}" agent add codex --command "${working_codex_fixture_two}" --config-root "${test_root}/agents/two" --json >"${result_root}/agent-two.json"
+XDG_CONFIG_HOME="${state_root%/*}" "${runtime}" agent list --json >"${result_root}/agent-list.json"
 node --input-type=module - "${result_root}/agent-list.json" "${current_version}" <<'NODE'
 import { readFileSync } from "node:fs";
 const [path, version] = process.argv.slice(2);
@@ -227,8 +227,8 @@ import { readFileSync } from "node:fs";
 process.stdout.write(JSON.parse(readFileSync(process.argv[2], "utf8")).integration.id);
 NODE
 )"
-COCONET_HOME="${state_root}" "${runtime}" agent remove "${first_id}" --json >"${result_root}/agent-removed.json"
-COCONET_HOME="${state_root}" "${runtime}" agent list --json >"${result_root}/agent-list-after-remove.json"
+XDG_CONFIG_HOME="${state_root%/*}" "${runtime}" agent remove "${first_id}" --json >"${result_root}/agent-removed.json"
+XDG_CONFIG_HOME="${state_root%/*}" "${runtime}" agent list --json >"${result_root}/agent-list-after-remove.json"
 node --input-type=module - "${result_root}/agent-list-after-remove.json" <<'NODE'
 import { readFileSync } from "node:fs";
 const state = JSON.parse(readFileSync(process.argv[2], "utf8"));

@@ -4,6 +4,12 @@ The runtime is the device-side coordinator. Its CLI and MCP server use the same
 project connections and local stores. `coconet connect` binds a working directory
 to a deployment and project; Agent Hooks notify the runtime of subsequent updates.
 
+`coconet server use <URL|official>` chooses the default for new connections;
+`server list` shows known endpoints and the configuration path offline. The local
+`config.json` contains only `default_server`. Existing folders and queued work
+keep their pinned deployment and account; changing this preference moves no data.
+See [server selection](../../docs/self-hosting.md#choose-a-default-server).
+
 `local_dag_observe.go` captures native session copies and detects effective branch
 changes. Processing creates fixed inference tasks before invoking an Agent.
 Retries and another device's takeover reuse the saved task inputs; a stale worker

@@ -1,3 +1,4 @@
+import { requestID, copyToClipboard } from './platform.mjs';
 import { mountProjectConnection, mountProjectChoices, connectionErrorKey } from "./connection.mjs";
 import { commandBlock, dialogActions as actions } from './dialog.mjs';
 import { createButton, setButtonLabel } from "./button.mjs";
@@ -159,7 +160,7 @@ export function createAccountUI({ state, api, t, element, statusMessage, openMod
     const url = location.origin + workspaceLocation(project.project_id);
     const copyOptions = {
       element, t,
-      copyText: async text => { try { await navigator.clipboard.writeText(text); if (content.isConnected) toast('copy_success'); } catch { if (content.isConnected) toast('copy_failed'); } },
+      copyText: async text => { try { await copyToClipboard(text); if (content.isConnected) toast('copy_success'); } catch { if (content.isConnected) toast('copy_failed'); } },
     };
     const group = element('div', undefined, 'copy-field');
     group.append(element('h3', t('project_link')), commandBlock(url, { ...copyOptions, label: 'copy_project_link', buttonClass: '' }));
@@ -173,7 +174,7 @@ export function createAccountUI({ state, api, t, element, statusMessage, openMod
       // Creation already grants membership. Joining grants membership only;
       // a folder connection requires a separate CLI authorization.
       const project = created ? null : (await request('/connections', 'POST', {
-        request_id: crypto.randomUUID(), schema_version: 1, project_id: id,
+        request_id: requestID(), schema_version: 1, project_id: id,
       })).project;
       if (!content.isConnected) return;
       history.pushState(null, '', workspaceLocation(id));

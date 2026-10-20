@@ -33,3 +33,11 @@ func (h *serverHandler) browserOrigin() string {
 func (h *serverHandler) browserHost(r *http.Request) bool {
 	return h.webOrigin == "" || "https://"+r.Host == h.webOrigin
 }
+
+// HTTP login is key-only and pinned to the explicitly configured origin. Request
+// headers cannot downgrade an HTTPS deployment or select the HTTP cookie jar.
+func (h *serverHandler) dashboardHTTPAllowed(r *http.Request) bool {
+	return h.auth.Kind == "key" &&
+		!h.dashboardHTTPS(r) && strings.HasPrefix(h.browserOrigin(), "http://") &&
+		"http://"+r.Host == h.browserOrigin()
+}

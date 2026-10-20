@@ -16,7 +16,7 @@ import (
 
 func TestAgentAddSupportsMultipleInstancesOfOneType(t *testing.T) {
 	restoreAgentIntegrationStubs(t)
-	t.Setenv("COCONET_HOME", filepath.Join(t.TempDir(), "coconet"))
+	setRuntimeTestHome(t, filepath.Join(t.TempDir(), "coconet"))
 	resolveAgentMarketplace = func(host agentplugin.Host) (string, error) {
 		return "/runtime/marketplaces/" + string(host), nil
 	}
@@ -55,7 +55,7 @@ func TestAgentAddSupportsMultipleInstancesOfOneType(t *testing.T) {
 
 func TestAgentListSeparatesSummaryAndVerboseDetails(t *testing.T) {
 	restoreAgentIntegrationStubs(t)
-	t.Setenv("COCONET_HOME", filepath.Join(t.TempDir(), "coconet"))
+	setRuntimeTestHome(t, filepath.Join(t.TempDir(), "coconet"))
 	integration, _ := newAgentIntegration(agentplugin.HostCodex, "codex-fixture", filepath.Join(t.TempDir(), "codex-fixture"))
 	integration.Status = agentIntegrationConfigured
 	integration.RuntimeVersion = "0.8.0"
@@ -84,7 +84,7 @@ func TestAgentListSeparatesSummaryAndVerboseDetails(t *testing.T) {
 
 func TestAgentSetupFailureKeepsRetryInstanceAndJSONOutput(t *testing.T) {
 	restoreAgentIntegrationStubs(t)
-	t.Setenv("COCONET_HOME", filepath.Join(t.TempDir(), "coconet"))
+	setRuntimeTestHome(t, filepath.Join(t.TempDir(), "coconet"))
 	resolveAgentMarketplace = func(agentplugin.Host) (string, error) { return "/fixture/marketplace", nil }
 	configureAgentIntegration = func(_ context.Context, integration agentIntegration, _ string) agentplugin.InstallResult {
 		return agentplugin.InstallResult{Host: integration.Type, Command: integration.Command, Status: agentplugin.StatusFailed, Error: "fixture setup failure"}
@@ -111,7 +111,7 @@ func TestAgentSetupFailureKeepsRetryInstanceAndJSONOutput(t *testing.T) {
 
 func TestAgentAddRetainsFailureForInspectionAndRetry(t *testing.T) {
 	restoreAgentIntegrationStubs(t)
-	t.Setenv("COCONET_HOME", filepath.Join(t.TempDir(), "coconet"))
+	setRuntimeTestHome(t, filepath.Join(t.TempDir(), "coconet"))
 	resolveAgentMarketplace = func(agentplugin.Host) (string, error) { return "/marketplace", nil }
 	configureAgentIntegration = func(_ context.Context, integration agentIntegration, _ string) agentplugin.InstallResult {
 		return agentplugin.InstallResult{Host: integration.Type, Command: integration.Command, Status: agentplugin.StatusFailed, Error: "fixture install failed"}
@@ -130,7 +130,7 @@ func TestAgentAddRetainsFailureForInspectionAndRetry(t *testing.T) {
 
 func TestAutomaticAgentSyncOnlyUpdatesOlderRuntimeEntries(t *testing.T) {
 	restoreAgentIntegrationStubs(t)
-	t.Setenv("COCONET_HOME", filepath.Join(t.TempDir(), "coconet"))
+	setRuntimeTestHome(t, filepath.Join(t.TempDir(), "coconet"))
 	resolveAgentMarketplace = func(agentplugin.Host) (string, error) { return "/marketplace", nil }
 	now := time.Date(2026, 8, 31, 1, 2, 3, 0, time.UTC)
 	agentIntegrationNow = func() time.Time { return now }
@@ -158,7 +158,7 @@ func TestAutomaticAgentSyncOnlyUpdatesOlderRuntimeEntries(t *testing.T) {
 
 func TestInterruptedSetupPersistsCompletedAndAttemptedEntries(t *testing.T) {
 	restoreAgentIntegrationStubs(t)
-	t.Setenv("COCONET_HOME", filepath.Join(t.TempDir(), "coconet"))
+	setRuntimeTestHome(t, filepath.Join(t.TempDir(), "coconet"))
 	resolveAgentMarketplace = func(agentplugin.Host) (string, error) { return "/marketplace", nil }
 	paths, _ := resolveRuntimePaths()
 	entries := []agentIntegration{}
@@ -214,7 +214,7 @@ func TestInterruptedSetupPersistsCompletedAndAttemptedEntries(t *testing.T) {
 
 func TestAgentRemovePreservesIntegrationSharingTheSameConfigRoot(t *testing.T) {
 	restoreAgentIntegrationStubs(t)
-	t.Setenv("COCONET_HOME", filepath.Join(t.TempDir(), "coconet"))
+	setRuntimeTestHome(t, filepath.Join(t.TempDir(), "coconet"))
 	root := filepath.Join(t.TempDir(), "codex")
 	first, _ := newAgentIntegration(agentplugin.HostCodex, "codex", root)
 	second, _ := newAgentIntegration(agentplugin.HostCodex, "codex-fixture", root)
@@ -264,7 +264,7 @@ func TestAgentIntegrationInputAndStateAreStrict(t *testing.T) {
 
 func TestAgentRemoveReportsJSONWriteFailure(t *testing.T) {
 	restoreAgentIntegrationStubs(t)
-	t.Setenv("COCONET_HOME", filepath.Join(t.TempDir(), "coconet"))
+	setRuntimeTestHome(t, filepath.Join(t.TempDir(), "coconet"))
 	integration, _ := newAgentIntegration(agentplugin.HostCodex, "codex-fixture", filepath.Join(t.TempDir(), "codex-fixture"))
 	integration.Status = agentIntegrationConfigured
 	paths, _ := resolveRuntimePaths()

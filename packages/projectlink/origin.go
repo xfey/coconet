@@ -19,16 +19,16 @@ type parsedOrigin struct {
 }
 
 // ParseServerOrigin returns a canonical origin. Plaintext is limited to
-// loopback unless allowInsecureFixture is explicitly true.
-func ParseServerOrigin(input string, allowInsecureFixture bool) (string, error) {
-	origin, err := parseOrigin(input, allowInsecureFixture)
+// loopback unless allowHTTP is explicitly true.
+func ParseServerOrigin(input string, allowHTTP bool) (string, error) {
+	origin, err := parseOrigin(input, allowHTTP)
 	if err != nil {
 		return "", err
 	}
 	return origin.string(), nil
 }
 
-func parseOrigin(input string, allowInsecureFixture bool) (parsedOrigin, error) {
+func parseOrigin(input string, allowHTTP bool) (parsedOrigin, error) {
 	if strings.TrimSpace(input) != input || input == "" {
 		return parsedOrigin{}, errors.New("server endpoint must be a non-empty origin")
 	}
@@ -66,8 +66,8 @@ func parseOrigin(input string, allowInsecureFixture bool) (parsedOrigin, error) 
 		}
 	}
 	loopback := host == "localhost" || ip != nil && ip.IsLoopback()
-	if scheme == "http" && !loopback && !allowInsecureFixture {
-		return parsedOrigin{}, errors.New("plaintext server endpoint must be loopback")
+	if scheme == "http" && !loopback && !allowHTTP {
+		return parsedOrigin{}, errors.New("this endpoint requires HTTPS")
 	}
 	return parsedOrigin{scheme: scheme, host: host, port: port, ip: ip}, nil
 }

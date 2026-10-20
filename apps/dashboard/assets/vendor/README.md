@@ -25,3 +25,18 @@ The application modules and this notice use `no-store`.
 To upgrade, replace the unchanged upstream bundle, license and gzip companion;
 update the versioned URLs, provenance and checksums; then run layout, static asset
 and browser acceptance tests. Do not change the bytes behind an immutable URL.
+
+## SHA-256 for HTTP development
+
+The HTTP Dashboard lazily loads `@noble/hashes` 1.8.0 when Web Crypto is
+unavailable. HTTPS continues to use the browser's built-in SHA-256. This preserves
+checkpoint digest validation on both transports.
+
+- Source: https://github.com/paulmillr/noble-hashes/tree/1.8.0
+- npm: https://registry.npmjs.org/@noble/hashes/-/hashes-1.8.0.tgz
+- npm integrity: `sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==`
+- License: MIT, retained in [noble-hashes-LICENSE.txt](noble-hashes-LICENSE.txt).
+- Bundled from the upstream `esm/sha256.js` entry with esbuild 0.25.12,
+  `--bundle --platform=browser --format=esm --minify` and an alias from
+  `@noble/hashes/crypto` to the upstream `esm/crypto.js` browser entry.
+- Bundle SHA-256: `f14ced5fc597bd181173e92b682369ae12816f95a5bcd9ff8ae05ac241621ac6`.

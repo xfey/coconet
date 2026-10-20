@@ -47,6 +47,13 @@ func runConnect(ctx context.Context, args []string, stdin io.Reader, stdout, std
 		return 1
 	}
 	if existing != nil {
+		if options.server != "" {
+			options.server, err = normalizeServerURL(options.server)
+			if err != nil {
+				fmt.Fprintln(stderr, err)
+				return 1
+			}
+		}
 		if options.project != "" && options.project != existing.ProjectID || options.server != "" && options.server != existing.LocalServerURL {
 			fmt.Fprintln(stderr, "This folder is already connected to a project. Run `coconet disconnect` in that folder before connecting elsewhere.")
 			return 1
@@ -102,7 +109,11 @@ func runConnect(ctx context.Context, args []string, stdin io.Reader, stdout, std
 	}
 	serverURL := options.server
 	if serverURL == "" {
-		serverURL = environmentOr("COCONET_SERVER_URL", defaultServerURL)
+		serverURL, err = defaultServer(paths)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
 	}
 	target, err := discoverDeployment(ctx, serverURL)
 	if err != nil {

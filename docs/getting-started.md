@@ -35,7 +35,10 @@ coconet connect --server 'https://coconet.example.com'
 coconet connect coco_PROJECT_ID --server 'https://coconet.example.com'
 ```
 
-See [self-hosting](self-hosting.md) for server setup.
+To make it the default for new connections, use `coconet server use URL`.
+`coconet server use official` switches back; existing folder connections stay
+with their original server. See [self-hosting](self-hosting.md) for server setup
+and configuration details.
 
 ## Work together
 

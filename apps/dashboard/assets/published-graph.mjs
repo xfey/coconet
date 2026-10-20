@@ -1,3 +1,4 @@
+import { sha256 } from './platform.mjs';
 import { graphStructure } from './graph.mjs';
 import { commandBlock, disclosure } from './dialog.mjs';
 
@@ -11,7 +12,7 @@ async function verifiedJSON(encoded, digest, maxBytes) {
   let bytes;
   try { bytes = Uint8Array.from(atob(encoded), c => c.charCodeAt(0)); } catch { fail(); }
   if (bytes.length > maxBytes) fail();
-  const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), b => b.toString(16).padStart(2, '0')).join('');
+  const hash = await sha256(bytes);
   if (hash !== digest) fail();
   try { return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)); } catch { fail(); }
 }

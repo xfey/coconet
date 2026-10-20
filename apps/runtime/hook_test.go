@@ -20,8 +20,8 @@ func TestUnboundHookIgnoresLegacyDeclarationAndStaysSilent(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(legacyDirectory, "project.json"), []byte(`{"schema_version":2,"project_id":"coco_fixture01","secret":"ignored"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("COCONET_HOME", t.TempDir())
-	t.Setenv("COCONET_SERVER_URL", "https://coconet.test")
+	setRuntimeTestHome(t, t.TempDir())
+	setRuntimeTestServer(t, "https://coconet.test")
 
 	for _, eventName := range []string{"SessionStart", "UserPromptSubmit", "PreToolUse", "Stop"} {
 		payload := hookJSON(t, map[string]string{"hook_event_name": eventName, "cwd": repositoryRoot})

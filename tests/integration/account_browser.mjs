@@ -58,35 +58,10 @@ try {
       assert.equal(await page.locator('#login-form').isVisible(), false);
       assert.equal(await page.locator('#login-title').innerText(), language === 'zh' ? '打开项目' : 'Open your projects');
       await screenshot(page, 'login-' + width + '-' + language);
-      await page.locator('#login-install').click();
-      assert.equal(await page.locator('#modal-title').innerText(), language === 'zh' ? '连接本地文件夹' : 'Connect a local folder');
-      assert.equal(await page.locator('.installation-guide .command-block:visible').count(), 1);
-      const connectCommand = "coconet connect --server '" + fixture.cli_url + "'";
-      assert.equal(await page.locator('.installation-guide pre:visible').textContent(), connectCommand);
-      assert.doesNotMatch(await page.locator('#modal-content').innerText(), /npm install/);
-      await page.locator('.installation-guide .command-block:visible button').click();
-      assert.equal(await page.evaluate(() => window.fixtureClipboard), connectCommand);
-      assert.equal(await page.locator('#modal-content').evaluate(el => el.scrollWidth > el.clientWidth + 1), false);
-      await screenshot(page, 'connection-guide-' + width + '-' + language);
-      await page.locator('[data-disclosure="first-use"] summary').focus();
-      await page.keyboard.press('Enter');
-      await page.locator('[data-disclosure="first-use"] button').click();
-      assert.equal(await page.evaluate(() => window.fixtureClipboard), 'npm install -g coconet');
-      assert.equal(await page.locator('#modal-content').evaluate(el => el.scrollWidth > el.clientWidth + 1), false);
-      await page.keyboard.press('Escape');
-      assert.equal(await page.evaluate(() => document.activeElement.id), 'login-install');
+      assert.equal(await page.locator('#login-install').count(), 0);
+      assert.doesNotMatch(await page.locator('#login').innerText(), /连接本地文件夹|Connect a local folder/);
     }
   }
-  // An unavailable clipboard still leaves the command selectable and can recover.
-  await page.locator('#login-install').click();
-  await page.evaluate(() => { navigator.clipboard.writeText = async () => { throw new Error('Clipboard unavailable'); }; });
-  await page.locator('.installation-guide .command-block:visible button').click();
-  await page.getByText('复制失败，请手动重试', { exact: true }).waitFor();
-  assert.equal(await page.locator('.installation-guide pre:visible').evaluate(node => getComputedStyle(node).userSelect), 'text');
-  await page.evaluate(() => { navigator.clipboard.writeText = async text => { window.fixtureClipboard = text; }; });
-  await page.locator('.installation-guide .command-block:visible button').click();
-  assert.equal(await page.evaluate(() => window.fixtureClipboard), "coconet connect --server '" + fixture.cli_url + "'");
-  await page.keyboard.press('Escape');
   async function chooseEntry(target, kind) {
     await target.locator('.project-entry > .project-entry-choices [data-choice="' + kind + '"]').click();
     await target.waitForFunction(() => [...document.querySelectorAll('.project-entry')].every(node => node.getAnimations({subtree:true}).every(a => a.playState !== 'running')));
@@ -404,9 +379,28 @@ try {
     for (const width of [1280, 390, 320]) {
       await page.setViewportSize({ width, height: 844 });
       assert.equal(await page.locator('#modal-content').evaluate(node => node.scrollWidth > node.clientWidth + 1), false);
+      const connectCommand = "coconet connect '" + projects.projects[0].project_id + "' --server '" + fixture.cli_url + "'";
+      assert.equal(await page.locator('.installation-guide .command-block:visible').count(), 1);
+      assert.doesNotMatch(await page.locator('#modal-content').innerText(), /npm install/);
+      await page.locator('.installation-guide .command-block:visible button').click();
+      assert.equal(await page.evaluate(() => window.fixtureClipboard), connectCommand);
       await screenshot(page, 'created-project-guide-' + language + '-' + width);
+      await page.locator('[data-disclosure="first-use"] summary').focus();
+      await page.keyboard.press('Enter');
+      await page.locator('[data-disclosure="first-use"] button').click();
+      assert.equal(await page.evaluate(() => window.fixtureClipboard), 'npm install -g coconet');
+      assert.equal(await page.locator('#modal-content').evaluate(el => el.scrollWidth > el.clientWidth + 1), false);
+      await page.locator('[data-disclosure="first-use"] summary').click();
     }
   }
+  // Clipboard failure in the signed-in guide remains recoverable.
+  await page.evaluate(() => { navigator.clipboard.writeText = async () => { throw new Error('Clipboard unavailable'); }; });
+  await page.locator('.installation-guide .command-block:visible button').click();
+  await page.getByText('Could not copy. Please try again.', { exact: true }).waitFor();
+  assert.equal(await page.locator('.installation-guide pre:visible').evaluate(node => getComputedStyle(node).userSelect), 'text');
+  await page.evaluate(() => { navigator.clipboard.writeText = async text => { window.fixtureClipboard = text; }; });
+  await page.locator('.installation-guide .command-block:visible button').click();
+  assert.equal(await page.evaluate(() => window.fixtureClipboard), "coconet connect '" + projects.projects[0].project_id + "' --server '" + fixture.cli_url + "'");
   await page.keyboard.press('Escape');
   assert.equal(await page.locator('#project-manage').evaluate(node => node === document.activeElement), true);
   await page.setViewportSize({ width: 1280, height: 844 });
@@ -600,9 +594,9 @@ try {
   for (const name of ['open', 'xdg-open']) await writeFile(join(opener, name), '#!/bin/sh\nprintf \"%s\" \"$1\" > \"$COCONET_BROWSER_CAPTURE\"\nexit \"$COCONET_BROWSER_EXIT\"\n', { mode: 0o755 });
   for (const mode of ['remote', 'desktop', 'fallback']) {
     const folder = join(temporary, mode + ' 中文 workspace'); await mkdir(folder);
-    const runtimeHome = join(temporary, 'runtime-' + mode), capture = join(temporary, mode + '-browser-url');
+    const runtimeHome = join(temporary, 'runtime-' + mode, 'coconet'), capture = join(temporary, mode + '-browser-url');
     cli = spawn(binary, ['-test.run=^TestBrowserCLIProcess$', '--', 'connect', ...(mode === 'remote' ? ['--project', projects.projects[0].project_id] : [projects.projects[0].project_id]), '--path', folder, '--server', fixture.cli_url], {
-      cwd: temporary, env: { ...process.env, COCONET_HOME: runtimeHome, COCONET_CWD: temporary,
+      cwd: temporary, env: { ...process.env, XDG_CONFIG_HOME: join(runtimeHome, '..'), COCONET_CWD: temporary,
         COCONET_BROWSER_FIXTURE_CA: fixture.certificate,
         SSH_CONNECTION: mode === 'remote' ? 'isolated remote fixture' : '', SSH_TTY: '',
         PATH: opener + ':' + process.env.PATH, COCONET_BROWSER_CAPTURE: capture, COCONET_BROWSER_EXIT: mode === 'fallback' ? '1' : '0',

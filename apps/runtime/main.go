@@ -42,6 +42,8 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 		}
 	}
 	switch args[0] {
+	case "server":
+		return runServerCommand(args[1:], stdout, stderr)
 	case "version", "--version", "-v":
 		fmt.Fprintf(stdout, "coconet %s\n", version)
 		return 0

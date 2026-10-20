@@ -18,7 +18,7 @@ import (
 
 func TestHelpDoesNotCreateLocalState(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "unused-state")
-	t.Setenv("COCONET_HOME", root)
+	setRuntimeTestHome(t, root)
 	for _, args := range [][]string{{"--help"}, {"help"}, {"-h"}} {
 		var stdout, stderr bytes.Buffer
 		if code := run(context.Background(), args, strings.NewReader(""), &stdout, &stderr); code != 0 || stderr.Len() != 0 || !strings.Contains(stdout.String(), "Connect this folder; choose or create a project in your browser") {
@@ -35,7 +35,7 @@ func TestHelpDoesNotCreateLocalState(t *testing.T) {
 
 func TestAgentListDoesNotReconfigureOutdatedIntegrations(t *testing.T) {
 	restoreAgentIntegrationStubs(t)
-	t.Setenv("COCONET_HOME", t.TempDir())
+	setRuntimeTestHome(t, t.TempDir())
 	paths, _ := resolveRuntimePaths()
 	entry, _ := newAgentIntegration("claude", "fixture-agent", t.TempDir())
 	entry.RuntimeVersion = "old"
@@ -59,7 +59,7 @@ func TestAgentListDoesNotReconfigureOutdatedIntegrations(t *testing.T) {
 }
 
 func TestHealthCommandProducesContract(t *testing.T) {
-	t.Setenv("COCONET_HOME", t.TempDir())
+	setRuntimeTestHome(t, t.TempDir())
 	t.Setenv("COCONET_CODEX_COMMAND", "command-that-does-not-exist")
 	t.Setenv("COCONET_CLAUDE_COMMAND", "command-that-does-not-exist")
 	var stdout bytes.Buffer
@@ -76,7 +76,7 @@ func TestHealthCommandProducesContract(t *testing.T) {
 }
 
 func TestRuntimeHealthAcceptsInjectedAdapters(t *testing.T) {
-	t.Setenv("COCONET_HOME", t.TempDir())
+	setRuntimeTestHome(t, t.TempDir())
 	codexAdapter := codex.New("codex-fixture")
 	codexAdapter.Locate = func(string) (string, error) { return "/fixture/codex-fixture", nil }
 	claudeAdapter := claude.New("tclaude")
