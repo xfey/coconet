@@ -45,7 +45,7 @@ try {
   await page.locator('.work-node').filter({ hasText: '补充停止条件说明' }).waitFor();
   assert.equal(await page.locator('.work-node').count(), 2);
   await refreshState(page, false);
-  assert.equal(new URL(page.url()).pathname, '/' + fixture.project_id);
+  assert.equal(new URL(page.url()).pathname, new URL(fixture.url).pathname.replace(/\/$/, '') + '/' + fixture.project_id);
   assert.equal(new URL(page.url()).hash, '');
   // Direct loading, refresh and history navigation use the same project path.
   await page.locator('.work-node').filter({ hasText: '补充停止条件说明' }).click();
@@ -235,7 +235,7 @@ try {
   assert.equal(await page.locator('.work-node').count(), 0);
   await page.goForward();
   await page.locator('.work-node').filter({ hasText: '简化停止条件说明' }).waitFor();
-  assert.equal(new URL(page.url()).pathname, '/' + fixture.project_id);
+  assert.equal(new URL(page.url()).pathname, new URL(fixture.url).pathname.replace(/\/$/, '') + '/' + fixture.project_id);
   assert.equal(await page.locator('#install-open').count(), 0);
   await page.locator('#project-share').click();
   await page.getByRole('button', { name: '连接本地文件夹', exact: true }).click();

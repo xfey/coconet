@@ -74,7 +74,7 @@ func configureLocalDAGRelay(root, path, project string, engine *localdag.Engine)
 	if err != nil || endpoint.Host == "" || endpoint.User != nil || endpoint.RawQuery != "" || endpoint.Fragment != "" || config.SchemaVersion != 1 || !id.MatchString(config.AccountID) || !id.MatchString(config.DeviceID) || len(config.Projects) == 0 || len(config.Projects) > 100 {
 		return errors.New("invalid Relay configuration")
 	}
-	if _, err := projectlink.ParseServerOrigin(config.Endpoint, true); err != nil {
+	if _, err := projectlink.ParseServerEndpoint(config.Endpoint, true); err != nil {
 		return err
 	}
 	allowed := project == ""

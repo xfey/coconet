@@ -1,7 +1,7 @@
 @import url("./button.css");
 @font-face {
   font-family:"Outfit Brand"; font-style:normal; font-weight:400; font-display:swap;
-  src:url("/assets/fonts/outfit-brand-400-ed2c6d023cf3.woff2") format("woff2");
+  src:url("./fonts/outfit-brand-400-ed2c6d023cf3.woff2") format("woff2");
 }
 :root {
   color-scheme:light;

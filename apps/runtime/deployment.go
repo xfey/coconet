@@ -134,7 +134,7 @@ func validateDeploymentTarget(target deploymentTarget) error {
 }
 
 func normalizeServerURL(value string) (string, error) {
-	normalized, err := projectlink.ParseServerOrigin(strings.TrimSpace(value), true)
+	normalized, err := projectlink.ParseServerEndpoint(strings.TrimSpace(value), true)
 	if err != nil {
 		return "", fmt.Errorf("invalid Coconet Server URL: %w", err)
 	}

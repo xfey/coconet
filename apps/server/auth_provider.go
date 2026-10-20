@@ -181,16 +181,16 @@ func (h *serverHandler) startBrowserLogin(w http.ResponseWriter, r *http.Request
 		h.writeError(w, requestID, err)
 		return
 	}
-	http.SetCookie(w, &http.Cookie{Name: loginCookieName, Value: browser, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: int(authorizationTTL.Seconds())})
+	http.SetCookie(w, &http.Cookie{Name: h.cookieName(loginCookieName, true), Value: browser, Path: h.cookiePath(), Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: int(authorizationTTL.Seconds())})
 	loginURL := h.auth.OAuth.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier), oauth2.SetAuthURLParam("nonce", nonce))
 	h.writeJSON(w, 200, map[string]string{"url": loginURL})
 }
 
 func (h *serverHandler) finishBrowserLogin(w http.ResponseWriter, r *http.Request, requestID string) {
-	cookie, err := r.Cookie(loginCookieName)
+	cookie, err := r.Cookie(h.cookieName(loginCookieName, true))
 	state := r.URL.Query().Get("state")
 	if err != nil || len(state) > 100 || len(cookie.Value) > 100 {
-		http.Redirect(w, r, "/#auth_error=login_failed", http.StatusSeeOther)
+		http.Redirect(w, r, h.browserPath()+"/#auth_error=login_failed", http.StatusSeeOther)
 		return
 	}
 	var pending authorizationRecord
@@ -202,9 +202,9 @@ func (h *serverHandler) finishBrowserLogin(w http.ResponseWriter, r *http.Reques
 		db.Authorizations.Delete(hashToken(state))
 		return nil
 	})
-	http.SetCookie(w, &http.Cookie{Name: loginCookieName, Value: "", Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: -1})
+	http.SetCookie(w, &http.Cookie{Name: h.cookieName(loginCookieName, true), Value: "", Path: h.cookiePath(), Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: -1})
 	if err != nil || r.URL.Query().Get("error") != "" || len(r.URL.Query().Get("code")) > 2048 {
-		http.Redirect(w, r, "/#auth_error=login_failed", http.StatusSeeOther)
+		http.Redirect(w, r, h.browserPath()+"/#auth_error=login_failed", http.StatusSeeOther)
 		return
 	}
 	subject, name, email, err := h.auth.exchange(r.Context(), r.URL.Query().Get("code"), pending.Verifier, pending.Nonce)
@@ -218,11 +218,11 @@ func (h *serverHandler) finishBrowserLogin(w http.ResponseWriter, r *http.Reques
 		response, token, err = h.authority.createDashboardSessionForAccount(account, "")
 	}
 	if err != nil {
-		http.Redirect(w, r, "/#auth_error=login_failed", http.StatusSeeOther)
+		http.Redirect(w, r, h.browserPath()+"/#auth_error=login_failed", http.StatusSeeOther)
 		return
 	}
-	setDashboardCookie(w, token, response.ExpiresAt)
-	target := "/"
+	h.setDashboardCookie(w, token, response.ExpiresAt)
+	target := h.browserPath() + "/"
 	if pending.AuthorizationID != "" {
 		target += "#authorize=" + url.QueryEscape(pending.AuthorizationID)
 	} else if pending.ReturnProjectID != "" {
@@ -231,7 +231,7 @@ func (h *serverHandler) finishBrowserLogin(w http.ResponseWriter, r *http.Reques
 	http.Redirect(w, r, target, http.StatusSeeOther)
 }
 
-func setDashboardCookie(w http.ResponseWriter, token, expiry string) {
+func (h *serverHandler) setDashboardCookie(w http.ResponseWriter, token, expiry string) {
 	expires, _ := time.Parse(time.RFC3339Nano, expiry)
-	http.SetCookie(w, &http.Cookie{Name: dashboardCookieName, Value: token, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteStrictMode, MaxAge: int(dashboardSessionTTL.Seconds()), Expires: expires})
+	http.SetCookie(w, &http.Cookie{Name: h.cookieName(dashboardCookieName, true), Value: token, Path: h.cookiePath(), Secure: true, HttpOnly: true, SameSite: http.SameSiteStrictMode, MaxAge: int(dashboardSessionTTL.Seconds()), Expires: expires})
 }

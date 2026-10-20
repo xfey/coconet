@@ -48,7 +48,7 @@ coconet connect [PROJECT_ID] [options]
 |---|---|---|
 | `--path DIRECTORY` | — | Folder to connect; defaults to the current directory (Git subdirectories use the repository root) |
 | `--project ID` | — | Preselect a coco_ project ID; equivalent to positional PROJECT_ID |
-| `--server URL` | — | Server origin; otherwise use the connected folder's server, the saved default, or https://api.coconet.space. Explicit http:// endpoints need no environment setup |
+| `--server URL` | — | Server URL, optionally with a path prefix; otherwise use the connected folder's server, the saved default, or https://api.coconet.space. Explicit http:// endpoints need no environment setup |
 | `--new` | false | Create a new project directly; mutually exclusive with a project ID |
 | `--no-browser` | false | Print the connection link without opening a browser; also automatic over SSH |
 | `--verbose` | false | Show account, connection and local processing details |
@@ -93,7 +93,7 @@ coconet login [options]
 
 | Option | Default | Meaning |
 |---|---|---|
-| `--server URL` | — | Server origin; otherwise use the connected folder's server, the saved default, or https://api.coconet.space. Explicit http:// endpoints need no environment setup |
+| `--server URL` | — | Server URL, optionally with a path prefix; otherwise use the connected folder's server, the saved default, or https://api.coconet.space. Explicit http:// endpoints need no environment setup |
 | `--no-browser` | false | Print the sign-in link without opening a browser; only used by login |
 
 ```sh
@@ -110,7 +110,7 @@ coconet logout [options]
 
 | Option | Default | Meaning |
 |---|---|---|
-| `--server URL` | — | Server origin; otherwise use the connected folder's server, the saved default, or https://api.coconet.space. Explicit http:// endpoints need no environment setup |
+| `--server URL` | — | Server URL, optionally with a path prefix; otherwise use the connected folder's server, the saved default, or https://api.coconet.space. Explicit http:// endpoints need no environment setup |
 | `--no-browser` | false | Print the sign-in link without opening a browser; only used by login |
 
 ```sh
@@ -127,7 +127,7 @@ coconet whoami [options]
 
 | Option | Default | Meaning |
 |---|---|---|
-| `--server URL` | — | Server origin; otherwise use the connected folder's server, the saved default, or https://api.coconet.space. Explicit http:// endpoints need no environment setup |
+| `--server URL` | — | Server URL, optionally with a path prefix; otherwise use the connected folder's server, the saved default, or https://api.coconet.space. Explicit http:// endpoints need no environment setup |
 | `--no-browser` | false | Print the sign-in link without opening a browser; only used by login |
 
 ```sh
@@ -150,7 +150,7 @@ Save a default server for new connections
 coconet server use <URL|official>
 ```
 
-Writes only default_server in the local config.json. Does not sign in, contact the server, move data or change connected folders. Use official to restore https://api.coconet.space.
+Writes only default_server in the local config.json. Does not sign in, contact the server, move data or change connected folders. Use official to restore https://api.coconet.space. Include the full path prefix for subpath deployments.
 
 ```sh
 coconet server use http://dev.example.com:7788
@@ -682,7 +682,7 @@ coconet account <key|reset-key> [--server URL]
 
 | Option | Default | Meaning |
 |---|---|---|
-| `--server URL` | — | Server origin; otherwise use the connected folder's server, the saved default, or https://api.coconet.space. Explicit http:// endpoints need no environment setup |
+| `--server URL` | — | Server URL, optionally with a path prefix; otherwise use the connected folder's server, the saved default, or https://api.coconet.space. Explicit http:// endpoints need no environment setup |
 
 #### `coconet account key`
 
@@ -760,7 +760,7 @@ coconet init [PROJECT_ID] [options]
 |---|---|---|
 | `--path DIRECTORY` | — | Folder to connect; defaults to the current directory (Git subdirectories use the repository root) |
 | `--project ID` | — | Preselect a coco_ project ID; equivalent to positional PROJECT_ID |
-| `--server URL` | — | Server origin; otherwise use the connected folder's server, the saved default, or https://api.coconet.space. Explicit http:// endpoints need no environment setup |
+| `--server URL` | — | Server URL, optionally with a path prefix; otherwise use the connected folder's server, the saved default, or https://api.coconet.space. Explicit http:// endpoints need no environment setup |
 | `--new` | false | Create a new project directly; mutually exclusive with a project ID |
 | `--no-browser` | false | Print the connection link without opening a browser; also automatic over SSH |
 | `--verbose` | false | Show account, connection and local processing details |
@@ -797,12 +797,12 @@ coconet-server init --data-dir DIR --advertised-endpoint URL [options]
 | Option | Default | Meaning |
 |---|---|---|
 | `--data-dir DIR` | — | Required: persistent deployment directory |
-| `--advertised-endpoint URL` | — | Required: canonical client-facing server origin |
+| `--advertised-endpoint URL` | — | Required: client-facing server URL, optionally with a path prefix |
 | `--listen ADDRESS` | 127.0.0.1:7788 | HTTP listen address |
 | `--artifact-store filesystem\|s3` | filesystem | Conversation transfer storage driver |
 | `--artifact-path DIR` | — | Absolute filesystem artifact directory; defaults to DATA_DIR/artifacts; invalid with s3 |
 
-Creates server.json, deployment identity and metadata. Refuses to replace an initialized deployment. Configure login and S3 credentials through the documented environment variables. The advertised endpoint explicitly selects HTTP or HTTPS. HTTP uses Account Key login; OAuth requires HTTPS.
+Creates server.json, deployment identity and metadata. Refuses to replace an initialized deployment. Configure login and S3 credentials through the documented environment variables. The advertised endpoint explicitly selects HTTP or HTTPS. HTTP uses Account Key login; OAuth requires HTTPS. A reverse proxy may preserve or strip the configured URL prefix; keep it in client URLs and the OAuth callback.
 
 ```sh
 coconet-server init --data-dir /var/lib/coconet --advertised-endpoint https://coconet.example.com

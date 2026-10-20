@@ -33,7 +33,7 @@ func (h *serverHandler) serveDashboard(w http.ResponseWriter, r *http.Request, r
 	if !h.browserHost(r) {
 		// Redirect only public pages/assets. API requests and credentials are
 		// never forwarded to another origin; URL fragments remain browser-side.
-		http.Redirect(w, r, h.webOrigin+r.URL.RequestURI(), http.StatusTemporaryRedirect)
+		http.Redirect(w, r, h.browserEndpoint()+r.URL.RequestURI(), http.StatusTemporaryRedirect)
 		return
 	}
 	files := map[string]struct{ file, mime string }{
@@ -42,6 +42,7 @@ func (h *serverHandler) serveDashboard(w http.ResponseWriter, r *http.Request, r
 		"/assets/account.mjs":                     {"account.mjs", "text/javascript; charset=utf-8"},
 		"/assets/library.mjs":                     {"library.mjs", "text/javascript; charset=utf-8"},
 		"/assets/app.mjs":                         {"app.mjs", "text/javascript; charset=utf-8"},
+		"/assets/endpoint.mjs":                    {"endpoint.mjs", "text/javascript; charset=utf-8"},
 		"/assets/platform.mjs":                    {"platform.mjs", "text/javascript; charset=utf-8"},
 		"/assets/vendor/noble-sha256-1.8.0.mjs":   {"vendor/noble-sha256-1.8.0.mjs", "text/javascript; charset=utf-8"},
 		"/assets/vendor/noble-hashes-LICENSE.txt": {"vendor/noble-hashes-LICENSE.txt", "text/plain; charset=utf-8"},
@@ -98,6 +99,7 @@ func (h *serverHandler) serveDashboard(w http.ResponseWriter, r *http.Request, r
 		return
 	}
 	if file == "index.html" {
+		content = []byte(strings.ReplaceAll(string(content), "{{WEB_BASE_PATH}}", html.EscapeString(h.browserPath())))
 		content = []byte(strings.ReplaceAll(string(content), "{{SERVER_VERSION}}", html.EscapeString(h.version)))
 		content = []byte(strings.ReplaceAll(string(content), "{{API_ORIGIN}}", html.EscapeString(h.advertisedEndpoint)))
 	}

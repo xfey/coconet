@@ -30,7 +30,7 @@ func (h *serverHandler) handleAuthAPI(w http.ResponseWriter, r *http.Request, re
 		h.writeError(w, requestID, invalid("invalid_json", "JSON request required"))
 		return
 	}
-	if origin := r.Header.Get("Origin"); origin != "" && origin != "https://"+r.Host {
+	if origin := r.Header.Get("Origin"); origin != "" && origin != h.requestOrigin(r) {
 		h.writeError(w, requestID, forbidden("login_origin_invalid", "same-origin request required"))
 		return
 	}
@@ -40,7 +40,7 @@ func (h *serverHandler) handleAuthAPI(w http.ResponseWriter, r *http.Request, re
 	}
 	switch r.URL.Path {
 	case "/v1/auth/start":
-		if !h.dashboardHTTPS(r) || !h.browserHost(r) || r.Header.Get("Origin") != "https://"+r.Host {
+		if !h.dashboardHTTPS(r) || !h.browserHost(r) || r.Header.Get("Origin") != h.requestOrigin(r) {
 			h.writeError(w, requestID, forbidden("login_origin_invalid", "same-origin HTTPS request required"))
 			return
 		}
@@ -51,7 +51,7 @@ func (h *serverHandler) handleAuthAPI(w http.ResponseWriter, r *http.Request, re
 			h.writeError(w, requestID, invalid("invalid_device_authorization", "invalid device authorization request"))
 			return
 		}
-		result, err := h.authority.startDeviceAuthorization(input, h.browserOrigin())
+		result, err := h.authority.startDeviceAuthorization(input, h.browserEndpoint())
 		h.writeResult(w, requestID, 200, result, err)
 	case "/v1/auth/token":
 		var input contracts.DeviceAuthorizationPoll

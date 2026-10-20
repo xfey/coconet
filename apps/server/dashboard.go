@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/base64"
-	"net"
 	"net/http"
 	"sort"
 	"strings"
@@ -183,8 +182,7 @@ func (h *serverHandler) dashboardHTTPS(request *http.Request) bool {
 	if request.TLS != nil {
 		return true
 	}
-	host, _, err := net.SplitHostPort(request.RemoteAddr)
-	return err == nil && h.addressResolver.trusted(net.ParseIP(host)) && request.Header.Get("X-Forwarded-Proto") == "https"
+	return h.trustedProxy(request) && request.Header.Get("X-Forwarded-Proto") == "https"
 }
 
 func (h *serverHandler) handleDashboardAPI(w http.ResponseWriter, r *http.Request, requestID string) {
@@ -201,10 +199,7 @@ func (h *serverHandler) handleDashboardAPI(w http.ResponseWriter, r *http.Reques
 	}
 	// SameSite plus exact Origin checks also protect login against session swapping.
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
-		origin := "https://" + r.Host
-		if plainHTTP {
-			origin = h.browserOrigin()
-		}
+		origin := h.requestOrigin(r)
 		if r.Header.Get("Origin") != origin {
 			h.writeError(w, requestID, forbidden("dashboard_origin_invalid", "same-origin Dashboard request required"))
 			return
@@ -214,6 +209,7 @@ func (h *serverHandler) handleDashboardAPI(w http.ResponseWriter, r *http.Reques
 	if plainHTTP {
 		cookieName = "coconet_http_dashboard"
 	}
+	cookieName = h.cookieName(cookieName, !plainHTTP)
 	cookie, _ := r.Cookie(cookieName)
 	token := ""
 	if cookie != nil {
@@ -241,7 +237,7 @@ func (h *serverHandler) handleDashboardAPI(w http.ResponseWriter, r *http.Reques
 				return
 			}
 			expires, _ := time.Parse(time.RFC3339Nano, result.ExpiresAt)
-			http.SetCookie(w, &http.Cookie{Name: cookieName, Value: created, Path: "/", Secure: !plainHTTP, HttpOnly: true, SameSite: http.SameSiteStrictMode, MaxAge: int(dashboardSessionTTL.Seconds()), Expires: expires})
+			http.SetCookie(w, &http.Cookie{Name: cookieName, Value: created, Path: h.cookiePath(), Secure: !plainHTTP, HttpOnly: true, SameSite: http.SameSiteStrictMode, MaxAge: int(dashboardSessionTTL.Seconds()), Expires: expires})
 			h.writeJSON(w, 200, result)
 		case http.MethodGet:
 			result, err := h.authority.authenticateDashboard(token)
@@ -255,7 +251,7 @@ func (h *serverHandler) handleDashboardAPI(w http.ResponseWriter, r *http.Reques
 				h.writeError(w, requestID, err)
 				return
 			}
-			http.SetCookie(w, &http.Cookie{Name: cookieName, Value: "", Path: "/", Secure: !plainHTTP, HttpOnly: true, SameSite: http.SameSiteStrictMode, MaxAge: -1, Expires: time.Unix(1, 0)})
+			http.SetCookie(w, &http.Cookie{Name: cookieName, Value: "", Path: h.cookiePath(), Secure: !plainHTTP, HttpOnly: true, SameSite: http.SameSiteStrictMode, MaxAge: -1, Expires: time.Unix(1, 0)})
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			h.methodNotAllowed(w, requestID, "GET, POST, DELETE")

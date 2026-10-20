@@ -22,6 +22,12 @@ import (
 )
 
 func TestLoginTwoDevicesConnectSameProjectAndLogoutLocally(t *testing.T) {
+	for _, prefix := range []string{"", "/teams/demo"} {
+		t.Run(prefix, func(t *testing.T) { testTwoDevicesLogin(t, prefix) })
+	}
+}
+
+func testTwoDevicesLogin(t *testing.T, prefix string) {
 	remote := newFakeCoconetServer()
 	var mu sync.Mutex
 	challenges := map[string]string{}
@@ -30,6 +36,11 @@ func TestLoginTwoDevicesConnectSameProjectAndLogoutLocally(t *testing.T) {
 	tokens := map[string]bool{}
 	var server *httptest.Server
 	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasPrefix(r.URL.Path, prefix+"/") {
+			http.NotFound(w, r)
+			return
+		}
+		r.URL.Path = strings.TrimPrefix(r.URL.Path, prefix)
 		if r.URL.Path == "/v1/deployment" {
 			recorder := httptest.NewRecorder()
 			serveFixtureDeployment(recorder, r)
@@ -58,7 +69,7 @@ func TestLoginTwoDevicesConnectSameProjectAndLogoutLocally(t *testing.T) {
 				if input.ConnectProject && input.ProjectName == "" {
 					t.Error("setup omitted folder name suggestion")
 				}
-				_ = json.NewEncoder(w).Encode(contracts.DeviceAuthorization{Status: contracts.StatusPending, DeviceCode: code, AuthorizationID: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", VerificationURI: server.URL + "/#authorize=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Interval: 1, ExpiresIn: 60})
+				_ = json.NewEncoder(w).Encode(contracts.DeviceAuthorization{Status: contracts.StatusPending, DeviceCode: code, AuthorizationID: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", VerificationURI: server.URL + prefix + "/#authorize=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Interval: 1, ExpiresIn: 60})
 			case "/v1/auth/token":
 				var input contracts.DeviceAuthorizationPoll
 				_ = json.NewDecoder(r.Body).Decode(&input)
@@ -83,7 +94,8 @@ func TestLoginTwoDevicesConnectSameProjectAndLogoutLocally(t *testing.T) {
 		remote.ServeHTTP(w, r)
 	}))
 	defer server.Close()
-	remote.advertisedEndpoint = server.URL
+	endpoint := server.URL + prefix
+	remote.advertisedEndpoint = endpoint
 	var paths [2]runtimePaths
 	var credentials [2]storedCredential
 	var bindings [2]*contracts.LocalBinding
@@ -91,7 +103,7 @@ func TestLoginTwoDevicesConnectSameProjectAndLogoutLocally(t *testing.T) {
 		directory := t.TempDir()
 		setRuntimeTestHome(t, filepath.Join(directory, "runtime"))
 		t.Setenv("COCONET_CWD", directory)
-		setRuntimeTestServer(t, server.URL)
+		setRuntimeTestServer(t, endpoint)
 		t.Setenv("COCONET_DISABLE_BACKGROUND_SYNC", "1")
 		t.Setenv("COCONET_CODEX_COMMAND", "coconet-test-no-codex")
 		t.Setenv("COCONET_CLAUDE_NODE", "coconet-test-no-claude")
@@ -103,7 +115,7 @@ func TestLoginTwoDevicesConnectSameProjectAndLogoutLocally(t *testing.T) {
 		var output, stderr bytes.Buffer
 		args := []string{"--no-browser"}
 		if i == 0 {
-			credentials[i], err = loginToDeployment(context.Background(), paths[i], fixtureDeploymentTarget(server.URL), true, &output)
+			credentials[i], err = loginToDeployment(context.Background(), paths[i], fixtureDeploymentTarget(endpoint), true, &output)
 			if err != nil {
 				t.Fatal("login failed", err)
 			}
@@ -112,7 +124,7 @@ func TestLoginTwoDevicesConnectSameProjectAndLogoutLocally(t *testing.T) {
 		if code := runInit(context.Background(), args, strings.NewReader(""), &output, &stderr); code != 0 {
 			t.Fatal("connect failed", stderr.String())
 		}
-		credentials[i], _, err = loadCredential(paths[i], fixtureDeploymentTarget(server.URL))
+		credentials[i], _, err = loadCredential(paths[i], fixtureDeploymentTarget(endpoint))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -131,7 +143,7 @@ func TestLoginTwoDevicesConnectSameProjectAndLogoutLocally(t *testing.T) {
 		t.Fatal("same-account project connection required invitation or created duplicates")
 	}
 	var output, stderr bytes.Buffer
-	if err := logoutDeployment(context.Background(), paths[0], fixtureDeploymentTarget(server.URL), &output, &stderr); err != nil {
+	if err := logoutDeployment(context.Background(), paths[0], fixtureDeploymentTarget(endpoint), &output, &stderr); err != nil {
 		t.Fatal(err)
 	}
 	mu.Lock()
@@ -140,7 +152,7 @@ func TestLoginTwoDevicesConnectSameProjectAndLogoutLocally(t *testing.T) {
 	if firstValid || !secondValid {
 		t.Fatal("logout affected another device")
 	}
-	if _, found, err := loadCredential(paths[0], fixtureDeploymentTarget(server.URL)); err != nil || found {
+	if _, found, err := loadCredential(paths[0], fixtureDeploymentTarget(endpoint)); err != nil || found {
 		t.Fatal("logged-out device retained credentials")
 	}
 	if binding, err := bindingAtRoot(paths[0], bindings[0].CollaborationRoot); err != nil || binding == nil {

@@ -1,3 +1,4 @@
+import { endpointPath } from './endpoint.mjs';
 import { sha256 } from './platform.mjs';
 import { graphStructure } from './graph.mjs';
 import { commandBlock, disclosure } from './dialog.mjs';
@@ -174,7 +175,7 @@ export function createPublishedGraphReader(fetcher = fetch) {
     reset() { cached = null; epoch++; },
     async read(project) {
       const request = ++epoch, previous = cached?.project === project ? cached : null;
-      const response = await fetcher(`/v1/dashboard/projects/${encodeURIComponent(project)}/published-graph`, {
+      const response = await fetcher(endpointPath(`/v1/dashboard/projects/${encodeURIComponent(project)}/published-graph`), {
         credentials: 'same-origin', cache: 'no-store', headers: previous?.etag ? { 'If-None-Match': previous.etag } : {},
       });
       if (response.status === 304) {

@@ -101,7 +101,7 @@ func TestServerPreferenceValidationAndRecovery(t *testing.T) {
 		t.Fatal(got, err)
 	}
 	before, _ := os.ReadFile(clientConfigPath(paths))
-	for _, bad := range []string{"", "ftp://example.com", "https://user:secret@example.com", "https://example.com/project", "https://example.com/?token=private", "https://example.com/#fragment"} {
+	for _, bad := range []string{"", "ftp://example.com", "https://user:secret@example.com", "https://example.com/project//other", "https://example.com/?token=private", "https://example.com/#fragment"} {
 		if _, err := saveDefaultServer(paths, bad); err == nil {
 			t.Fatal("accepted invalid endpoint", bad)
 		}

@@ -240,6 +240,7 @@ func TestOperatorConfigSchemaAndEndpointValidation(t *testing.T) {
 		projectlink.HostedEndpoint,
 		"https://coconet.example.com",
 		"https://coconet.example.com:8443",
+		"https://coconet.example.com/teams/demo",
 		"https://192.0.2.10:8443",
 		"https://[2001:db8::10]:8443",
 		"http://192.0.2.10:7788",
@@ -263,7 +264,7 @@ func TestOperatorConfigSchemaAndEndpointValidation(t *testing.T) {
 			}
 		})
 	}
-	for _, endpoint := range []string{"", "https://coconet.example.com/path", "HTTPS://coconet.example.com", "coconet.example.com"} {
+	for _, endpoint := range []string{"", "https://coconet.example.com/path/../other", "HTTPS://coconet.example.com", "coconet.example.com"} {
 		t.Run("invalid-"+strings.ReplaceAll(endpoint, ":", "_"), func(t *testing.T) {
 			var output, stderr bytes.Buffer
 			arguments := []string{"init", "--data-dir", filepath.Join(t.TempDir(), "invalid")}

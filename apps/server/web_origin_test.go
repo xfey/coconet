@@ -12,7 +12,7 @@ import (
 )
 
 func TestWebOriginConfiguration(t *testing.T) {
-	for _, value := range []string{"", "https://COCONET.SPACE/", "https://workspace.example:9443"} {
+	for _, value := range []string{"", "https://COCONET.SPACE/", "https://workspace.example:9443", "https://workspace.example/teams/demo"} {
 		t.Setenv("COCONET_WEB_ORIGIN", value)
 		origin, err := webOriginFromEnvironment("https://api.example")
 		want := strings.TrimSuffix(strings.ToLower(value), "/")
@@ -23,7 +23,7 @@ func TestWebOriginConfiguration(t *testing.T) {
 			t.Fatalf("origin %q: %q, %v", value, origin, err)
 		}
 	}
-	for _, value := range []string{"http://example.com", "http://localhost:8080", "https://a.example/path", "https://a.example?x=1", "https://a.example/#fragment", "https://user:secret@a.example", "//a.example"} {
+	for _, value := range []string{"http://example.com", "http://localhost:8080", "https://a.example/path/../escape", "https://a.example?x=1", "https://a.example/#fragment", "https://user:secret@a.example", "//a.example"} {
 		t.Setenv("COCONET_WEB_ORIGIN", value)
 		if _, err := webOriginFromEnvironment("https://api.example"); err == nil {
 			t.Fatalf("accepted invalid web origin %q", value)

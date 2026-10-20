@@ -39,7 +39,7 @@ func (t HTTP) request(ctx context.Context, method, project, suffix string, body 
 	if err != nil || base.Host == "" || base.User != nil || base.RawQuery != "" || base.Fragment != "" || token == "" {
 		return nil, errors.New("invalid relay endpoint or credential")
 	}
-	if _, err := projectlink.ParseServerOrigin(t.BaseURL, true); err != nil {
+	if _, err := projectlink.ParseServerEndpoint(t.BaseURL, true); err != nil {
 		return nil, fmt.Errorf("invalid relay endpoint: %w", err)
 	}
 	endpoint := strings.TrimRight(base.String(), "/") + "/v1/projects/" + url.PathEscape(project) + "/relay/" + suffix

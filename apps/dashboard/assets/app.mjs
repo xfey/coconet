@@ -1,3 +1,4 @@
+import { endpointPath } from './endpoint.mjs';
 import { copyToClipboard } from './platform.mjs';
 import { createPublishedGraphReader, publishedGraphStatus, publishedSessionActions, renderPublishedStatus } from "./published-graph.mjs";
 import { createProjectEvents } from "./events.mjs";
@@ -83,7 +84,7 @@ function formatTime(value, dateOnly = false) {
   return Number.isNaN(date.getTime()) ? t('time_unknown') : date.toLocaleString(language === 'zh' ? 'zh-CN' : 'en', { month: '2-digit', day: '2-digit', ...(dateOnly ? {} : { hour: '2-digit', minute: '2-digit', hour12: false }) });
 }
 async function api(path, options = {}) {
-  const response = await fetch(path.startsWith('/v1/') ? path : '/v1/dashboard' + path, { credentials: 'same-origin', cache: 'no-store', ...options, headers: { 'Content-Type': 'application/json', ...options.headers } });
+  const response = await fetch(endpointPath(path.startsWith('/v1/') ? path : '/v1/dashboard' + path), { credentials: 'same-origin', cache: 'no-store', ...options, headers: { 'Content-Type': 'application/json', ...options.headers } });
   if (response.status === 204) return null;
   const data = await response.json();
   if (!response.ok) {

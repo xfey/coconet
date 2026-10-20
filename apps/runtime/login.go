@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"runtime"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/xfey/coconet/packages/contracts"
@@ -123,21 +124,22 @@ func authorizeDeploymentWithChooser(ctx context.Context, paths runtimePaths, tar
 	}
 	verification, parseErr := url.Parse(started.VerificationURI)
 	var authorization string
-	validOrigin := false
+	browserEndpoint := ""
 	if parseErr == nil {
-		_, originErr := normalizeServerURL(verification.Scheme + "://" + verification.Host)
-		validOrigin = originErr == nil
+		if verification.RawPath == "" {
+			browserEndpoint, _ = normalizeServerURL(verification.Scheme + "://" + verification.Host + verification.Path)
+		}
 		values, err := url.ParseQuery(verification.Fragment)
 		if err == nil && len(values) == 1 {
 			authorization = values.Get("authorize")
 		}
 	}
-	if parseErr != nil || !validOrigin || verification.User != nil || verification.Host == "" || verification.Path != "/" || verification.RawQuery != "" || len(started.AuthorizationID) != 43 || authorization != started.AuthorizationID || started.DeviceCode == "" || started.Interval < 1 || started.Interval > 30 || started.ExpiresIn < 1 || started.ExpiresIn > 600 {
+	if parseErr != nil || browserEndpoint == "" || verification.User != nil || verification.Host == "" || !strings.HasSuffix(verification.Path, "/") || verification.RawQuery != "" || len(started.AuthorizationID) != 43 || authorization != started.AuthorizationID || started.DeviceCode == "" || started.Interval < 1 || started.Interval > 30 || started.ExpiresIn < 1 || started.ExpiresIn > 600 {
 		return authorizedDevice{}, errors.New("Server returned an invalid authorization response")
 	}
 	// Verify an advertised browser origin independently when a CLI network override is used.
-	if verification.Scheme+"://"+verification.Host != target.ServerURL {
-		browserTarget, verifyErr := discoverDeployment(ctx, verification.Scheme+"://"+verification.Host)
+	if browserEndpoint != target.ServerURL {
+		browserTarget, verifyErr := discoverDeployment(ctx, browserEndpoint)
 		if verifyErr != nil || browserTarget.DeploymentID != target.DeploymentID || browserTarget.ServerPublicKeySHA256 != target.ServerPublicKeySHA256 {
 			return authorizedDevice{}, errors.New("Could not verify the browser login server; use an endpoint reachable from both devices")
 		}

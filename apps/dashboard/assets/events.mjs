@@ -1,3 +1,4 @@
+import { endpointPath } from './endpoint.mjs';
 // One stream per selected project. Reconnect sends the current durable revision;
 // there is no periodic graph fetch. Failed reads retry only a pending update.
 export function createProjectEvents({ refresh, revoked, connection = () => {}, EventSourceClass = globalThis.EventSource, delay = 200, retryDelay = 5000, heartbeatTimeout = 45000 }) {
@@ -31,7 +32,7 @@ export function createProjectEvents({ refresh, revoked, connection = () => {}, E
     stop(); project = selected; applied = revision;
     const generation = epoch;
     function connect() {
-      const source = stream = new EventSourceClass(`/v1/dashboard/projects/${encodeURIComponent(project)}/events`);
+      const source = stream = new EventSourceClass(endpointPath(`/v1/dashboard/projects/${encodeURIComponent(project)}/events`));
       const current = () => generation === epoch && stream === source;
       function watch() {
         clearTimeout(heartbeat);

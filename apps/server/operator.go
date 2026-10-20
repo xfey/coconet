@@ -110,7 +110,7 @@ func runServerInit(args []string, stdout, stderr io.Writer) int {
 	flags.SetOutput(io.Discard)
 	dataDir := flags.String("data-dir", "", "persistent operator directory")
 	listen := flags.String("listen", "127.0.0.1:7788", "HTTP listen address")
-	advertisedEndpoint := flags.String("advertised-endpoint", "", "canonical client-facing Server origin")
+	advertisedEndpoint := flags.String("advertised-endpoint", "", "client-facing Server URL, optionally with a path prefix")
 	artifactDriver := flags.String("artifact-store", "filesystem", "artifact storage driver: filesystem or s3")
 	configuredArtifactPath := flags.String("artifact-path", "", "absolute filesystem artifact directory")
 	if err := flags.Parse(args); err != nil || flags.NArg() != 0 || strings.TrimSpace(*dataDir) == "" || strings.TrimSpace(*advertisedEndpoint) == "" {
@@ -126,7 +126,7 @@ func runServerInit(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "--artifact-path can only be used with --artifact-store filesystem")
 		return 2
 	}
-	canonicalEndpoint, err := projectlink.ParseServerOrigin(strings.TrimSpace(*advertisedEndpoint), true)
+	canonicalEndpoint, err := projectlink.ParseServerEndpoint(strings.TrimSpace(*advertisedEndpoint), true)
 	if err != nil {
 		fmt.Fprintf(stderr, "invalid --advertised-endpoint: %v\n", err)
 		return 2
@@ -482,9 +482,9 @@ func validateServerConfig(config serverConfig) error {
 		return errors.New("bbolt data_path and identity_path must differ")
 	}
 	if config.AdvertisedEndpoint != "" {
-		canonical, err := projectlink.ParseServerOrigin(config.AdvertisedEndpoint, true)
+		canonical, err := projectlink.ParseServerEndpoint(config.AdvertisedEndpoint, true)
 		if err != nil || canonical != config.AdvertisedEndpoint {
-			return errors.New("advertised_endpoint must be a canonical supported Server origin")
+			return errors.New("advertised_endpoint must be a canonical supported Server endpoint")
 		}
 	}
 	if config.SchemaVersion == serverConfigSchemaVersion {

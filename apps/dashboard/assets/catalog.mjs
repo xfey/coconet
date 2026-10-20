@@ -1,3 +1,4 @@
+import { basePath, endpointPath } from './endpoint.mjs';
 const alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 
 // Match the server's canonical Base58 encoding of exactly 16 bytes, including
@@ -12,20 +13,21 @@ export function isProjectID(id) {
   return zeros + bytes === 16;
 }
 
-export function projectFromPath(pathname) {
-  const id = pathname.startsWith('/') ? pathname.slice(1) : '';
+export function projectFromPath(pathname, prefix = basePath()) {
+  const start = prefix + '/';
+  const id = pathname.startsWith(start) ? pathname.slice(start.length) : '';
   return isProjectID(id) ? id : '';
 }
 
 export function workspaceLocation(project, view = 'graph', selection = {}) {
-  if (!project) return '/';
+  if (!project) return endpointPath('/');
   if (!isProjectID(project)) throw new Error('Invalid Project ID');
   const query = new URLSearchParams();
   if (['activity', 'library'].includes(view)) query.set('view', view);
   for (const key of ['node', 'event', 'entry', 'session', 'version']) {
     if (selection[key] !== undefined && selection[key] !== '') query.set(key, selection[key]);
   }
-  return '/' + project + (query.size ? '#' + query : '');
+  return endpointPath('/' + project) + (query.size ? '#' + query : '');
 }
 
 export function parseWorkspaceLocation({ pathname, hash }) {

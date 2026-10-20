@@ -53,6 +53,7 @@ func newHandlerWithLogger(serverVersion string, deployment *deploymentIdentity, 
 }
 
 func (h *serverHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
+	request = h.routeRequest(request)
 	observed := &observedResponseWriter{ResponseWriter: response, productStatus: contracts.StatusOK}
 	response = observed
 	correlationID, _ := randomID("corr")

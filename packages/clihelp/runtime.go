@@ -2,7 +2,7 @@ package clihelp
 
 func Runtime() Command {
 	json := boolean("json", "Write machine-readable JSON")
-	server := option("server", "URL", "", "Server origin; otherwise use the connected folder's server, the saved default, or https://api.coconet.space. Explicit http:// endpoints need no environment setup")
+	server := option("server", "URL", "", "Server URL, optionally with a path prefix; otherwise use the connected folder's server, the saved default, or https://api.coconet.space. Explicit http:// endpoints need no environment setup")
 	root := option("root", "DIR", "", "Absolute private Runtime store; otherwise use the connected folder")
 	project := option("project", "ID", "", "Project ID when selecting an explicit Runtime store")
 	fixed := []Option{
@@ -27,7 +27,7 @@ func Runtime() Command {
 	logout.Name, logout.Summary, logout.Examples = "logout", "Sign out this device; keep folder connections and pending work", []string{"coconet logout"}
 	whoami.Name, whoami.Summary, whoami.Examples = "whoami", "Show the signed-in account and server", []string{"coconet whoami"}
 	servers := Command{Name: "server", Summary: "Select the default server and list known endpoints", Usage: "<use|list>", Children: []Command{
-		{Name: "use", Summary: "Save a default server for new connections", Usage: "<URL|official>", Notes: []string{"Writes only default_server in the local config.json. Does not sign in, contact the server, move data or change connected folders. Use official to restore https://api.coconet.space."}, Examples: []string{"coconet server use http://dev.example.com:7788", "coconet server use official"}},
+		{Name: "use", Summary: "Save a default server for new connections", Usage: "<URL|official>", Notes: []string{"Writes only default_server in the local config.json. Does not sign in, contact the server, move data or change connected folders. Use official to restore https://api.coconet.space. Include the full path prefix for subpath deployments."}, Examples: []string{"coconet server use http://dev.example.com:7788", "coconet server use official"}},
 		{Name: "list", Summary: "List the default and servers from saved logins and folder connections", Usage: "[--json]", Options: []Option{json}, Notes: []string{"Read-only and offline. Prints the configuration path; never prints credentials. The default only applies outside connected folders."}},
 	}}
 	agent := Command{Name: "agent", Summary: "Inspect and manage Agent integrations", Usage: "<list|add|remove>", Children: []Command{

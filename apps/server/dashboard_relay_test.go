@@ -204,8 +204,9 @@ func TestPublishedGraphBrowserHarness(t *testing.T) {
 	}
 	server := httptest.NewTLSServer(h)
 	defer server.Close()
-	h.advertisedEndpoint = server.URL
-	data, _ := json.Marshal(map[string]string{"url": server.URL, "key": key, "member_key": memberKey, "project_id": project.ProjectID, "empty_project_id": empty.Project.ProjectID})
+	prefix := os.Getenv("COCONET_BROWSER_PREFIX")
+	h.advertisedEndpoint = server.URL + prefix
+	data, _ := json.Marshal(map[string]string{"url": server.URL + prefix, "key": key, "member_key": memberKey, "project_id": project.ProjectID, "empty_project_id": empty.Project.ProjectID})
 	if err := os.MkdirAll(filepath.Dir(file), 0700); err != nil {
 		t.Fatal(err)
 	}

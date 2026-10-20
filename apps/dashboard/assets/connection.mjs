@@ -1,3 +1,4 @@
+import { basePath } from './endpoint.mjs';
 import { requestID } from './platform.mjs';
 import { disclosure, dialogActions } from './dialog.mjs';
 import { createButton } from './button.mjs';
@@ -237,13 +238,14 @@ export function projectConnectionCommand(projectID, origin) {
 
 // A pasted link may identify only this deployment. Never forward browser
 // credentials or silently change servers based on user-provided URLs.
-export function parseProjectInput(value, origins = [location.origin, document.querySelector('meta[name="coconet-api-origin"]').content]) {
+export function parseProjectInput(value, origins = [location.origin + basePath(), document.querySelector('meta[name="coconet-api-origin"]').content]) {
   let id = value.trim();
   if (/^https?:\/\//i.test(id)) {
     let url;
     try { url = new URL(id); } catch { throw Object.assign(new Error('Invalid link'), { code: 'invalid_project_link' }); }
-    if (!origins.includes(url.origin) || url.username || url.password || url.search) throw Object.assign(new Error('Wrong project origin'), { code: 'invalid_project_link' });
-    id = projectFromPath(url.pathname);
+    const endpoint = origins.map(value => new URL(value)).find(base => base.origin === url.origin && projectFromPath(url.pathname, base.pathname.replace(/\/$/, '')));
+    if (!endpoint || url.username || url.password || url.search) throw Object.assign(new Error('Wrong project origin'), { code: 'invalid_project_link' });
+    id = projectFromPath(url.pathname, endpoint.pathname.replace(/\/$/, ''));
   }
   if (!isProjectID(id)) throw Object.assign(new Error('Invalid Project ID'), { code: 'invalid_project_id' });
   return id;

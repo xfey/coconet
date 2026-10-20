@@ -6,7 +6,7 @@ Claude, Cursor or model-provider credentials.
 
 ## Initialize
 
-Choose a client-reachable HTTPS origin, for example `https://coconet.example.com`.
+Choose a client-reachable HTTPS endpoint, for example `https://coconet.example.com`.
 New deployments listen on `127.0.0.1:7788` by default, behind Nginx.
 Use `--listen HOST:PORT` to override this; upgrades retain the saved listen address.
 
@@ -49,6 +49,33 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now coconet-server.service
 curl --fail https://coconet.example.com/healthz
 ```
+
+## Deploying under a URL prefix
+
+A server can also use an endpoint such as `https://example.com/team/coconet`.
+Pass the complete URL to `init --advertised-endpoint` and to client commands:
+
+```sh
+coconet server use https://example.com/team/coconet
+coconet connect
+```
+
+The Dashboard, shared project links, browser login, API requests and session
+transfers keep this prefix. The proxy may preserve the prefix or strip it before
+forwarding. Prefixes consist of unescaped letters, digits, `-`, `.`, `_`, `~`
+and `/` separators; empty or dot segments are not supported.
+
+Register the OAuth callback at
+`https://example.com/team/coconet/v1/auth/callback`. If `COCONET_WEB_ORIGIN`
+selects a separate browser endpoint, include its prefix there as well. Browser
+cookies are scoped to that deployment's path; client credentials continue to be
+bound to the signed server identity.
+
+Configure the final trusted proxy to set `X-Forwarded-Proto` to the external
+scheme and `X-Forwarded-Host` to the external host. Some cloud gateways report
+their internal HTTP hop instead of the external HTTPS scheme; correct that at
+the controlled proxy before forwarding to Coconet. Never trust forwarding
+headers from arbitrary clients. Keep the server listener private behind it.
 
 ## Trusted-network HTTP testing
 

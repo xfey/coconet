@@ -333,6 +333,12 @@ func TestDeviceAuthorizationRejectsSpoofingExpiryAndConcurrentReplay(t *testing.
 }
 
 func TestGitHubBrowserLoginUsesStableIdentityAndOneTimeState(t *testing.T) {
+	for _, prefix := range []string{"", "/teams/demo"} {
+		t.Run(prefix, func(t *testing.T) { testGitHubBrowserLogin(t, prefix) })
+	}
+}
+
+func testGitHubBrowserLogin(t *testing.T, prefix string) {
 	h := newTestHandler(t).(*serverHandler)
 	var challenge string
 	idp := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -358,15 +364,16 @@ func TestGitHubBrowserLoginUsesStableIdentityAndOneTimeState(t *testing.T) {
 	defer idp.Close()
 	server := httptest.NewTLSServer(h)
 	defer server.Close()
-	h.auth = &loginProvider{Kind: "github", Label: "GitHub", Issuer: "https://github.com", UserURL: idp.URL + "/user", HTTP: idp.Client(), OAuth: oauth2.Config{ClientID: "fixture", ClientSecret: "test-secret", RedirectURL: server.URL + "/v1/auth/callback", Endpoint: oauth2.Endpoint{AuthURL: idp.URL + "/authorize", TokenURL: idp.URL + "/token", AuthStyle: oauth2.AuthStyleInParams}}}
+	h.advertisedEndpoint, h.webOrigin = server.URL+prefix, server.URL+prefix
+	h.auth = &loginProvider{Kind: "github", Label: "GitHub", Issuer: "https://github.com", UserURL: idp.URL + "/user", HTTP: idp.Client(), OAuth: oauth2.Config{ClientID: "fixture", ClientSecret: "test-secret", RedirectURL: server.URL + prefix + "/v1/auth/callback", Endpoint: oauth2.Endpoint{AuthURL: idp.URL + "/authorize", TokenURL: idp.URL + "/token", AuthStyle: oauth2.AuthStyleInParams}}}
 	const returnProject = "coco_1111111111111111"
 	for _, project := range []string{"//elsewhere.test", "prj_1111111111111111", "coco_invalid"} {
-		response, _ := dashboardRequest(t, server, "POST", "/v1/auth/start", map[string]string{"project_id": project}, nil, server.URL)
+		response, _ := dashboardRequest(t, server, "POST", prefix+"/v1/auth/start", map[string]string{"project_id": project}, nil, server.URL)
 		if response.StatusCode != http.StatusBadRequest {
 			t.Fatal("invalid project return target accepted")
 		}
 	}
-	response, body := dashboardRequest(t, server, "POST", "/v1/auth/start", map[string]string{"project_id": returnProject}, nil, server.URL)
+	response, body := dashboardRequest(t, server, "POST", prefix+"/v1/auth/start", map[string]string{"project_id": returnProject}, nil, server.URL)
 	if response.StatusCode != 200 {
 		t.Fatal("login start failed", string(body))
 	}
@@ -384,8 +391,8 @@ func TestGitHubBrowserLoginUsesStableIdentityAndOneTimeState(t *testing.T) {
 	}
 	client := server.Client()
 	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
-	callback := server.URL + "/v1/auth/callback?state=" + url.QueryEscape(state) + "&code=good"
-	for _, cookie := range []*http.Cookie{nil, {Name: loginCookieName, Value: "another-browser"}} {
+	callback := server.URL + prefix + "/v1/auth/callback?state=" + url.QueryEscape(state) + "&code=good"
+	for _, cookie := range []*http.Cookie{nil, {Name: h.cookieName(loginCookieName, true), Value: "another-browser"}} {
 		request, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, callback, nil)
 		if cookie != nil {
 			request.AddCookie(cookie)
@@ -406,16 +413,16 @@ func TestGitHubBrowserLoginUsesStableIdentityAndOneTimeState(t *testing.T) {
 		t.Fatal(err)
 	}
 	logged.Body.Close()
-	if logged.StatusCode != 303 || logged.Header.Get("Location") != "/"+returnProject {
+	if logged.StatusCode != 303 || logged.Header.Get("Location") != prefix+"/"+returnProject {
 		t.Fatal("callback failed", logged.Header.Get("Location"))
 	}
 	var cookie *http.Cookie
 	for _, c := range logged.Cookies() {
-		if c.Name == dashboardCookieName {
+		if c.Name == h.cookieName(dashboardCookieName, true) {
 			cookie = c
 		}
 	}
-	if cookie == nil || !cookie.HttpOnly || !cookie.Secure {
+	if cookie == nil || !cookie.HttpOnly || !cookie.Secure || cookie.Path != prefix+"/" {
 		t.Fatal("missing secure browser session")
 	}
 	me, err := h.authority.authenticateDashboard(cookie.Value)
@@ -430,7 +437,7 @@ func TestGitHubBrowserLoginUsesStableIdentityAndOneTimeState(t *testing.T) {
 	if !strings.Contains(replayed.Header.Get("Location"), "auth_error") {
 		t.Fatal("callback state replay succeeded")
 	}
-	response, _ = dashboardRequest(t, server, "POST", "/v1/auth/start", map[string]string{}, nil, "https://evil.test")
+	response, _ = dashboardRequest(t, server, "POST", prefix+"/v1/auth/start", map[string]string{}, nil, "https://evil.test")
 	if response.StatusCode != 403 {
 		t.Fatal("cross-origin login accepted")
 	}

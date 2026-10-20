@@ -20,7 +20,7 @@ func TestExplicitHTTPServerNeedsNoEnvironmentFlag(t *testing.T) {
 	if got, err := normalizeServerURL("http://dev.example.test:7788"); err != nil || got != "http://dev.example.test:7788" {
 		t.Fatal(got, err)
 	}
-	for _, endpoint := range []string{"http://user:secret@dev.example.test:7788", "http://dev.example.test:7788/path", "ftp://dev.example.test"} {
+	for _, endpoint := range []string{"http://user:secret@dev.example.test:7788", "http://dev.example.test:7788/path/../escape", "ftp://dev.example.test"} {
 		if _, err := normalizeServerURL(endpoint); err == nil {
 			t.Fatal("accepted invalid origin")
 		}

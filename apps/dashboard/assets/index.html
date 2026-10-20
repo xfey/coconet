@@ -1,12 +1,12 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
- <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="coconet-api-origin" content="{{API_ORIGIN}}"><meta name="coconet-server-version" content="{{SERVER_VERSION}}">
- <title>Coconet</title><link rel="icon" href="/assets/coconet-logo.svg" type="image/svg+xml" sizes="any"><link rel="preload" href="/assets/fonts/outfit-brand-400-ed2c6d023cf3.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="/assets/style.css"><script type="module" src="/assets/app.mjs"></script><script type="module" src="/assets/login-ripple.mjs"></script>
+ <meta charset="utf-8"><meta name="coconet-base-path" content="{{WEB_BASE_PATH}}"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="coconet-api-origin" content="{{API_ORIGIN}}"><meta name="coconet-server-version" content="{{SERVER_VERSION}}">
+ <title>Coconet</title><link rel="icon" href="{{WEB_BASE_PATH}}/assets/coconet-logo.svg" type="image/svg+xml" sizes="any"><link rel="preload" href="{{WEB_BASE_PATH}}/assets/fonts/outfit-brand-400-ed2c6d023cf3.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="{{WEB_BASE_PATH}}/assets/style.css"><script type="module" src="{{WEB_BASE_PATH}}/assets/app.mjs"></script><script type="module" src="{{WEB_BASE_PATH}}/assets/login-ripple.mjs"></script>
 </head>
 <body>
 <main id="login" hidden>
- <header class="login-brand"><a class="brand" href="/"><img class="brand-logo" src="/assets/coconet-app-icon.svg" width="34" height="34" alt=""><span class="brand-title">Coconet</span></a></header>
+ <header class="login-brand"><a class="brand" href="{{WEB_BASE_PATH}}/"><img class="brand-logo" src="{{WEB_BASE_PATH}}/assets/coconet-app-icon.svg" width="34" height="34" alt=""><span class="brand-title">Coconet</span></a></header>
  <div class="login-visual" aria-hidden="true"><canvas id="login-ripple"></canvas></div>
  <aside class="login-panel" aria-labelledby="login-title">
   <section class="login-form"><h1 id="login-title" data-i18n="login_title">打开项目</h1><p class="login-description" data-i18n="login_intro">和同事一起协作。</p><button id="provider-login" data-button-icon="login" class="primary" hidden></button><form id="login-form" hidden><label for="account-key" data-i18n="account_key">Account Key</label><input id="account-key" name="account-key" type="password" autocomplete="off" spellcheck="false" required maxlength="512" data-i18n-placeholder="account_key_placeholder"><button id="login-button" data-button-icon="login" class="primary" type="submit" data-i18n="login_submit">进入项目</button></form><p id="login-error" role="alert"></p><p id="key-help" data-i18n="admin_key_help" hidden>请向服务器管理员获取 Account Key。</p></section>
@@ -15,7 +15,7 @@
 </main>
 <main id="workspace" hidden>
  <aside id="sidebar" data-i18n-aria-label="navigation">
-  <div class="sidebar-top"><a class="brand" href="/"><img class="brand-logo" src="/assets/coconet-app-icon.svg" width="34" height="34" alt=""><span class="brand-title">Coconet</span></a></div>
+  <div class="sidebar-top"><a class="brand" href="{{WEB_BASE_PATH}}/"><img class="brand-logo" src="{{WEB_BASE_PATH}}/assets/coconet-app-icon.svg" width="34" height="34" alt=""><span class="brand-title">Coconet</span></a></div>
   <div class="sidebar-heading section-bar"><span data-i18n="projects">项目</span><button id="project-manage" class="icon-button" data-i18n-aria-label="add_project" data-i18n-title="add_project" data-icon="plus"></button></div>
   <nav id="project-list" data-i18n-aria-label="all_projects"></nav>
   <div class="sidebar-footer"><div id="identity" hidden><button id="account-name" class="account-button" data-i18n-title="account_settings"><span data-icon="user"></span><span id="account-label"></span></button></div></div>
