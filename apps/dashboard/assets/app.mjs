@@ -2,7 +2,7 @@ import { endpointPath } from './endpoint.mjs';
 import { copyToClipboard } from './platform.mjs';
 import { createPublishedGraphReader, publishedGraphStatus, publishedSessionActions, renderPublishedStatus } from "./published-graph.mjs";
 import { createProjectEvents } from "./events.mjs";
-import { renderInstallation } from './installation.mjs';
+import { loadProjectFolderExample, renderInstallation } from './installation.mjs';
 import { dialogActions } from './dialog.mjs';
 import { createAccountUI } from "./account.mjs";
 import { createLibraryActions } from './library.mjs';
@@ -125,6 +125,7 @@ function dismissModal() { if (modal?.dismiss) return modal.dismiss(); closeModal
 function closeModal(restoreFocus = true) {
   if (!modal) return;
   const trigger = modal.trigger;
+  modal.abort?.abort();
   modal = null; modalEpoch++;
   $('session-modal').close(); $('modal-content').replaceChildren();
   notifications.clearToast();
@@ -163,11 +164,19 @@ function renderAction() {
 }
 function openInstallation({ project, trigger = 'project-manage' } = {}) {
   openModal('installation', t('connect_my_folder'), trigger);
-  modal.installation = { project }; renderInstall();
+  const current = modal;
+  current.abort = new AbortController();
+  current.installation = { project }; renderInstall();
+  const signal = AbortSignal.any([current.abort.signal, AbortSignal.timeout(15000)]);
+  loadProjectFolderExample(project?.project_id, api, signal).then(folder => {
+    if (modal !== current) return;
+    current.installation.folderExample = folder;
+    current.ui.updateExample(folder);
+  }).catch(() => { /* Optional guidance: keep the generic instruction on failure. */ });
 }
 function renderInstall() {
   $('modal-title').textContent = t('connect_my_folder');
-  renderInstallation({ content: $('modal-content'), ...modal.installation, apiOrigin: document.querySelector('meta[name="coconet-api-origin"]').content, t, element, copyText });
+  modal.ui = renderInstallation({ content: $('modal-content'), ...modal.installation, apiOrigin: document.querySelector('meta[name="coconet-api-origin"]').content, t, element, copyText });
 }
 function openSettings() { openModal('settings', t('settings'), 'canvas-settings'); renderSettings(); }
 function renderSettings() {

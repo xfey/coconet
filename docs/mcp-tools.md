@@ -2,7 +2,7 @@
 
 Coconet's MCP tools use the project connected to the Agent's current folder (or
 its nearest connected parent). Joining a project in the Dashboard does not
-connect a local folder. Run `coconet connect` in the work folder first; for your
+connect a project folder. Run `coconet connect` in the work folder first; for your
 own deployment, include `--server 'https://coconet.example.com'`.
 
 Use `tools/list` for the current input schema. Each parameter includes its type,

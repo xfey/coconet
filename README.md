@@ -25,7 +25,7 @@ Open the terminal link if your browser doesn't open automatically. Sign in, then
 join or create a project. Reopen your Agent and work as usual.
 
 Share the project link with teammates. They can view progress in the browser
-or connect their own local folders to collaborate.
+or connect their own project folders to collaborate.
 
 ## Explore
 

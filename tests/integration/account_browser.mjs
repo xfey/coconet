@@ -59,7 +59,7 @@ try {
       assert.equal(await page.locator('#login-title').innerText(), language === 'zh' ? '打开项目' : 'Open your projects');
       await screenshot(page, 'login-' + width + '-' + language);
       assert.equal(await page.locator('#login-install').count(), 0);
-      assert.doesNotMatch(await page.locator('#login').innerText(), /连接本地文件夹|Connect a local folder/);
+      assert.doesNotMatch(await page.locator('#login').innerText(), /连接项目目录|Connect a project folder/);
     }
   }
   async function chooseEntry(target, kind) {
@@ -102,11 +102,11 @@ try {
         : 'Join to view the project’s work graph and explore your teammates’ progress and shared sessions.');
     }
     assert.deepEqual(await target.locator('#modal-content button:visible').allTextContents(), joined
-      ? language === 'zh' ? ['好的', '如何连接本地文件夹'] : ['OK', 'How to connect a local folder']
+      ? language === 'zh' ? ['好的', '如何连接项目目录'] : ['OK', 'How to connect a project folder']
       : [language === 'zh' ? '加入项目' : 'Join project']);
     if (joined) assert.equal(await target.locator('#modal-content .dialog-description').textContent(), language === 'zh'
-      ? '如需同步自己的工作进展，可以连接本地文件夹。'
-      : 'To sync your own work progress, connect a local folder.');
+      ? '如需同步自己的工作进展，可以连接项目目录。'
+      : 'To sync your own work progress, connect a project folder.');
     for (const width of [1280, 390, 320]) {
       await target.setViewportSize({ width, height: 844 });
       assert.equal(await target.locator('#modal-content').evaluate(node => node.scrollWidth > node.clientWidth + 1), false);
@@ -241,7 +241,7 @@ try {
       assert.equal(await trial.locator('.account-error').textContent(), '');
       assert.equal(await trial.getByRole('button', { name: 'OK', exact: true }).evaluate(node => node === document.activeElement), true);
       await trial.keyboard.press('Tab');
-      assert.equal(await trial.getByRole('button', { name: 'How to connect a local folder', exact: true }).evaluate(node => node === document.activeElement), true);
+      assert.equal(await trial.getByRole('button', { name: 'How to connect a project folder', exact: true }).evaluate(node => node === document.activeElement), true);
       await trial.keyboard.press('Shift+Tab');
       await trial.keyboard.press('Enter');
       await trial.locator('#session-modal').waitFor({ state: 'hidden' });
@@ -374,7 +374,7 @@ try {
     await page.locator('#login [data-language]').evaluate((select, value) => {
       select.value = value; select.dispatchEvent(new Event('change', { bubbles: true }));
     }, language);
-    assert.equal(await page.locator('#modal-title').textContent(), language === 'zh' ? '连接本地文件夹' : 'Connect a local folder');
+    assert.equal(await page.locator('#modal-title').textContent(), language === 'zh' ? '连接项目目录' : 'Connect a project folder');
     assert.doesNotMatch(await page.locator('.installation-guide').innerText(), /连接到：|Connect to:|Shared repository/);
     for (const width of [1280, 390, 320]) {
       await page.setViewportSize({ width, height: 844 });
@@ -406,7 +406,7 @@ try {
   await page.setViewportSize({ width: 1280, height: 844 });
   await page.locator('#project-manage').click();
   assert.equal(await page.getByRole('button', { name: 'Leave project', exact: true }).count(), 0);
-  assert.equal(await page.getByRole('button', { name: 'Connect a local folder', exact: true }).count(), 0);
+  assert.equal(await page.getByRole('button', { name: 'Connect a project folder', exact: true }).count(), 0);
   await page.locator('#modal-close').click();
   await page.locator('#canvas-settings').click();
   assert.equal(await page.locator('#modal-content').getByRole('button', { name: 'View sync status', exact: true }).count(), 0);
@@ -421,7 +421,7 @@ try {
   await page.locator('#modal-close').click();
   await page.locator('#project-share').click();
   await page.getByText('No folders connected yet.', { exact: true }).waitFor();
-  await page.getByRole('button', { name: 'Connect a local folder', exact: true }).click();
+  await page.getByRole('button', { name: 'Connect a project folder', exact: true }).click();
   assert.ok((await page.locator('.installation-guide pre').filter({ hasText: 'coconet connect' }).textContent()).includes(projects.projects[0].project_id));
   await screenshot(page, 'connection-instructions');
   await page.locator('#modal-close').click();
@@ -681,6 +681,73 @@ try {
   await page.locator('#modal-close').click();
   // Folder failure stays in its section; sharing remains usable and retry recovers.
   const workspaces = '**/v1/dashboard/projects/' + projects.projects[0].project_id + '/workspaces?*';
+  // Optional directory guidance: paginate, preserve focus, and ignore late results.
+  const intro = page.locator('.installation-guide > section > p').first();
+  const genericIntro = 'Run the following command in your project folder:';
+  let example = 'mcp-zero', exampleFailure = false, exampleConflict = false, releaseExample, exampleStarted;
+  let exampleGate = Promise.resolve(), examplePending, exampleFinished;
+  const exampleRoute = async route => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get('limit') !== '200') return route.continue();
+    exampleStarted?.(); await exampleGate;
+    if (exampleFailure) return route.fulfill({ status: 503, json: { code: 'temporarily_unavailable' } });
+    const next = url.searchParams.has('cursor');
+    await route.fulfill({ json: { folders: [{ path: (next ? '/srv/team/' : '/home/member/') + (next && exampleConflict ? 'another-repo' : example) }], next_cursor: next ? '' : 'next' } });
+    exampleFinished?.();
+  };
+  await page.route(workspaces, exampleRoute);
+  const openGuide = async () => {
+    await page.locator('#project-share').click();
+    await page.getByRole('button', { name: 'Connect a project folder', exact: true }).click();
+    await page.locator('.installation-guide').waitFor();
+  };
+  exampleGate = new Promise(resolve => { releaseExample = resolve; });
+  examplePending = new Promise(resolve => { exampleStarted = resolve; });
+  await openGuide(); await examplePending;
+  assert.equal(await intro.textContent(), genericIntro);
+  await page.locator('[data-disclosure="first-use"] summary').focus();
+  await page.keyboard.press('Enter');
+  releaseExample();
+  await page.getByText('Run the following command in your project folder (for example, mcp-zero/):', { exact: true }).waitFor();
+  assert.equal(await page.locator('[data-disclosure="first-use"]').getAttribute('open'), '');
+  assert.equal(await page.locator('[data-disclosure="first-use"] summary').evaluate(node => node === document.activeElement), true);
+  await page.keyboard.press('Escape');
+  exampleStarted = null;
+  // Long names are plain text and wrap in both languages on narrow screens.
+  example = 'collaboration-project-'.repeat(9) + '<svg onload=alert(1)>';
+  await openGuide(); await intro.filter({ hasText: example + '/' }).waitFor();
+  assert.equal(await intro.locator('svg').count(), 0);
+  for (const language of ['zh', 'en']) {
+    await page.locator('#login [data-language]').evaluate((select, value) => { select.value = value; select.dispatchEvent(new Event('change', { bubbles: true })); }, language);
+    assert.ok((await intro.textContent()).includes(example + '/'));
+    for (const width of [1280, 390, 320]) {
+      await page.setViewportSize({ width, height: 844 });
+      assert.equal(await page.locator('#modal-content').evaluate(node => node.scrollWidth > node.clientWidth + 1), false);
+      await screenshot(page, 'directory-example-' + language + '-' + width);
+    }
+  }
+  await page.keyboard.press('Escape');
+  for (const failure of [false, true]) {
+    exampleConflict = !failure; exampleFailure = failure;
+    const response = page.waitForResponse(r => r.url().includes('/workspaces?limit=200') && (failure || r.url().includes('cursor=')));
+    await openGuide(); await response;
+    assert.equal(await intro.textContent(), genericIntro);
+    await page.locator('.installation-guide .command-block:visible button').click();
+    assert.ok((await page.evaluate(() => window.fixtureClipboard)).includes(projects.projects[0].project_id));
+    await page.keyboard.press('Escape');
+  }
+  example = 'recovered'; exampleConflict = false; exampleFailure = false;
+  await openGuide(); await intro.filter({ hasText: 'recovered/' }).waitFor();
+  await page.keyboard.press('Escape');
+  exampleGate = new Promise(resolve => { releaseExample = resolve; });
+  examplePending = new Promise(resolve => { exampleStarted = resolve; });
+  await openGuide(); await examplePending;
+  await page.keyboard.press('Escape'); await page.locator('#canvas-settings').click();
+  const finishedExample = new Promise(resolve => { exampleFinished = resolve; });
+  releaseExample(); await finishedExample; await page.unroute(workspaces, exampleRoute);
+  assert.equal(await page.locator('#modal-title').textContent(), 'Settings');
+  assert.equal(await page.locator('.installation-guide').count(), 0);
+  await page.keyboard.press('Escape');
   await page.route(workspaces, route => route.fulfill({ status: 503, json: { code: 'temporarily_unavailable' } }));
   await page.locator('#project-share').click();
   await page.getByRole('button', { name: 'Copy project link', exact: true }).waitFor();
@@ -758,7 +825,7 @@ try {
   await otherPage.getByRole('button', { name: '加入项目', exact: true }).click();
   await checkProjectNotice(otherPage, 'zh', true, projects.projects[0].name);
   assert.equal((await (await second.request.get(fixture.url + '/v1/dashboard/projects')).json()).projects.length, 1);
-  await otherPage.getByRole('button', { name: '如何连接本地文件夹', exact: true }).click();
+  await otherPage.getByRole('button', { name: '如何连接项目目录', exact: true }).click();
   await otherPage.locator('.command-block').filter({ hasText: 'coconet connect' }).getByRole('button', { name: '复制命令', exact: true }).waitFor();
   const joinCommand = await otherPage.locator('.installation-guide pre').filter({ hasText: 'coconet connect' }).textContent();
   assert.match(joinCommand, /^coconet connect 'coco_/);

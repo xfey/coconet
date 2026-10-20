@@ -5,7 +5,7 @@ supported Agent: Codex, Claude Code or Cursor CLI.
 
 ## Connect a folder
 
-Run these commands in the local folder where you work:
+Run these commands in the project folder where you work:
 
 ```sh
 npm install -g coconet

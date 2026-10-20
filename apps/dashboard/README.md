@@ -16,7 +16,7 @@ sessions before asking new members to join. A signed-in, read-only preview expos
 only the project's ID, name and status; it does not grant membership or read access.
 Unavailable project details can be retried, and joining stays disabled until they
 load. Links do not identify an inviter. The same dialog then confirms membership
-and offers local folder connection: **OK** closes it, while **How to connect a local folder**
+and offers project folder connection: **OK** closes it, while **How to connect a project folder**
 opens the project's connection instructions. Joining from the sidebar uses the
 same confirmation; existing members go straight to the project. Viewing the
 instructions does not join again or authorize a device. Commands retain the
@@ -32,8 +32,12 @@ messages guide users to check the shared link.
 Share offers one project link to copy. Connection instructions omit the separate
 project-name caption and show a single `coconet connect` command by default,
 including the selected project and the API address for self-hosted deployments.
+The guide asks users to run the command in their project folder and reopen the
+Agent in that same folder. When all connected folders share a name, that name
+appears as an example. Empty, differing or unavailable directory records leave
+the generic instruction in place; names do not restrict which folder can connect.
 The **First time here?** disclosure contains installation and Hook guidance.
 Open the guide from Share or the membership confirmation after signing in.
 Hosted and self-hosted sign-in pages omit folder-connection guidance, and there
 is no separate sidebar installation entry. Interface copy uses **project**
-for the shared collaboration space and **local folder** for a device path.
+for the shared collaboration space and **project folder** for a device path.

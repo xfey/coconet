@@ -238,7 +238,7 @@ try {
   assert.equal(new URL(page.url()).pathname, new URL(fixture.url).pathname.replace(/\/$/, '') + '/' + fixture.project_id);
   assert.equal(await page.locator('#install-open').count(), 0);
   await page.locator('#project-share').click();
-  await page.getByRole('button', { name: '连接本地文件夹', exact: true }).click();
+  await page.getByRole('button', { name: '连接项目目录', exact: true }).click();
   await page.locator('[data-disclosure="sharing-scope"] summary').click();
   assert.doesNotMatch(await page.locator('#modal-content').innerText(), /加密|模型额度|模型用量|默认模型|支持 macOS/);
   assert.match(await page.locator('#modal-content').innerText(), /已有历史不会自动导入|工具调用/);
@@ -314,8 +314,8 @@ try {
     await p.keyboard.press('Escape');
     assert.equal(await p.locator('#install-open').count(), 0);
     await p.locator('#project-share').click();
-    await p.getByRole('button', { name: locale === 'en-US' ? 'Connect a local folder' : '连接本地文件夹', exact: true }).click();
-    assert.equal(await p.locator('#modal-title').innerText(), locale === 'en-US' ? 'Connect a local folder' : '连接本地文件夹');
+    await p.getByRole('button', { name: locale === 'en-US' ? 'Connect a project folder' : '连接项目目录', exact: true }).click();
+    assert.equal(await p.locator('#modal-title').innerText(), locale === 'en-US' ? 'Connect a project folder' : '连接项目目录');
     const scope = p.locator('[data-disclosure="sharing-scope"]');
     assert.equal(await scope.evaluate(el => el.open), false);
     assert.equal(await p.locator('.installation-guide .command-block').count(), 2);
@@ -323,7 +323,7 @@ try {
     assert.equal(await p.locator('[data-disclosure="first-use"]').evaluate(el => el.open), false);
     assert.doesNotMatch(await p.locator('.installation-guide').innerText(), /npm install/);
     assert.doesNotMatch(await p.locator('.installation-guide').innerText(), /连接到：|Connect to:/);
-    assert.match(await p.locator('.installation-guide').innerText(), locale === 'en-US' ? /Confirm the connection in your browser/ : /按浏览器提示确认连接/);
+    assert.match(await p.locator('.installation-guide').innerText(), locale === 'en-US' ? /reopen your Agent in that folder/ : /在该目录中重新打开 Agent/);
     await screenshot(p, `published-install-compact-${locale}`);
     await p.locator('[data-disclosure="first-use"] summary').focus();
     await p.keyboard.press('Enter');
