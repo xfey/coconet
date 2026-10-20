@@ -15,8 +15,8 @@ when progress stalls. Use the Agent registration retry command shown by
 `agent list --verbose` if a Plugin or Hook was not installed correctly.
 
 For MCP failures, read the field-specific error and `next_step` before retrying.
-For example, `search_work` accepts `limit` from 1 to 20 (default 10), even though
-graph and Library listings allow up to 100. More search results use `next_cursor`.
+For example, `search_work` accepts `limit` from 1 to 100 (default 10);
+graph and Library listings also allow up to 100. More search results use `next_cursor`.
 Joining in the browser alone does not connect the Agent's work folder. See
 [MCP tools](mcp-tools.md) for all parameter bounds and recovery instructions.
 

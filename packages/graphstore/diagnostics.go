@@ -9,11 +9,6 @@ import (
 	bolt "go.etcd.io/bbolt"
 )
 
-const diagnosticResponseReserve int64 = (25 << 20) + (16 << 10)
-const diagnosticFinalReserve int64 = 16 << 10
-
-var ErrDiagnosticQuota = errors.New("local processing archive is full; export or unpin older runs, or increase its retention limit before resuming inference")
-
 type DiagnosticPolicy struct {
 	Days     int   `json:"days"`
 	MaxBytes int64 `json:"max_bytes"`
@@ -74,6 +69,12 @@ func putDiagnosticBytes(tx *bolt.Tx, value int64) error {
 	return tx.Bucket([]byte("settings")).Put([]byte("diagnostic-bytes"), data)
 }
 func putRun(tx *bolt.Tx, run Run) error {
+	// Detailed archives are optional. Transaction identity, status and source
+	// roots are not: they remain durable even when the diagnostic budget is full.
+	run.ArchiveReserved = 0
+	if run.Archive != nil {
+		pruneRunContent(&run, time.Now())
+	}
 	data, err := json.Marshal(run)
 	if err != nil {
 		return err
@@ -85,21 +86,49 @@ func putRun(tx *bolt.Tx, run Run) error {
 		return err
 	}
 	next := used - diagnosticSize(old) + int64(len(data)) + run.ArchiveReserved
-	// Space for the maximum bounded provider response is reserved before the
-	// call. Finalization releases it, so another task cannot consume that space.
 	if next > used {
 		policy, err := diagnosticPolicy(tx)
 		if err != nil {
 			return err
 		}
 		if next > policy.MaxBytes {
-			return ErrDiagnosticQuota
+			if err := pruneDiagnostics(tx, time.Now(), int64(len(data))-diagnosticSize(old)); err != nil {
+				return err
+			}
+			used, err = readDiagnosticBytes(tx)
+			if err != nil {
+				return err
+			}
+			old = bucket.Get([]byte(run.ID))
+			next = used - diagnosticSize(old) + int64(len(data))
+			if next > policy.MaxBytes && !run.Pinned {
+				pruneRunContent(&run, time.Now())
+				data, err = json.Marshal(run)
+				if err != nil {
+					return err
+				}
+				next = used - diagnosticSize(old) + int64(len(data))
+			}
 		}
 	}
 	if err := bucket.Put([]byte(run.ID), data); err != nil {
 		return err
 	}
 	return putDiagnosticBytes(tx, next)
+}
+
+func pruneRunContent(run *Run, now time.Time) {
+	if run.Archive == nil {
+		run.Archive = &DiagnosticArchive{PrunedAt: now.UTC().Format(time.RFC3339Nano), InputSHA256: ObjectDigest(run.Input)}
+	}
+	if run.Output != "" {
+		run.Archive.OutputSHA256 = ObjectDigest([]byte(run.Output))
+	}
+	if len(run.Usage) > 0 {
+		run.Archive.UsageSHA256 = ObjectDigest(run.Usage)
+	}
+	run.Input, run.Output, run.Usage = json.RawMessage(`null`), "", nil
+	run.ArchiveReserved = 0
 }
 func (s *Store) PinRun(project, id string, pinned bool) error {
 	return s.updateRun(id, func(run *Run) error {
@@ -224,19 +253,8 @@ func pruneDiagnostics(tx *bolt.Tx, now time.Time, room int64) error {
 			continue
 		}
 		run := item.run
-		archive := &DiagnosticArchive{PrunedAt: now.UTC().Format(time.RFC3339Nano), InputSHA256: ObjectDigest(run.Input)}
-		if run.Output != "" {
-			archive.OutputSHA256 = ObjectDigest([]byte(run.Output))
-		}
-		if len(run.Usage) > 0 {
-			archive.UsageSHA256 = ObjectDigest(run.Usage)
-		}
-		run.Archive = archive
-		run.Input = json.RawMessage(`null`)
-		run.Output = ""
-		run.Usage = nil
+		pruneRunContent(&run, now)
 		run.Protected = nil
-		run.ArchiveReserved = 0
 		old := tx.Bucket([]byte("runs")).Get([]byte(run.ID))
 		data, err := json.Marshal(run)
 		if err != nil {

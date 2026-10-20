@@ -83,8 +83,6 @@ func (t HTTP) request(ctx context.Context, method, project, suffix string, body 
 			return nil, contracts.ErrProcessingBusy
 		case "processing_stale":
 			return nil, contracts.ErrProcessingStale
-		case "processing_yielded":
-			return nil, contracts.ErrProcessingYielded
 		case "processing_paused":
 			return nil, contracts.ErrProcessingPaused
 		}
@@ -101,7 +99,21 @@ func (t HTTP) request(ctx context.Context, method, project, suffix string, body 
 	if response.StatusCode == 404 && failure.Code == "relay_object_missing" {
 		return nil, ErrObjectMissing
 	}
-	return nil, fmt.Errorf("relay request failed (HTTP %d, code %s)", response.StatusCode, failure.Code)
+	return nil, &RequestError{Status: response.StatusCode, Code: failure.Code}
+}
+
+// Authentication and storage availability can recover without changing the
+// fixed transaction. Malformed requests and unsupported protocols cannot.
+type RequestError struct {
+	Status int
+	Code   string
+}
+
+func (e *RequestError) Error() string {
+	return fmt.Sprintf("relay request failed (HTTP %d, code %s)", e.Status, e.Code)
+}
+func (e *RequestError) Permanent() bool {
+	return e.Status == 400 || e.Status == 404 || e.Status == 405 || e.Status == 413 || e.Status == 422 || e.Status == 426
 }
 func (t HTTP) json(ctx context.Context, method, project, suffix string, input, output any) error {
 	var body []byte

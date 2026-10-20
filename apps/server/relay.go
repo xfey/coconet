@@ -93,8 +93,6 @@ func (h *serverHandler) handleRelay(w http.ResponseWriter, r *http.Request, requ
 			h.writeError(w, requestID, conflict("processing_busy", "another attempt is processing this conversation"))
 		case errors.Is(err, contracts.ErrProcessingStale):
 			h.writeError(w, requestID, conflict("processing_stale", "task or execution claim expired; synchronize before retrying"))
-		case errors.Is(err, contracts.ErrProcessingYielded):
-			h.writeError(w, requestID, conflict("processing_yielded", "this device yielded to another device; explicit retry is also available"))
 		case errors.Is(err, contracts.ErrProcessingPaused):
 			h.writeError(w, requestID, conflict("processing_paused", "shared retry attempts exhausted; explicit retry required"))
 		case errors.Is(err, relay.ErrConflict):

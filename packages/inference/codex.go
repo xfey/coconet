@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/xfey/coconet/packages/subprocess"
 )
@@ -89,9 +90,13 @@ func (p *rpcProcess) next() (rpcFrame, error) {
 				return f, err
 			}
 			if f.Method != "" && len(f.ID) > 0 {
-				// Never approve external tools, login, user prompts or permissions.
+				// Unsupported protocol requests get a normal JSON-RPC error. Tool
+				// and approval requests still terminate this tool-free execution.
 				_ = p.send(map[string]any{"id": f.ID, "error": map[string]any{"code": -32601, "message": "requests are disabled for inference"}})
-				return f, errors.New("app-server requested a forbidden capability")
+				if strings.Contains(f.Method, "Approval") || strings.Contains(f.Method, "permission") || strings.Contains(f.Method, "tool") || strings.Contains(f.Method, "requestUserInput") {
+					return f, errors.New("app-server requested a forbidden capability")
+				}
+				continue
 			}
 			return f, nil
 		}
@@ -120,18 +125,19 @@ func (p *rpcProcess) call(id int, method string, params any) (json.RawMessage, e
 // startCodexRPC performs only the protocol handshake, never a model request.
 // Check and inference share the same startup path and capability restrictions.
 func (r Local) startCodexRPC(ctx context.Context, work string) (*rpcProcess, error) {
-	// environments=[] is an experimental app-server capability, required here:
-	// it removes environment access instead of relying on a read-only sandbox
-	// (which by itself still permits filesystem reads). Unsupported builds fail.
-	cmd := r.command(work, "app-server", "-c", "mcp_servers={}", "-c", "project_doc_max_bytes=0",
+	// Disable tools for this invocation, while reusing the user's account,
+	// default model and instructions. The thread also has no environments.
+	cmd := r.command(work, "app-server", "-c", "mcp_servers={}",
 		"-c", "features.codex_hooks=false", "-c", "features.hooks=false", "-c", "features.apps=false",
 		"-c", "features.shell_tool=false", "-c", "features.unified_exec=false", "-c", "features.multi_agent=false",
 		"-c", "features.collab=false", "-c", "features.code_mode=false", "-c", "features.memory_tool=false",
-		"-c", "features.skip_host_skill_discovery=true", "-c", `web_search="disabled"`)
+		"-c", `web_search="disabled"`)
 	p, err := startRPC(ctx, cmd)
 	if err != nil {
 		return nil, err
 	}
+	startup := time.AfterFunc(30*time.Second, p.cancel)
+	defer startup.Stop()
 	if _, err = p.call(1, "initialize", map[string]any{"clientInfo": map[string]any{"name": "coconet_inference", "version": "1"}, "capabilities": map[string]any{"experimentalApi": true}}); err != nil {
 		p.close()
 		return nil, err
@@ -145,6 +151,12 @@ func (r Local) startCodexRPC(ctx context.Context, work string) (*rpcProcess, err
 
 func (r Local) codex(ctx context.Context, work string, request Request) (response Response, resultErr error) {
 	response = Response{Model: r.Config.Model}
+	startedModel := false
+	defer func() {
+		if resultErr != nil && !startedModel {
+			resultErr = ConfigurationError(resultErr)
+		}
+	}()
 	// JSON-RPC may ignore unknown properties on older releases. Check the
 	// installed experimental schema before relying on environments=[].
 	if err := r.codexCapabilities(ctx, work); err != nil {
@@ -155,6 +167,8 @@ func (r Local) codex(ctx context.Context, work string, request Request) (respons
 		return response, err
 	}
 	defer p.close()
+	startup := time.AfterFunc(30*time.Second, p.cancel)
+	defer startup.Stop()
 	// Empty TOML tables are merged with user settings, not replacements.
 	// Read the effective configuration without writing it, then explicitly disable
 	// each external capability in this ephemeral thread only. Do not archive
@@ -183,14 +197,10 @@ func (r Local) codex(ctx context.Context, work string, request Request) (respons
 		Thread struct {
 			ID string `json:"id"`
 		} `json:"thread"`
-		Model        string   `json:"model"`
-		Instructions []string `json:"instructionSources"`
+		Model string `json:"model"`
 	}
 	if json.Unmarshal(started, &thread) != nil || thread.Thread.ID == "" {
 		return response, errors.New("app-server returned no thread")
-	}
-	if len(thread.Instructions) > 0 {
-		return response, errors.New("inference profile loaded unexpected instruction files")
 	}
 	if r.Config.Model != "" && thread.Model != "" && thread.Model != r.Config.Model {
 		return response, errors.New("inference model silently changed")
@@ -207,12 +217,14 @@ func (r Local) codex(ctx context.Context, work string, request Request) (respons
 	if json.Unmarshal(mcp, &servers) != nil || servers.Data == nil || len(servers.Data) > 0 || servers.NextCursor != nil {
 		return response, errors.New("inference profile has external MCP capabilities")
 	}
+	startup.Stop() // A model turn waits for native completion or caller cancellation.
 	// Do not use call() here: completion/items may race the turn/start response.
 	if err = p.send(map[string]any{"id": 3, "method": "turn/start", "params": map[string]any{
 		"threadId": thread.Thread.ID, "input": []any{map[string]any{"type": "text", "text": string(request.Input)}}, "outputSchema": request.Schema,
 	}}); err != nil {
 		return response, err
 	}
+	startedModel = true
 	var turnID string
 	var completed *struct {
 		ID     string          `json:"id"`
@@ -221,6 +233,7 @@ func (r Local) codex(ctx context.Context, work string, request Request) (respons
 	}
 	var visible []json.RawMessage
 	visibleSize := 0
+	visibleOmitted := false
 	defer func() {
 		if response.Visible == "" {
 			response.Visible = joinVisible(visible)
@@ -274,18 +287,18 @@ func (r Local) codex(ctx context.Context, work string, request Request) (respons
 			// Preserve visible output even when a turn later fails. Keep deltas
 			// because a killed provider may never emit an item/completed event.
 			if frame.Method == "item/agentMessage/delta" || frame.Method == "item/completed" && event.Item.Type == "agentMessage" || frame.Method == "turn/completed" || frame.Method == "error" {
-				visibleSize += len(frame.Params)
-				if visibleSize > 1<<20 {
-					return response, errors.New("provider response exceeds archive limit")
+				if visibleSize+len(frame.Params) <= 1<<20 {
+					visibleSize += len(frame.Params)
+					visible = append(visible, frame.Params)
+				} else if !visibleOmitted {
+					visibleOmitted = true
+					visible = append(visible, json.RawMessage(`{"diagnostic_omitted":"event archive limit reached"}`))
 				}
-				visible = append(visible, frame.Params)
 			}
 			switch frame.Method {
 			case "item/started", "item/completed":
-				switch event.Item.Type {
-				case "userMessage", "agentMessage", "reasoning":
-				default:
-					return response, errors.New("inference attempted a forbidden tool or injected context")
+				if codexToolItem(event.Item.Type) {
+					return response, errors.New("inference attempted a forbidden tool")
 				}
 				if frame.Method == "item/completed" && event.Item.Type == "agentMessage" {
 					if event.Item.Phase == "final_answer" || event.Item.Phase == "" {
@@ -301,7 +314,7 @@ func (r Local) codex(ctx context.Context, work string, request Request) (respons
 		if completed != nil && turnID != "" {
 			response.Visible = joinVisible(visible)
 			if completed.ID != turnID || completed.Status != "completed" || len(completed.Error) > 0 && string(completed.Error) != "null" {
-				return response, errors.New("app-server turn failed or was interrupted")
+				return response, codexTurnFailure(completed.Error)
 			}
 			if strings.TrimSpace(response.Text) == "" {
 				return response, errors.New("app-server completed without a final answer")
@@ -311,7 +324,36 @@ func (r Local) codex(ctx context.Context, work string, request Request) (respons
 	}
 }
 
+func codexTurnFailure(raw json.RawMessage) error {
+	var result struct {
+		Info json.RawMessage `json:"codexErrorInfo"`
+	}
+	_ = json.Unmarshal(raw, &result)
+	var code string
+	_ = json.Unmarshal(result.Info, &code)
+	var detail map[string]json.RawMessage
+	if code == "" && json.Unmarshal(result.Info, &detail) == nil && len(detail) == 1 {
+		for key := range detail {
+			code = key
+		}
+	}
+	cause := errors.New("app-server turn failed or was interrupted")
+	switch code {
+	case "contextWindowExceeded":
+		return &Waiting{Kind: "context_capacity_exceeded", Cause: errors.New("source model cannot accept the complete request; no content was truncated")}
+	case "usageLimitExceeded":
+		return &Waiting{Kind: "quota_exhausted", Cause: cause}
+	case "unauthorized":
+		return &Waiting{Kind: "authentication_required", Cause: errors.New("sign in with the source Codex profile; Coconet will retry automatically")}
+	case "httpConnectionFailed", "responseStreamConnectionFailed", "responseStreamDisconnected", "responseTooManyFailedAttempts":
+		return &Waiting{Kind: "transient_network", Cause: cause}
+	}
+	return cause
+}
+
 func (r Local) codexCapabilities(ctx context.Context, work string) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
 	root := filepath.Join(work, "protocol")
 	cmd := r.command(work, "app-server", "generate-json-schema", "--experimental", "--out", root)
 	cmd.Stdout = &boundedBuffer{limit: 32 << 10}
@@ -319,7 +361,11 @@ func (r Local) codexCapabilities(ctx context.Context, work string) error {
 	if err := subprocess.Run(ctx, cmd); err != nil {
 		return fmt.Errorf("app-server capability check failed: %w", err)
 	}
-	for name, fields := range map[string][]string{"ThreadStartParams": {"environments", "ephemeral", "baseInstructions", "allowProviderModelFallback"}, "ThreadStartResponse": {"instructionSources"}, "ListMcpServerStatusParams": {"threadId"}} {
+	required := map[string][]string{"ThreadStartParams": {"environments", "ephemeral", "baseInstructions"}, "ListMcpServerStatusParams": {"threadId"}}
+	if r.Config.Model != "" {
+		required["ThreadStartParams"] = append(required["ThreadStartParams"], "allowProviderModelFallback")
+	}
+	for name, fields := range required {
 		data, err := os.ReadFile(filepath.Join(root, "v2", name+".json"))
 		if err != nil {
 			return errors.New("app-server inference schema is unavailable")
@@ -339,6 +385,16 @@ func (r Local) codexCapabilities(ctx context.Context, work string) error {
 	return nil
 }
 
+// Execution is disabled in the host configuration too. New informational items
+// (plans, compaction, context/status updates) are not failures by themselves.
+func codexToolItem(kind string) bool {
+	switch kind {
+	case "commandExecution", "fileChange", "mcpToolCall", "dynamicToolCall", "webSearch", "imageView", "imageGeneration", "collabAgentToolCall":
+		return true
+	}
+	return false
+}
+
 func joinVisible(events []json.RawMessage) string {
 	data, _ := json.Marshal(events)
 	return string(data)
@@ -351,7 +407,7 @@ func codexThreadIsolation(data []byte) (map[string]any, error) {
 	if json.Unmarshal(data, &result) != nil || result.Config == nil {
 		return nil, errors.New("app-server returned invalid effective configuration")
 	}
-	isolation := map[string]any{"project_doc_max_bytes": 0}
+	isolation := map[string]any{}
 	for _, group := range []string{"mcp_servers", "plugins"} {
 		raw, present := result.Config[group]
 		if !present {

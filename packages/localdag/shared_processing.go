@@ -23,8 +23,8 @@ type processingCoordinator interface {
 }
 type privateProcessingKey struct{}
 
-// Explicit history imports retain their device-local approved call budget.
-// They cannot silently delegate extra calls to another account.
+// Explicit test/operator call caps remain device-local. Ordinary history
+// imports use the same shared processing path as live captures.
 func PrivateProcessing(ctx context.Context) context.Context {
 	return context.WithValue(ctx, privateProcessingKey{}, true)
 }
@@ -107,15 +107,6 @@ func (e *Engine) helpBefore(ctx context.Context, own graphstore.Task) (bool, err
 				if retry.After(e.now()) {
 					continue
 				}
-			}
-			byThisDevice := 0
-			for _, actor := range shared.AttemptedBy {
-				if actor == e.Actor {
-					byThisDevice++
-				}
-			}
-			if byThisDevice >= 2 {
-				continue
 			}
 			if shared.Attempts >= 3 {
 				continue
@@ -219,13 +210,14 @@ func (e *Engine) processShared(ctx context.Context, job graphstore.Task, c proce
 				readErr = errors.New("invalid shared task kind")
 			}
 		}
-		var spec contracts.ProcessingSpec
-		if readErr == nil {
-			spec, readErr = fixedProcessingInput(state, job, input)
-		}
-		e.commitMu.Unlock()
 		if readErr != nil {
+			e.commitMu.Unlock()
 			return readErr
+		}
+		spec, inputErr := fixedProcessingInput(state, job, input)
+		e.commitMu.Unlock()
+		if inputErr != nil {
+			return e.waitInput(job, state, inputErr)
 		}
 		shared, err = c.RegisterProcessing(ctx, job.ProjectID, spec)
 		if err != nil {
@@ -247,13 +239,14 @@ func (e *Engine) processShared(ctx context.Context, job graphstore.Task, c proce
 	}
 	// Claim only after validating the bytes; a missing capsule never spends a
 	// model attempt. The server lease clock is authoritative for publication.
+	fixedSpec := shared.Spec
 	shared, err = c.ActProcessing(ctx, job.ProjectID, shared.ID, "claim", "", "")
 	if errors.Is(err, contracts.ErrProcessingBusy) {
 		job.NextAt = e.now().Add(5 * time.Second).Format(time.RFC3339Nano)
 		job.Status = "retry"
 		return e.Store.PutTask(job)
 	}
-	if errors.Is(err, contracts.ErrProcessingPaused) || errors.Is(err, contracts.ErrProcessingYielded) {
+	if errors.Is(err, contracts.ErrProcessingPaused) {
 		job.Status = "paused"
 		job.Error = err.Error()
 		return e.Store.PutTask(job)
@@ -281,22 +274,15 @@ func (e *Engine) processShared(ctx context.Context, job graphstore.Task, c proce
 	renewDone := make(chan struct{})
 	go func() {
 		defer close(renewDone)
-		ticker := time.NewTicker(20 * time.Second)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-callCtx.Done():
-				return
-			case <-ticker.C:
-				attempt, stop := context.WithTimeout(callCtx, 10*time.Second)
-				_, err := c.ActProcessing(attempt, job.ProjectID, shared.ID, "renew", shared.Lease, "")
-				stop()
-				if err != nil {
-					cancel()
-					return
-				}
+		until, _ := time.Parse(time.RFC3339Nano, shared.ClaimedUntil)
+		keepProcessingLease(callCtx, cancel, until, e.now, 20*time.Second, 10*time.Second, func(attempt context.Context) (time.Time, error) {
+			next, err := c.ActProcessing(attempt, job.ProjectID, shared.ID, "renew", shared.Lease, "")
+			expiry, parseErr := time.Parse(time.RFC3339Nano, next.ClaimedUntil)
+			if err != nil {
+				return time.Time{}, err
 			}
-		}
+			return expiry, parseErr
+		})
 	}()
 	defer func() { cancel(); <-renewDone }()
 	noText := job.Kind == "stage" && input.Audit.From == input.Audit.Through
@@ -329,6 +315,7 @@ func (e *Engine) processShared(ctx context.Context, job graphstore.Task, c proce
 		provider, model, template = "", "", "no-new-visible-text/1"
 	}
 	run := graphstore.Run{ID: runID, TaskID: job.ID, ProjectID: job.ProjectID, Kind: job.Kind, Status: "running", StartedAt: e.stamp(), Provider: provider, Model: model, Template: template, Input: archive, Base: state.Revision, Source: &input.Source, NodeID: job.NodeID, SharedTaskID: shared.ID, InputSHA256: shared.Spec.SHA256, Executor: e.Actor, SourceOwner: shared.Spec.Owner}
+	run.RecoveryInput = &fixedSpec
 	for _, candidate := range input.Audit.Candidates {
 		run.Protected = append(run.Protected, candidate.Source)
 	}
@@ -350,20 +337,25 @@ func (e *Engine) processShared(ctx context.Context, job graphstore.Task, c proce
 		response.Text = `{"action":"none","stage":null,"items":{"add":[],"revise":[],"complete":[],"withdraw":[]},"reason":"No new visible dialogue; retain existing stage and commitments.","evidence":[]}`
 		response.Visible = response.Text
 	} else if selectionErr != nil {
-		modelErr = selectionErr
+		modelErr = inference.ConfigurationError(selectionErr)
 	} else if runner == nil {
-		modelErr = errors.New("no inference runner available")
+		modelErr = inference.ConfigurationError(errors.New("no inference runner available"))
 	} else {
 		response, modelErr = runner.Infer(callCtx, input.Request)
+	}
+	if modelErr == nil && callCtx.Err() != nil {
+		modelErr = callCtx.Err()
 	}
 	output, _ := json.Marshal(response)
 	if err := e.Store.SaveModelResponse(runID, string(output), response.Usage, response.Model); err != nil {
 		return err
 	}
-	// A native withdrawal may have arrived while a remote model was running.
-	// Synchronize before interpreting either its success or its failure.
-	if err := c.Sync(ctx, job.ProjectID); err != nil {
-		return err
+	// Inspect locally accepted withdrawals now. Publication will catch up on
+	// CAS conflict; a network outage here must not discard a completed result.
+	if modelErr != nil {
+		// A failed/cancelled attempt has no result to protect. A successful
+		// catch-up can show that the source was withdrawn while it was running.
+		_ = c.Sync(ctx, job.ProjectID)
 	}
 	completedState, err := e.Store.State(job.ProjectID)
 	if err != nil {
@@ -375,6 +367,10 @@ func (e *Engine) processShared(ctx context.Context, job graphstore.Task, c proce
 	fail := func(cause error) error {
 		operation, status, reason := "fail", "retry", "inference attempt failed"
 		var deferred *inference.Deferred
+		if delay, waiting := inference.RetryDelay(cause); waiting {
+			operation, reason = "defer", "provider prerequisite unavailable"
+			job.NextAt = e.now().Add(delay).Format(time.RFC3339Nano)
+		}
 		if errors.As(cause, &deferred) {
 			operation, status, reason = "defer", "budget_wait", ""
 			job.NextAt = deferred.Until.UTC().Format(time.RFC3339Nano)
@@ -426,10 +422,7 @@ func (e *Engine) processShared(ctx context.Context, job graphstore.Task, c proce
 		if err := e.Store.Finish(runID, "needs_context", "additional evidence required", e.stamp()); err != nil {
 			return err
 		}
-		job.Status = "queued"
-		if job.Expanded {
-			job.Status = "paused"
-		}
+		job.Status = e.contextRetry(state, job, input)
 		job.Expanded = true
 		job.SharedID = ""
 		job.RunID = ""
@@ -460,10 +453,7 @@ func (e *Engine) processShared(ctx context.Context, job graphstore.Task, c proce
 	}
 	commit.Base = latest.Revision
 	if needsContext {
-		job.AfterPublish = "queued"
-		if job.Expanded {
-			job.AfterPublish = "paused"
-		}
+		job.AfterPublish = e.contextRetry(latest, job, input)
 		job.Expanded = true
 		job.ContextBasis = relationContextBasis(latest, job.NodeID)
 	}

@@ -232,9 +232,12 @@ async function refreshGraph({ preserveViewport = false } = {}) {
     const previousIDs = new Set(state.nodes.map(node => node.id));
     const addedNodes = graph.nodes.some(node => !previousIDs.has(node.id));
     state.nodes = graph.nodes; state.layout = layout;
-    const selected = [...graph.nodes, ...graph.library].find(node => node.id === state.selected);
+    const candidates = state.selection?.library ? [...graph.library, ...graph.nodes] : [...graph.nodes, ...graph.library];
+    const selected = candidates.find(node => node.id === state.selected && (!state.selection || sourceKey(node) === sourceKey(state.selection.node))) || (!state.selection?.library && candidates.find(node => node.id === state.selected));
     if (!selected && !state.selection) state.selected = '';
-    if (state.selection?.graph && selected && sourceKey(selected) === sourceKey(state.selection.node)) state.selection.node = { ...selected };
+    if (state.selection?.graph && selected && sourceKey(selected) === sourceKey(state.selection.node)) {
+      state.selection.node = { ...selected }; state.selection.library = graph.library.includes(selected);
+    }
     if (state.selection?.graph && !selected) { state.selection = null; state.selected = ''; updateLocation(); }
     notice(graph.warning);
     if (modal?.kind === 'projection') modal.ui.render();
@@ -353,8 +356,8 @@ async function restoreLocation(target = parseWorkspaceLocation(location)) {
   if (!state.session || navigation !== state.navigationEpoch || target.project && state.project !== target.project) return;
   if (target.event || target.entry) { notice('link_node_unavailable'); return; }
   if (target.node || target.session) {
-    const node = state.nodes.find(node => node.id === target.node) || state.published?.library.find(node => node.id === target.node);
-    if (node && (!target.session || sourceIdentity(node.source) === target.session && node.source.version === target.version)) selectNode(node.id, true);
+    const node = [...state.nodes, ...(state.published?.library || [])].find(node => (!target.node || node.id === target.node) && (!target.session || sourceIdentity(node.source) === target.session && node.source.version === target.version));
+    if (node) selectRecord({ node, source: node.source, graph: true, library: state.published?.library.includes(node) }, true);
     else { closeSelection(false, false); notice('link_node_unavailable'); }
   } else closeSelection(false, false);
 }
@@ -411,7 +414,7 @@ function renderLibrary() {
   statusMessage('library-message', nodes.length ? '' : 'library_empty');
   $('library-drawer').setAttribute('aria-busy', 'false');
   for (const node of nodes) {
-    const card = button('', () => { toggleLibraryDrawer(false); selectNode(node.id); }, 'library-entry' + (state.selected === node.id ? ' selected' : ''));
+    const card = button('', () => selectRecord({ node, source: node.source, graph: true, library: true }), 'library-entry' + (state.selected === node.id ? ' selected' : ''));
     card.dataset.nodeId = node.id; card.setAttribute('aria-pressed', String(state.selected === node.id));
     card.append(icon('star'), element('strong', node.objective), element('span', node.author.display_name, 'node-meta')); list.append(card);
     if (activeID === node.id && !$('library-drawer').hidden) card.focus({ preventScroll: true });
@@ -440,8 +443,8 @@ async function changeLibrary(node) {
   } catch (error) {
     if (!relevant()) return;
     if (error.status === 401) { handleError(error); return; }
-    if (['library_selection_changed', 'library_owner_only', 'project_archived'].includes(error.code)) await refreshWorkspace({ preserveViewport: true });
-    if (relevant()) toast(['library_selection_changed', 'library_owner_only', 'project_archived', 'library_busy'].includes(error.code) ? error.code : 'library_update_failed');
+    if (['library_selection_changed', 'library_access_denied', 'project_archived'].includes(error.code)) await refreshWorkspace({ preserveViewport: true });
+    if (relevant()) toast(['library_selection_changed', 'library_access_denied', 'project_archived', 'library_busy'].includes(error.code) ? error.code : 'library_update_failed');
   }
 }
 function renderDetails() {
@@ -456,7 +459,7 @@ function renderDetails() {
   if (node) content.append(element('p', node.author.display_name + ' · ' + formatTime(node.work_time.end), 'detail-meta'));
 
   const actions = element('div', undefined, 'detail-actions');
-  const availableActions = node ? publishedSessionActions(state.project, node, { collect: node.author.account_id === state.session?.account?.account_id && state.projects.find(project => project.project_id === state.project)?.status === 'active' }) : [];
+  const availableActions = node ? publishedSessionActions(state.project, node, { collect: state.projects.find(project => project.project_id === state.project)?.status === 'active' }) : [];
   for (const [index, action] of availableActions.entries()) {
     const id = 'session-action-' + index;
     const collection = action.kind === 'library';

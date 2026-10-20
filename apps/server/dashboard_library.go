@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/xfey/coconet/packages/contentstore"
 	"github.com/xfey/coconet/packages/contracts"
@@ -47,8 +46,8 @@ func (h *serverHandler) handleDashboardLibrary(w http.ResponseWriter, r *http.Re
 		h.writeError(w, requestID, invalid("invalid_library_selection", "select an exact work node and source with a stable request ID"))
 		return
 	}
-	if !h.limiter.allow("dashboard.library", actor.AccountID, 60, time.Minute) {
-		h.writeError(w, requestID, rateLimitError())
+	if err := h.limiter.check("dashboard.library", actor.AccountID); err != nil {
+		h.writeError(w, requestID, err)
 		return
 	}
 	err := h.authority.store.view(func(state databaseState) error {
@@ -89,12 +88,12 @@ func (h *serverHandler) handleDashboardLibrary(w http.ResponseWriter, r *http.Re
 		if err != nil {
 			break
 		}
-		node, exists := state.Nodes[input.NodeID]
-		if !exists || node.Source != input.Source {
+		_, selectErr := workgraph.SelectNode(state, input.NodeID, &input.Source)
+		if selectErr != nil {
 			err = workgraph.ErrSource
 			break
 		}
-		commit := workgraph.Commit{Schema: 1, ID: id, RunID: id, ProjectID: project, Actor: writer, Base: state.Revision, At: h.authority.timestamp(), Library: &workgraph.LibraryChange{NodeID: input.NodeID, Source: &input.Source, Remove: input.Remove, Note: state.Library[input.NodeID]}}
+		commit := workgraph.Commit{Schema: 1, ID: id, RunID: id, ProjectID: project, Actor: writer, Base: state.Revision, At: h.authority.timestamp(), Library: &workgraph.LibraryChange{Pin: true, NodeID: input.NodeID, Source: &input.Source, Remove: input.Remove, Note: state.Library[input.NodeID]}}
 		if input.Remove {
 			commit.Library.Note = ""
 		}
@@ -110,9 +109,9 @@ func (h *serverHandler) handleDashboardLibrary(w http.ResponseWriter, r *http.Re
 			break
 		}
 		digest := contentstore.ObjectDigest(checkpoint)
-		proposal := contracts.RelayCommit{SchemaVersion: 1, DeviceID: "dashboard", ID: id, Base: commit.Base, Codec: "coconet-json-v5", Payload: payload, SHA256: contentstore.ObjectDigest(payload), StateSHA256: digest, Objects: []string{}}
+		proposal := contracts.RelayCommit{SchemaVersion: 1, DeviceID: "dashboard", ID: id, Base: commit.Base, Codec: "coconet-json-v6", Payload: payload, SHA256: contentstore.ObjectDigest(payload), StateSHA256: digest, Objects: []string{}}
 		var receipt contracts.RelayReceipt
-		receipt, err = storage.AppendCheckpoint(project, actor.AccountID, proposal, contracts.RelayCheckpoint{SchemaVersion: 1, DeviceID: "dashboard", Revision: next.Revision, CommitID: id, Codec: "coconet-state-json-v3", Payload: checkpoint, SHA256: digest})
+		receipt, err = storage.AppendCheckpoint(project, actor.AccountID, proposal, contracts.RelayCheckpoint{SchemaVersion: 1, DeviceID: "dashboard", Revision: next.Revision, CommitID: id, Codec: "coconet-state-json-v4", Payload: checkpoint, SHA256: digest})
 		// A simultaneous retry may have accepted this exact intent with a different
 		// rebase/time. The next iteration reads its durable receipt before reducing.
 		if errors.Is(err, relay.ErrConflict) || errors.Is(err, relay.ErrInvalid) {
@@ -129,7 +128,7 @@ func (h *serverHandler) handleDashboardLibrary(w http.ResponseWriter, r *http.Re
 		case errors.Is(err, workgraph.ErrSource):
 			err = conflict("library_selection_changed", "the selected node or version changed; refresh and select again")
 		case errors.Is(err, workgraph.ErrPermission):
-			err = forbidden("library_owner_only", "only the source account can change this collection")
+			err = forbidden("library_access_denied", "project access is required to change this collection")
 		case errors.Is(err, relay.ErrConflict), errors.Is(err, replication.ErrConflict), errors.Is(err, contracts.ErrRelayHistoryCompacted):
 			err = conflict("library_busy", "project changed; try again")
 		case errors.Is(err, storageguard.ErrCapacity), errors.Is(err, storageguard.ErrSpace):

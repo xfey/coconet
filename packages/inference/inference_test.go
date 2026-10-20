@@ -42,7 +42,7 @@ func TestProviderProcessFixture(t *testing.T) {
 			params = `{"properties":{}}`
 		}
 		os.WriteFile(filepath.Join(out, "v2", "ThreadStartParams.json"), []byte(params), 0600)
-		os.WriteFile(filepath.Join(out, "v2", "ThreadStartResponse.json"), []byte(`{"properties":{"instructionSources":{}}}`), 0600)
+		// No instructionSources schema: this observation is not a capability.
 		os.WriteFile(filepath.Join(out, "v2", "ListMcpServerStatusParams.json"), []byte(`{"properties":{"threadId":{}}}`), 0600)
 		os.Exit(0)
 	}
@@ -56,11 +56,11 @@ func TestProviderProcessFixture(t *testing.T) {
 				os.Exit(7)
 			}
 		}
-		if os.Getenv("MAX_THINKING_TOKENS") != "0" || os.Getenv("CLAUDE_CODE_DISABLE_THINKING") != "1" || os.Getenv("CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING") != "" {
+		if mode == "claude_thinking" && (os.Getenv("MAX_THINKING_TOKENS") != "10000" || os.Getenv("CLAUDE_CODE_DISABLE_THINKING") != "0" || os.Getenv("CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING") != "1") {
 			os.Exit(11)
 		}
 		settings := slices.Index(os.Args, "--settings")
-		if settings < 0 || !strings.Contains(os.Args[settings+1], `"alwaysThinkingEnabled":false`) {
+		if settings < 0 || os.Args[settings+1] != `{"disableAllHooks":true}` {
 			os.Exit(12)
 		}
 		if mode == "claude_default" {
@@ -72,6 +72,10 @@ func TestProviderProcessFixture(t *testing.T) {
 				os.Exit(15)
 			}
 			fmt.Print(`{"type":"result","subtype":"success","structured_output":{"answer":"ok"},"modelUsage":{"profile-default":{}},"usage":{"input_tokens":9}}`)
+			os.Exit(0)
+		}
+		if mode == "claude_fenced" {
+			_ = json.NewEncoder(os.Stdout).Encode(map[string]any{"type": "result", "subtype": "success", "result": "```json\n{\"answer\":\"ok\"}\n```"})
 			os.Exit(0)
 		}
 		if mode == "claude_prelude" {
@@ -161,7 +165,7 @@ func TestProviderProcessFixture(t *testing.T) {
 				}
 				model = "profile-default"
 			}
-			send(map[string]any{"id": req.ID, "result": map[string]any{"thread": map[string]any{"id": "thread1"}, "model": model, "instructionSources": []string{}}})
+			send(map[string]any{"id": req.ID, "result": map[string]any{"thread": map[string]any{"id": "thread1"}, "model": model, "instructionSources": []string{"/profile/AGENTS.md"}}})
 		case "turn/start":
 			if mode == "codex_late_noise" {
 				fmt.Println("unexpected stdout after handshake: secret-token")
@@ -180,8 +184,22 @@ func TestProviderProcessFixture(t *testing.T) {
 				send(map[string]any{"id": 91, "method": "item/commandExecution/requestApproval", "params": map[string]any{}})
 				continue
 			}
+			if mode == "codex_notifications" {
+				note("item/completed", map[string]any{"threadId": "thread1", "turnId": "turn1", "item": map[string]any{"type": "contextCompaction"}})
+				note("item/started", map[string]any{"threadId": "thread1", "turnId": "turn1", "item": map[string]any{"type": "futureProgressNotification"}})
+				send(map[string]any{"id": 92, "method": "future/status", "params": map[string]any{}})
+			}
+			if mode == "codex_large_diagnostics" {
+				for range 40 {
+					note("item/agentMessage/delta", map[string]any{"threadId": "thread1", "turnId": "turn1", "delta": strings.Repeat("x", 32<<10)})
+				}
+			}
+			answer := `{"answer":"ok"}`
+			if mode == "codex_fenced" {
+				answer = "```json\n" + answer + "\n```"
+			}
 			// Deliberately deliver final events before the request receipt.
-			note("item/completed", map[string]any{"threadId": "thread1", "turnId": "turn1", "item": map[string]any{"type": "agentMessage", "phase": "final_answer", "text": `{"answer":"ok"}`}})
+			note("item/completed", map[string]any{"threadId": "thread1", "turnId": "turn1", "item": map[string]any{"type": "agentMessage", "phase": "final_answer", "text": answer}})
 			note("thread/tokenUsage/updated", map[string]any{"threadId": "thread1", "turnId": "turn1", "tokenUsage": map[string]any{"total": 9}})
 			status := "completed"
 			if mode == "codex_failed" {
@@ -353,9 +371,30 @@ func TestInferenceEnvironmentDoesNotInheritCaptureSettings(t *testing.T) {
 		if strings.HasPrefix(entry, "COCONET_") && entry != "COCONET_INTERNAL_INFERENCE=1" {
 			t.Fatalf("capture environment leaked: %s", entry)
 		}
-		if entry == "MAX_THINKING_TOKENS=10000" || entry == "CLAUDE_CODE_DISABLE_THINKING=0" || strings.HasPrefix(entry, "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING=") {
-			t.Fatalf("inherited incompatible thinking configuration: %s", entry)
-		}
+
+	}
+}
+
+func TestUserThinkingPreferencesPreserved(t *testing.T) {
+	r := fixtureRunner(t, "claude", "claude_thinking")
+	r.Config.Env = append(r.Config.Env, "MAX_THINKING_TOKENS=10000", "CLAUDE_CODE_DISABLE_THINKING=0", "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING=1")
+	if _, err := r.Infer(context.Background(), fixtureRequest()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCodexInformationalEventsDoNotDiscardCompletedResult(t *testing.T) {
+	for _, mode := range []string{"codex_notifications", "codex_large_diagnostics"} {
+		t.Run(mode, func(t *testing.T) {
+			r := fixtureRunner(t, "codex", mode)
+			response, err := r.Infer(context.Background(), fixtureRequest())
+			if err != nil || response.Text != `{"answer":"ok"}` {
+				t.Fatalf("%+v %v", response, err)
+			}
+			if mode == "codex_large_diagnostics" && (!strings.Contains(response.Visible, "diagnostic_omitted") || len(response.Visible) > (1<<20)+1024) {
+				t.Fatal("unbounded or unmarked diagnostic archive")
+			}
+		})
 	}
 }
 
@@ -409,5 +448,17 @@ func TestCodexIsolationDoesNotCopySecretsOrMisparseNames(t *testing.T) {
 		if _, err := codexThreadIsolation([]byte(invalid)); err == nil {
 			t.Fatal("accepted invalid configuration", invalid)
 		}
+	}
+}
+
+func TestJSONFenceNormalizationAcrossProviders(t *testing.T) {
+	for _, provider := range []string{"codex", "claude"} {
+		t.Run(provider, func(t *testing.T) {
+			r := fixtureRunner(t, provider, provider+"_fenced")
+			response, err := r.Infer(context.Background(), fixtureRequest())
+			if err != nil || response.Text != `{"answer":"ok"}` || !strings.Contains(response.Visible, "```json") {
+				t.Fatalf("%+v %v", response, err)
+			}
+		})
 	}
 }

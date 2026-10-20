@@ -26,7 +26,7 @@ func (s *Store) Checkpoint(project string) (contracts.RelayCheckpointPage, error
 }
 
 func validateCheckpoint(project, account string, input contracts.RelayCheckpoint) error {
-	if !validID(project) || !validID(account) || !validID(input.DeviceID) || !validID(input.CommitID) || input.SchemaVersion != 1 || input.Revision < 1 || input.Revision > 9007199254740991 || (input.Codec != "coconet-state-json-v1" && input.Codec != "coconet-state-json-v2" && input.Codec != "coconet-state-json-v3") || len(input.Payload) == 0 || len(input.Payload) > contracts.MaxRelayCheckpointBytes || contentstore.ObjectDigest(input.Payload) != input.SHA256 {
+	if !validID(project) || !validID(account) || !validID(input.DeviceID) || !validID(input.CommitID) || input.SchemaVersion != 1 || input.Revision < 1 || input.Revision > 9007199254740991 || (input.Codec != "coconet-state-json-v1" && input.Codec != "coconet-state-json-v2" && input.Codec != "coconet-state-json-v3" && input.Codec != "coconet-state-json-v4") || len(input.Payload) == 0 || len(input.Payload) > contracts.MaxRelayCheckpointBytes || contentstore.ObjectDigest(input.Payload) != input.SHA256 {
 		return invalid("invalid checkpoint envelope")
 	}
 	return nil

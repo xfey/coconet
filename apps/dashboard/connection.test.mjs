@@ -20,3 +20,9 @@ test('project input accepts IDs and same-deployment links without switching orig
   for (const input of [id, '  ' + id + ' ', origins[0] + '/' + id, origins[1] + '/' + id + '#node=work_1&session=sess_1&version=2']) assert.equal(parseProjectInput(input, origins), id);
   for (const input of ['', 'coco_0OIl', 'prj_1111111111111111', origins[0] + '/#authorize=abc', origins[0] + '/#project=' + id, 'https://elsewhere.test/' + id, origins[0] + '/wrong/' + id, 'https://user@coconet.space/' + id, origins[0] + '/' + id + '?redirect=other', origins[0] + '/' + id + '/extra', origins[0] + '/' + id + '/']) assert.throws(() => parseProjectInput(input, origins));
 });
+
+test('project names use Unicode characters instead of bytes or UTF-16 units', async () => {
+  const { validProjectName } = await import('./assets/connection.mjs');
+  for (const value of ['中'.repeat(120), '🥥'.repeat(120), '  合作项目  ']) assert.equal(validProjectName(value), true);
+  for (const value of ['中'.repeat(121), '🥥'.repeat(121), ' \n ']) assert.equal(validProjectName(value), false);
+});

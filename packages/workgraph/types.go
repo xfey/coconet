@@ -115,13 +115,16 @@ type Node struct {
 }
 
 type State struct {
-	Schema    int                 `json:"schema"`
-	ProjectID string              `json:"project_id"`
-	Revision  int64               `json:"revision"`
-	Sessions  map[string]Session  `json:"sessions"`
-	Snapshots map[string]Snapshot `json:"snapshots"`
-	Nodes     map[string]Node     `json:"nodes"`
-	Library   map[string]string   `json:"library"`
+	// Fixed display/source selections are independent of mutable author nodes.
+	// Omitted on older states so their accepted digests remain replayable.
+	LibrarySources map[string]Node     `json:"library_sources,omitempty"`
+	Schema         int                 `json:"schema"`
+	ProjectID      string              `json:"project_id"`
+	Revision       int64               `json:"revision"`
+	Sessions       map[string]Session  `json:"sessions"`
+	Snapshots      map[string]Snapshot `json:"snapshots"`
+	Nodes          map[string]Node     `json:"nodes"`
+	Library        map[string]string   `json:"library"`
 }
 
 func New(project string) State {
@@ -160,6 +163,7 @@ type RelationDecision struct {
 }
 
 type LibraryChange struct {
+	Pin    bool    `json:"pin,omitempty"`
 	NodeID string  `json:"node_id"`
 	Source *Source `json:"source,omitempty"`
 	Note   string  `json:"note"`

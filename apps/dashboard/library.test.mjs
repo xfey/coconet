@@ -46,3 +46,14 @@ test('mismatched acknowledgements never report collection success', async () => 
   const actions = createLibraryActions({ accepted: () => accepted = true, request: async (_, input) => ({ ...receipt(input), source: { session_id: 'other', version: 2 } }) });
   await assert.rejects(actions.change('p', node)); assert.equal(accepted, false); assert.equal(actions.pending('p', node), false);
 });
+
+test('removing an older collection from the live graph keeps its saved source across retries', async () => {
+  const inputs = []; let fail = true;
+  const saved = { ...node, source: { session_id: 'session', version: 3 }, library: { note: '', source: node.source } };
+  const actions = createLibraryActions({ request: async (_, input) => { inputs.push(input); if (fail) throw new Error('offline'); return receipt(input); } });
+  await assert.rejects(actions.change('p', saved));
+  fail = false;
+  await actions.change('p', { ...saved, source: { ...saved.source, version: 4 } });
+  assert.deepEqual(inputs[0], inputs[1]);
+  assert.deepEqual(inputs[1].source, node.source);
+});

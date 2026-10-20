@@ -15,16 +15,16 @@ import (
 
 func runHistoryCommand(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 || !slices.Contains([]string{"preview", "list", "status", "start", "pause", "resume", "retry", "forget"}, args[0]) {
-		fmt.Fprintln(stderr, "usage: coconet history preview --agent codex|claude|cursor | list | status --plan ID | start --plan ID --sessions ID,ID [--batch-size 5] | pause|resume|retry|forget --plan ID")
+		fmt.Fprintln(stderr, "usage: coconet history start --agent codex|claude|cursor | preview --agent AGENT | start --plan ID [--sessions ID,ID] | list | status|pause|resume|retry|forget --plan ID")
 		return 2
 	}
 	flags := flag.NewFlagSet("history "+args[0], flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	request := localHistoryRequest{}
 	flags.StringVar(&request.PlanID, "plan", "", "exact preview/plan ID")
-	agent := flags.String("agent", "", "native history provider: codex or claude")
-	sessions := flags.String("sessions", "", "comma-separated native IDs explicitly chosen from this preview")
-	flags.IntVar(&request.BatchSize, "batch-size", 5, "selected sessions per batch, 1–20; resume starts the next batch")
+	agent := flags.String("agent", "", "native history provider: codex, claude or cursor")
+	sessions := flags.String("sessions", "", "optional comma-separated native IDs; otherwise import all discovered sessions in this folder")
+	flags.IntVar(&request.BatchSize, "batch-size", 5, "sessions per automatic batch, 1–20")
 	asJSON := flags.Bool("json", false, "write structured result")
 	if flags.Parse(args[1:]) != nil || flags.NArg() != 0 {
 		return 2
@@ -38,9 +38,9 @@ func runHistoryCommand(ctx context.Context, args []string, stdout, stderr io.Wri
 	if *sessions != "" {
 		request.Sessions = strings.Split(*sessions, ",")
 	}
-	if args[0] == "preview" {
+	if args[0] == "preview" || args[0] == "start" && request.PlanID == "" {
 		if !contracts.ValidAgent(request.Agent) {
-			fmt.Fprintln(stderr, "Choose --agent codex or claude.")
+			fmt.Fprintln(stderr, "Choose --agent codex, claude or cursor.")
 			return 2
 		}
 		config, err := loadLocalDAGService(project.root)
@@ -104,7 +104,7 @@ func runHistoryCommand(ctx context.Context, args []string, stdout, stderr io.Wri
 			for _, session := range plan.Candidates {
 				fmt.Fprintf(stdout, "  %s · %s · %s\n", session.NativeSessionID, session.ActivityState, displayTimestamp(session.UpdatedAt))
 			}
-			fmt.Fprintf(stdout, "Start with selected IDs:\n  coconet history start --plan %s --sessions ID,ID --batch-size 5\n", plan.ID)
+			fmt.Fprintf(stdout, "Import these sessions (optionally add --sessions ID,ID):\n  coconet history start --plan %s\n", plan.ID)
 		} else {
 			for _, item := range plan.Items {
 				fmt.Fprintf(stdout, "  %s · %s\n", item.Session.NativeSessionID, item.Status)
@@ -112,7 +112,7 @@ func runHistoryCommand(ctx context.Context, args []string, stdout, stderr io.Wri
 					fmt.Fprintln(stdout, "    "+item.Error)
 				}
 			}
-			fmt.Fprintln(stdout, "Pause prevents new calls; an in-flight call and accepted publication may finish. Use status for progress, resume for the next batch, retry for failed fixed inputs.")
+			fmt.Fprintln(stdout, "Batches continue automatically. Pause stops this device’s import work; in-flight or shared tasks may finish. Use status for progress and retry for failed fixed inputs.")
 		}
 	}
 	return 0

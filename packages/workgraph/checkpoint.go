@@ -142,7 +142,20 @@ func ValidateState(s State) error {
 		}
 	}
 	for id, note := range s.Library {
-		if node, ok := s.Nodes[id]; !ok || (node.State != "sealed" && node.State != "withdrawn") || len(note) > 8000 {
+		if node, ok := LibraryNode(s, id); !ok || (node.State != "sealed" && node.State != "withdrawn") || len(note) > 8000 {
+			return bad
+		}
+	}
+	for id, node := range s.LibrarySources {
+		_, collected := s.Library[id]
+		snapshot, exists := s.Snapshots[node.Source.Key()]
+		if !collected || !exists || !validID(id) || node.ID != id || node.Revision < 1 || node.Revision > s.Revision || node.Source.Version > s.Sessions[node.Source.SessionID].ProcessedThrough || validateText(node.Text) != nil || node.State != "sealed" || node.Checkpoint != nil || len(node.Parents) != 0 || node.Relations != "ready" || node.StartTurn < 0 || node.EndTurn < node.StartTurn || node.EndTurn != snapshot.Turns || node.RelationThrough != node.EndTurn || !validID(node.RunID) {
+			return bad
+		}
+		if _, err := time.Parse(time.RFC3339Nano, node.CreatedAt); err != nil {
+			return bad
+		}
+		if _, err := time.Parse(time.RFC3339Nano, node.UpdatedAt); err != nil {
 			return bad
 		}
 	}

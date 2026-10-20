@@ -57,7 +57,7 @@ func TestDiscoveryPaginationIsRevisionAndSelectionBound(t *testing.T) {
 	if _, err := e.GraphPage("project", GraphQuery{Cursor: first.NextCursor}, false); err == nil || !strings.Contains(err.Error(), "restart") {
 		t.Fatal("mixed revisions", err)
 	}
-	if _, err := e.Search("project", WorkSearch{Query: "重试", Cursor: search.NextCursor}); err == nil {
-		t.Fatal("search mixed revisions")
+	if _, err := e.Search("project", WorkSearch{Query: "重试", Cursor: search.NextCursor}); err != nil {
+		t.Fatal("unprocessed snapshot invalidated unchanged search results", err)
 	}
 }

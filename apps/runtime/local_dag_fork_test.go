@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -75,6 +74,10 @@ func (f *nativeForkFixture) Fork(_ context.Context, request adapters.ForkRequest
 }
 func (f *nativeForkFixture) createChild() (adapters.ForkResult, error) {
 	if f.marker == "" {
+		// Simulate concurrent work while the native Session is being created.
+		if err := os.WriteFile(filepath.Join(f.cwd, "concurrent.txt"), []byte("colleague edit"), 0600); err != nil {
+			return adapters.ForkResult{}, err
+		}
 		f.marker = "independent-native-child"
 		f.created++
 		if err := os.WriteFile(f.childPath, []byte("independent child bytes"), 0600); err != nil {
@@ -107,16 +110,22 @@ func (f *nativeForkFixture) Observe(_ context.Context, cwd, id string, _ adapter
 func TestLocalNativeForkUsesExactCopyRecoversChildAndDoesNotAttributeInheritedWork(t *testing.T) {
 	for _, source := range []contracts.AgentType{contracts.AgentCodex, contracts.AgentClaude, contracts.AgentCursor} {
 		for _, target := range []contracts.AgentType{contracts.AgentCodex, contracts.AgentClaude, contracts.AgentCursor} {
-			t.Run(string(source)+"-to-"+string(target), func(t *testing.T) { testLocalForkRecovery(t, source, target) })
+			for _, processed := range []bool{true, false} {
+				name := string(source) + "-to-" + string(target)
+				if !processed {
+					name += "-unprocessed"
+				}
+				t.Run(name, func(t *testing.T) { testLocalForkRecovery(t, source, target, processed) })
+			}
 		}
 	}
 }
-func testLocalForkRecovery(t *testing.T, sourceAgent, targetAgent contracts.AgentType) {
+func testLocalForkRecovery(t *testing.T, sourceAgent, targetAgent contracts.AgentType, processed bool) {
 	ctx := context.Background()
 	root := t.TempDir()
-	workspace := initTestRepository(t, "native-fork")
-	if out, err := exec.Command("git", "-C", workspace, "commit", "--allow-empty", "-m", "fixture").CombinedOutput(); err != nil {
-		t.Fatal(string(out), err)
+	workspace := t.TempDir() // Fork works without Git and leaves local files alone.
+	if err := os.WriteFile(filepath.Join(workspace, "user-work.txt"), []byte("local edits"), 0600); err != nil {
+		t.Fatal(err)
 	}
 	workspace, err := canonicalPath(workspace)
 	if err != nil {
@@ -148,8 +157,12 @@ func testLocalForkRecovery(t *testing.T, sourceAgent, targetAgent contracts.Agen
 	}
 	state, _ := store.State("project")
 	stamp := time.Now().UTC().Format(time.RFC3339Nano)
-	if _, err := store.Apply(workgraph.Commit{Schema: 1, ID: "node", ProjectID: "project", Actor: "reader", RunID: "stage", Base: state.Revision, At: stamp, Stage: &workgraph.StageDecision{Source: source, Action: "start", NewNodeID: "node", Text: &workgraph.Text{Objective: "重试提示"}, Reason: "fixture"}}, false); err != nil {
-		t.Fatal(err)
+	nodeID := ""
+	if processed {
+		nodeID = "node"
+		if _, err := store.Apply(workgraph.Commit{Schema: 1, ID: "node", ProjectID: "project", Actor: "reader", RunID: "stage", Base: state.Revision, At: stamp, Stage: &workgraph.StageDecision{Source: source, Action: "start", NewNodeID: "node", Text: &workgraph.Text{Objective: "重试提示"}, Reason: "fixture"}}, false); err != nil {
+			t.Fatal(err)
+		}
 	}
 	// The source Agent's original file has advanced. The native operation must
 	// receive the graph-selected older cache, never this live original path.
@@ -158,12 +171,24 @@ func testLocalForkRecovery(t *testing.T, sourceAgent, targetAgent contracts.Agen
 		t.Fatal(err)
 	}
 	fake := &nativeForkFixture{agent: targetAgent, source: string(sourceBytes), childPath: filepath.Join(profile, "child-fixture"), cwd: workspace, observationFailure: true}
-	request := localNativeForkRequest{localForkSelection: localForkSelection{RequestID: "native-fork-request", NodeID: "node", Source: source}, ProjectID: "project", Agent: targetAgent, CWD: workspace, ConfigRoot: profile}
+	request := localNativeForkRequest{localForkSelection: localForkSelection{RequestID: "native-fork-request", NodeID: nodeID, Source: source}, ProjectID: "project", Agent: targetAgent, CWD: workspace, ConfigRoot: profile}
 	if _, err := forkLocalDAG(ctx, root, engine, request, fake); err == nil || !strings.Contains(err.Error(), "lost observation") {
 		t.Fatal("injected failure disappeared", err)
 	}
+	for name, want := range map[string]string{"user-work.txt": "local edits", "concurrent.txt": "colleague edit"} {
+		got, err := os.ReadFile(filepath.Join(workspace, name))
+		if err != nil || string(got) != want {
+			t.Fatal("Fork changed workspace", name, err)
+		}
+	}
 	// Advance and retire the graph's earlier source while the local native
 	// operation is unfinished. Its downloaded input must survive local GC.
+	if !processed {
+		state, _ = store.State("project")
+		if _, err := store.Apply(workgraph.Commit{Schema: 1, ID: "processed-without-stage", ProjectID: "project", Actor: engine.Actor, RunID: "processed-without-stage", Base: state.Revision, At: stamp, Stage: &workgraph.StageDecision{Source: source, SessionRevision: state.Sessions[source.SessionID].Revision, Action: "none", Reason: "no stage yet"}}, false); err != nil {
+			t.Fatal(err)
+		}
+	}
 	capture.Artifact = latest
 	capture.Entries = append(capture.Entries, conversation.Entry{Turn: contracts.NormalizedTurn{TurnID: "second", Ordinal: 1, Role: "user", Kind: "message", Text: "提示再简短一些"}})
 	next, err := engine.Capture(ctx, capture)
@@ -171,7 +196,11 @@ func testLocalForkRecovery(t *testing.T, sourceAgent, targetAgent contracts.Agen
 		t.Fatal(err)
 	}
 	state, _ = store.State("project")
-	if _, err := store.Apply(workgraph.Commit{Schema: 1, ID: "continued", ProjectID: "project", Actor: engine.Actor, RunID: "next-stage", Base: state.Revision, At: stamp, Stage: &workgraph.StageDecision{Source: next, SessionRevision: state.Sessions[source.SessionID].Revision, Action: "continue", Reason: "fixture"}}, false); err != nil {
+	decision := &workgraph.StageDecision{Source: next, SessionRevision: state.Sessions[source.SessionID].Revision, Action: "continue", Reason: "fixture"}
+	if !processed {
+		decision.Action, decision.NewNodeID, decision.Text = "start", "node", &workgraph.Text{Objective: "重试提示"}
+	}
+	if _, err := store.Apply(workgraph.Commit{Schema: 1, ID: "continued", ProjectID: "project", Actor: engine.Actor, RunID: "next-stage", Base: state.Revision, At: stamp, Stage: decision}, false); err != nil {
 		t.Fatal(err)
 	}
 	if err := engine.Reconcile("project"); err != nil {
@@ -211,6 +240,13 @@ func testLocalForkRecovery(t *testing.T, sourceAgent, targetAgent contracts.Agen
 	result, err := forkLocalDAG(ctx, root, engine, request, fake)
 	if err != nil || result.State != "created" || fake.created != 1 || fake.calls != 2 {
 		t.Fatal(result, fake, err)
+	}
+	key := workgraph.Digest([]string{request.ProjectID, engine.Actor, request.RequestID})
+	if _, err := os.Stat(filepath.Join(root, "forks", key)); !os.IsNotExist(err) {
+		t.Fatal("completed operation files remain", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "forks", "completed", key+".json")); err != nil {
+		t.Fatal("completion receipt missing", err)
 	}
 	if sourceAgent != targetAgent && (fake.imported != 2 || result.TransferFormat != adapters.TextImportFormat || result.SourceAgent != string(sourceAgent)) {
 		t.Fatal("cross-Agent route or provenance missing", result)

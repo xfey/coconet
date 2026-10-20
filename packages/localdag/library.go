@@ -26,15 +26,15 @@ type LibraryResult struct {
 	Note      string           `json:"note"`
 }
 
-// Collect fixes an explicitly selected own node. The source comparison is
+// Collect fixes an explicitly selected accessible node. The source comparison is
 // repeated by the reducer on every rebase; a retry can never collect a newer
 // source merely because the node advanced while the network was unavailable.
 func (e *Engine) Collect(ctx context.Context, project string, request LibraryRequest) (LibraryResult, error) {
 	return e.changeLibrary(ctx, project, request, false)
 }
 
-// Uncollect keeps active sealed work. A Library-only withdrawn node loses its
-// final reference and is removed; native files are never modified.
+// Uncollect removes the fixed collection without changing current author work.
+// Unreferenced cached content can be reclaimed; native files are never modified.
 func (e *Engine) Uncollect(ctx context.Context, project string, request LibraryRequest) (LibraryResult, error) {
 	return e.changeLibrary(ctx, project, request, true)
 }
@@ -109,15 +109,12 @@ func (e *Engine) changeLibrary(ctx context.Context, project string, request Libr
 	if err != nil {
 		return result, err
 	}
-	node, ok := state.Nodes[request.NodeID]
-	if !ok || node.Source != request.Source {
+	node, selectErr := workgraph.SelectNode(state, request.NodeID, &request.Source)
+	if selectErr != nil {
 		return result, ErrSelectionChanged
 	}
-	if !workgraph.SameAccountWriter(state.Sessions[node.Source.SessionID].Owner, e.Actor) {
-		return result, workgraph.ErrPermission
-	}
 	stamp := e.stamp()
-	commit := workgraph.Commit{Schema: workgraph.SchemaVersion, ID: newID("commit_"), ProjectID: project, Actor: e.Actor, Base: state.Revision, RunID: id, At: stamp, Library: &workgraph.LibraryChange{NodeID: node.ID, Source: &request.Source, Note: request.Note, Remove: remove}}
+	commit := workgraph.Commit{Schema: workgraph.SchemaVersion, ID: newID("commit_"), ProjectID: project, Actor: e.Actor, Base: state.Revision, RunID: id, At: stamp, Library: &workgraph.LibraryChange{Pin: true, NodeID: node.ID, Source: &request.Source, Note: request.Note, Remove: remove}}
 	task := graphstore.Task{ID: id, ProjectID: project, Kind: "library", Status: "publish_pending", RunID: id}
 	run = graphstore.Run{ID: id, TaskID: id, ProjectID: project, Kind: "library", Status: "ready", StartedAt: stamp, FinishedAt: stamp, Template: "library-selection/1", Base: state.Revision, Source: &request.Source, NodeID: node.ID, Input: input, Output: `{"explicit_collection":true}`}
 	if remove {

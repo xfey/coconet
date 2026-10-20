@@ -28,7 +28,7 @@ func runDiagnostics(ctx context.Context, args []string, stdout, stderr io.Writer
 	output := flags.String("output", "", "new export file; existing files are never overwritten")
 	content := flags.Bool("include-content", false, "include private processing input and model output in this explicitly selected export")
 	days := flags.Int("days", 7, "maximum age for unpinned full archives, shared by this account and deployment")
-	mib := flags.Int64("max-mib", 256, "maximum local processing archive size, including reserved response space")
+	mib := flags.Int64("max-mib", 256, "target size for detailed processing logs; recovery metadata is always retained")
 	before := flags.String("before", "", "previous diagnostic page cursor")
 	limit := flags.Int("limit", 50, "metadata records per page (1–100)")
 	if flags.Parse(args[1:]) != nil || flags.NArg() != 0 {
@@ -164,6 +164,7 @@ func localDiagnostics(store *graphstore.Store, action string, options localDAGCl
 		}
 		included := options.IncludeContent && run.Archive == nil
 		if !included {
+			run.RecoveryInput = nil
 			run.Input = json.RawMessage(`null`)
 			run.Output = ""
 			run.Usage = nil

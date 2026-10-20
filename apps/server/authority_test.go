@@ -247,3 +247,19 @@ func archiveTestProject(t *testing.T, a *authority, projectID string) {
 		t.Fatal(err)
 	}
 }
+
+func TestProjectNamesCountUnicodeCharacters(t *testing.T) {
+	a := newTestAuthority(t)
+	creator, _ := issueTestIdentity(t, a, "Creator", "unicode@coconet.test")
+	for i, name := range []string{strings.Repeat("中", 120), strings.Repeat("🥥", 120), "  合作项目  ", strings.Repeat("a", 120)} {
+		created, err := a.createProject(creator, contracts.CreateProjectRequest{SchemaVersion: 1, RequestID: "unicode-valid-" + strconv.Itoa(i), Name: name})
+		if err != nil || created.Project.Name != strings.TrimSpace(name) {
+			t.Fatal("valid Unicode project name rejected", err)
+		}
+	}
+	for i, name := range []string{strings.Repeat("中", 121), strings.Repeat("🥥", 121), " \t\n ", string([]byte{0xff})} {
+		if _, err := a.createProject(creator, contracts.CreateProjectRequest{SchemaVersion: 1, RequestID: "unicode-invalid-" + strconv.Itoa(i), Name: name}); err == nil {
+			t.Fatal("invalid name accepted")
+		}
+	}
+}

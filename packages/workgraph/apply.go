@@ -288,6 +288,15 @@ func SameAccountWriter(a, b string) bool {
 
 func applyLibrary(state *State, commit Commit) error {
 	d := commit.Library
+	if len(d.Note) > 8000 {
+		return errors.New("library note exceeds limit")
+	}
+	if d.Pin {
+		return applyPinnedLibrary(state, commit)
+	}
+	if _, pinned := state.LibrarySources[d.NodeID]; pinned {
+		return ErrSource // Legacy mutations cannot reinterpret independent collections.
+	}
 	node, exists := state.Nodes[d.NodeID]
 	if !exists {
 		return ErrSource
@@ -297,9 +306,6 @@ func applyLibrary(state *State, commit Commit) error {
 	}
 	if !SameAccountWriter(state.Sessions[node.Source.SessionID].Owner, commit.Actor) {
 		return ErrPermission
-	}
-	if len(d.Note) > 8000 {
-		return errors.New("library note exceeds limit")
 	}
 	if d.Remove {
 		delete(state.Library, node.ID)
@@ -431,6 +437,9 @@ func validateGraph(state State) error {
 // tasks and active downloads before collecting anything.
 func RetainedSources(state State) map[string]bool {
 	roots := map[string]bool{}
+	for _, node := range state.LibrarySources {
+		roots[node.Source.Key()] = true
+	}
 	for _, session := range state.Sessions {
 		if session.Latest > 0 {
 			roots[(Source{session.ID, session.Latest}).Key()] = true
@@ -489,6 +498,7 @@ func cloneState(previous State) State {
 	next.Snapshots = maps.Clone(previous.Snapshots)
 	next.Nodes = maps.Clone(previous.Nodes)
 	next.Library = maps.Clone(previous.Library)
+	next.LibrarySources = maps.Clone(previous.LibrarySources)
 	for key, snapshot := range next.Snapshots {
 		if snapshot.Rewrite != nil {
 			rewrite := *snapshot.Rewrite

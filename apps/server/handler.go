@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -222,9 +223,11 @@ func (h *serverHandler) handleCreateProject(response http.ResponseWriter, reques
 		h.methodNotAllowed(response, requestID, http.MethodPost)
 		return
 	}
-	if !h.limiter.allow("project.create.ip", h.addressResolver.resolve(request), 20, time.Hour) || !h.limiter.allow("project.create.account", actor.AccountID, 10, time.Hour) {
-		h.writeError(response, requestID, rateLimitError())
-		return
+	for _, scope := range []struct{ name, key string }{{"project.create.ip", h.addressResolver.resolve(request)}, {"project.create.account", actor.AccountID}} {
+		if err := h.limiter.check(scope.name, scope.key); err != nil {
+			h.writeError(response, requestID, err)
+			return
+		}
 	}
 	var input contracts.CreateProjectRequest
 	if err := decodeJSON(request, &input); err != nil {
@@ -248,8 +251,8 @@ func (h *serverHandler) handleConnectProject(response http.ResponseWriter, reque
 		h.methodNotAllowed(response, requestID, http.MethodPost)
 		return
 	}
-	if !h.limiter.allow("project.join.ip", h.addressResolver.resolve(request), 60, time.Minute) {
-		h.writeError(response, requestID, rateLimitError())
+	if err := h.limiter.check("project.join.ip", h.addressResolver.resolve(request)); err != nil {
+		h.writeError(response, requestID, err)
 		return
 	}
 	var input contracts.ConnectProjectRequest
@@ -359,6 +362,9 @@ func (h *serverHandler) writeError(response http.ResponseWriter, requestID strin
 		result.Code = domainError.Code
 		result.Message = domainError.Message
 		result.Retryable = domainError.Retryable
+		if domainError.RetryAfterSeconds > 0 {
+			response.Header().Set("Retry-After", strconv.Itoa(domainError.RetryAfterSeconds))
+		}
 	}
 	if status == http.StatusUnauthorized {
 		response.Header().Set("WWW-Authenticate", "Bearer")

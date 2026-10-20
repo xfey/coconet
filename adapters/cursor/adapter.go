@@ -50,12 +50,13 @@ func (a Adapter) Health(context.Context) contracts.ComponentHealth {
 	return adapters.ExecutableHealth("adapter.cursor", a.Command, a.Locate)
 }
 
-func (a Adapter) Observe(ctx context.Context, cwd, id string, checkpoint adapters.ObservationCheckpoint) (contracts.SessionObservation, adapters.ObservationCheckpoint, error) {
+func (a Adapter) Observe(ctx context.Context, cwd, id string, checkpoint adapters.ObservationCheckpoint) (result contracts.SessionObservation, next adapters.ObservationCheckpoint, failure error) {
 	var empty contracts.SessionObservation
 	if !filepath.IsAbs(cwd) || !filepath.IsAbs(a.ConfigRoot) || !nativeIDPattern.MatchString(id) {
 		return empty, checkpoint, errors.New("Cursor capture requires an absolute workspace/profile and a valid conversation ID")
 	}
 	source := filepath.Join(chatDirectory(a.ConfigRoot, cwd, id), "store.db")
+	defer adapters.TrackCaptureFailure(&failure, []string{source, source + "-wal"})()
 	copy, err := snapshotDatabase(ctx, source)
 	if err != nil {
 		return empty, checkpoint, err

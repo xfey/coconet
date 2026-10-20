@@ -194,9 +194,7 @@ func handleLocalMCP(ctx context.Context, params mcpCallParams, project localMCPP
 		action, timeout = "pull", mcpHandoffTimeout
 		var args localPullArguments
 		invalid = decodeMCPArguments(params.Arguments, &args)
-		if invalid == nil && args.NodeID == "" && args.IncludeArtifact {
-			return mcpInvalidArguments(response, params.Name, []mcpArgumentIssue{{"work_node_id", "is required when include_artifact is true; select a node from read_project_work_graph, or omit include_artifact to read compact text"}}, resolveErr)
-		}
+
 		options.Node, options.Source, options.Native = args.NodeID, &args.Source, args.IncludeArtifact
 	case "fork_session":
 		if !contracts.ValidAgent(targetAgent) {
@@ -238,6 +236,9 @@ func handleLocalMCP(ctx context.Context, params mcpCallParams, project localMCPP
 	defer cancel()
 	value, err := project.call(ctx, action, options)
 	if err != nil {
+		if action == "fork" && (ctx.Err() != nil || errors.Is(err, context.DeadlineExceeded)) {
+			return mcpFailure(response, contracts.StatusUnavailable, "fork_unconfirmed", "The local Fork did not confirm completion before this request ended. A Session may already have been created.", "Retry fork_session with the same request_id and all original arguments to recover that Session; do not create a new request ID.")
+		}
 		return failure(contracts.StatusUnavailable, err)
 	}
 	message := "Read from the verified local project replica."
@@ -246,9 +247,9 @@ func handleLocalMCP(ctx context.Context, params mcpCallParams, project localMCPP
 	} else if action == "pull" {
 		message = "Read the selected fixed source into verified local files. Use compact_path for local reading and search."
 	} else if action == "collect" {
-		message = "Collected the selected fixed node source. Collection seals the stage; it does not imply completion."
+		message = "Collected the selected fixed source. The author can keep updating the original node."
 	} else if action == "uncollect" {
-		message = "Removed the selected entry from Session Library. Its sealed DAG node and fixed source remain available."
+		message = "Removed the selected entry from Session Library. The author’s current work is unchanged."
 	} else if action == "fork" {
 		message = "Created a separate native Session locally from the fixed source without changing workspace files. It is ready to resume; project synchronization runs in the background. Return the resume command; continue there only on the user's request."
 	} else {
@@ -274,7 +275,7 @@ func handleLocalMCP(ctx context.Context, params mcpCallParams, project localMCPP
 func localMCPTools(agent contracts.AgentType) []any {
 	empty := map[string]any{"type": "object", "additionalProperties": false}
 	// These descriptions reach the model alongside machine-readable bounds.
-	cursor := map[string]any{"type": "string", "maxLength": 1024, "description": "Copy next_cursor from the previous response (at most 1024 characters). Omit it for the first page. Keep the same tool and query; restart without a cursor if the graph or index changes."}
+	cursor := map[string]any{"type": "string", "maxLength": 1024, "description": "Copy next_cursor from the previous response (at most 1024 characters). Omit it for the first page. Keep the same tool and query; restart without a cursor if the selected results change."}
 	nodeID := map[string]any{"type": "string", "minLength": 1, "description": "Exact work node ID from read_project_work_graph or list_library_entries. Copy its source together with it; do not invent an ID."}
 	requestID := map[string]any{"type": "string", "minLength": 8, "maxLength": 200, "description": "Stable unique ID, 8–200 characters. Reuse this ID and all original arguments after timeout or an uncertain result. A changed selection or new operation requires a new ID."}
 	page := map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{
@@ -298,17 +299,17 @@ func localMCPTools(agent contracts.AgentType) []any {
 		tool("remove_session_from_library", map[string]any{"type": "object", "additionalProperties": false, "required": []string{"request_id", "work_node_id", "source"}, "properties": map[string]any{
 			"request_id": requestID, "work_node_id": nodeID, "source": source,
 		}}, false),
-		tool("fork_session", map[string]any{"type": "object", "additionalProperties": false, "required": []string{"request_id", "work_node_id", "source"}, "properties": map[string]any{
+		tool("fork_session", map[string]any{"type": "object", "additionalProperties": false, "required": []string{"request_id", "source"}, "properties": map[string]any{
 			"request_id": requestID, "work_node_id": nodeID, "source": source,
 		}}, false),
 		tool("search_work", map[string]any{"type": "object", "additionalProperties": false, "required": []string{"query"}, "properties": map[string]any{
 			"query":  map[string]any{"type": "string", "minLength": 1, "maxLength": 4000, "description": "Nonblank search text: 1–4000 characters and at most 64 whitespace-separated literal terms. Matches any term; not a regex or SQL query."},
-			"limit":  map[string]any{"type": "integer", "minimum": 1, "maximum": 20, "default": 10, "description": "Page size: integer from 1 to 20; omit for 10. To read more than 20 results, follow next_cursor instead of increasing this limit."},
+			"limit":  map[string]any{"type": "integer", "minimum": 1, "maximum": 100, "default": 10, "description": "Page size: integer from 1 to 100; omit for 10. Use next_cursor for more results."},
 			"cursor": cursor,
 		}}, true),
 		tool("pull_session", map[string]any{"type": "object", "additionalProperties": false, "required": []string{"source"}, "properties": map[string]any{
 			"work_node_id": nodeID, "source": source,
-			"include_artifact": map[string]any{"type": "boolean", "default": false, "description": "Default false: read compact conversation text. True also retrieves the native artifact and requires work_node_id with its exact source."},
+			"include_artifact": map[string]any{"type": "boolean", "default": false, "description": "Default false: read compact conversation text. True also retrieves the native artifact of that exact source, when available."},
 		}}, false),
 	}
 	if !contracts.ValidAgent(agent) {

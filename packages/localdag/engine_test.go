@@ -381,8 +381,8 @@ func TestNeedsContextDoesNotConsumeSnapshot(t *testing.T) {
 		t.Fatal("unresolved evidence consumed")
 	}
 	tasks, _ := store.Tasks("project")
-	if len(tasks) != 1 || !tasks[0].Expanded || tasks[0].Status != "queued" {
-		t.Fatalf("no bounded context retry: %+v", tasks)
+	if len(tasks) != 1 || !tasks[0].Expanded || tasks[0].Status != "paused" {
+		t.Fatalf("unchanged insufficient input was requeued: %+v", tasks)
 	}
 	if err := e.Process(context.Background(), tasks[0]); err != nil {
 		t.Fatal(err)
@@ -534,7 +534,7 @@ func TestMissingSourceRunnerIsAnArchivedRetryableFailure(t *testing.T) {
 	}
 	runs, _ := store.Runs("project")
 	tasks, _ := store.Tasks("project")
-	if len(runs) != 1 || runs[0].Status != "failed" || runs[0].Provider != "claude" || !strings.Contains(runs[0].Error, "source Agent unavailable") || len(tasks) != 1 || tasks[0].Attempts != 1 {
+	if len(runs) != 1 || runs[0].Status != "failed" || runs[0].Provider != "claude" || !strings.Contains(runs[0].Error, "source Agent unavailable") || len(tasks) != 1 || tasks[0].Attempts != 0 {
 		t.Fatal(runs, tasks)
 	}
 }

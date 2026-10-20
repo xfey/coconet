@@ -48,7 +48,12 @@ func (c *Client) Writer() string { return contracts.RelayWriter(c.Account, c.Dev
 
 func decodeReceipt(project string, receipt contracts.RelayReceipt) (workgraph.Commit, error) {
 	var commit workgraph.Commit
-	if receipt.SchemaVersion != 1 || receipt.ProjectID != project || receipt.Commit.SchemaVersion != 1 || (receipt.Commit.Codec != "coconet-json-v2" && receipt.Commit.Codec != "coconet-json-v3" && receipt.Commit.Codec != "coconet-json-v4" && receipt.Commit.Codec != "coconet-json-v5") || receipt.Commit.SHA256 != graphstore.ObjectDigest(receipt.Commit.Payload) || receipt.Revision != receipt.Commit.Base+1 {
+	switch receipt.Commit.Codec {
+	case "coconet-json-v2", "coconet-json-v3", "coconet-json-v4", "coconet-json-v5", "coconet-json-v6":
+	default:
+		return commit, errors.New("unsupported project commit format; update Coconet on this device and retry synchronization")
+	}
+	if receipt.SchemaVersion != 1 || receipt.ProjectID != project || receipt.Commit.SchemaVersion != 1 || receipt.Commit.SHA256 != graphstore.ObjectDigest(receipt.Commit.Payload) || receipt.Revision != receipt.Commit.Base+1 {
 		return commit, errors.New("invalid relay receipt envelope")
 	}
 	decoder := json.NewDecoder(bytes.NewReader(receipt.Commit.Payload))
@@ -62,11 +67,14 @@ func decodeReceipt(project string, receipt contracts.RelayReceipt) (workgraph.Co
 	if commit.ID != receipt.Commit.ID || commit.ProjectID != project || commit.Base != receipt.Commit.Base || commit.Actor != receipt.Writer {
 		return commit, errors.New("relay header and graph commit disagree")
 	}
-	if !reflect.DeepEqual(commit.Processing, receipt.Commit.Processing) || (commit.Processing != nil && receipt.Commit.Codec != "coconet-json-v3" && receipt.Commit.Codec != "coconet-json-v4" && receipt.Commit.Codec != "coconet-json-v5") {
+	if !reflect.DeepEqual(commit.Processing, receipt.Commit.Processing) || (commit.Processing != nil && receipt.Commit.Codec != "coconet-json-v3" && receipt.Commit.Codec != "coconet-json-v4" && receipt.Commit.Codec != "coconet-json-v5" && receipt.Commit.Codec != "coconet-json-v6") {
 		return commit, errors.New("processing authorization differs from accepted receipt")
 	}
+	if commit.Library != nil && commit.Library.Pin && receipt.Commit.Codec != "coconet-json-v6" {
+		return commit, errors.New("fixed Library sources require coconet-json-v6; update Coconet")
+	}
 	if commit.Snapshot != nil {
-		if r := commit.Snapshot.Rewrite; r != nil && r.RestoreEditableTails && receipt.Commit.Codec != "coconet-json-v5" {
+		if r := commit.Snapshot.Rewrite; r != nil && r.RestoreEditableTails && receipt.Commit.Codec != "coconet-json-v5" && receipt.Commit.Codec != "coconet-json-v6" {
 			return commit, errors.New("editable rewind requires coconet-json-v5")
 		}
 		refs := map[string]bool{}
@@ -215,11 +223,14 @@ func (c *Client) Publish(ctx context.Context, commit workgraph.Commit) (failure 
 	for _, object := range objects {
 		refs = append(refs, object.SHA256)
 	}
-	proposal := contracts.RelayCommit{SchemaVersion: 1, ID: commit.ID, DeviceID: c.Device, Base: commit.Base, Codec: "coconet-json-v5", Payload: payload, SHA256: graphstore.ObjectDigest(payload), Objects: refs, StateSHA256: graphstore.ObjectDigest(statePayload)}
+	proposal := contracts.RelayCommit{SchemaVersion: 1, ID: commit.ID, DeviceID: c.Device, Base: commit.Base, Codec: "coconet-json-v6", Payload: payload, SHA256: graphstore.ObjectDigest(payload), Objects: refs, StateSHA256: graphstore.ObjectDigest(statePayload)}
 	proposal.Processing = commit.Processing
 	receipt, err := c.Remote.Append(ctx, commit.ProjectID, proposal)
 	if errors.Is(err, ErrConflict) || errors.Is(err, contracts.ErrProcessingStale) {
-		if err := c.Sync(ctx, commit.ProjectID); err != nil {
+		if syncErr := c.Sync(ctx, commit.ProjectID); syncErr != nil {
+			return syncErr
+		}
+		if errors.Is(err, contracts.ErrProcessingStale) {
 			return err
 		}
 		return workgraph.ErrConflict

@@ -7,8 +7,6 @@ const MaxProcessingInputBytes = 1 << 20
 
 var ErrProcessingBusy = errors.New("processing task is held by another attempt")
 var ErrProcessingStale = errors.New("processing task or claim is no longer current")
-var ErrProcessingYielded = errors.New("this device yielded after repeated failures; another device may continue, or retry explicitly")
-
 var ErrProcessingPaused = errors.New("processing task exhausted its shared attempts; explicit retry required")
 
 // ProcessingSpec identifies one immutable inference request. Payload is an

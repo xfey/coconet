@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/xfey/coconet/packages/contentstore"
+	"github.com/xfey/coconet/packages/contracts"
 	"github.com/xfey/coconet/packages/workgraph"
 	bolt "go.etcd.io/bbolt"
 )
@@ -38,33 +39,36 @@ type Store struct {
 }
 
 type Run struct {
-	SharedTaskID    string             `json:"shared_task_id,omitempty"`
-	InputSHA256     string             `json:"input_sha256,omitempty"`
-	Executor        string             `json:"executor,omitempty"`
-	SourceOwner     string             `json:"source_owner,omitempty"`
-	ID              string             `json:"id"`
-	TaskID          string             `json:"task_id"`
-	ProjectID       string             `json:"project_id"`
-	Kind            string             `json:"kind"`
-	Status          string             `json:"status"`
-	StartedAt       string             `json:"started_at"`
-	FinishedAt      string             `json:"finished_at,omitempty"`
-	Provider        string             `json:"provider,omitempty"`
-	Model           string             `json:"model,omitempty"`
-	Template        string             `json:"template,omitempty"`
-	Input           json.RawMessage    `json:"input"`
-	Output          string             `json:"output,omitempty"`
-	Usage           json.RawMessage    `json:"usage,omitempty"`
-	Error           string             `json:"error,omitempty"`
-	Base            int64              `json:"base"`
-	Source          *workgraph.Source  `json:"source,omitempty"`
-	Protected       []workgraph.Source `json:"protected,omitempty"`
-	NodeID          string             `json:"node_id,omitempty"`
-	CommitID        string             `json:"commit_id,omitempty"`
-	Implementation  BuildProvenance    `json:"implementation"`
-	Pinned          bool               `json:"pinned,omitempty"`
-	Archive         *DiagnosticArchive `json:"archive,omitempty"`
-	ArchiveReserved int64              `json:"archive_reserved,omitempty"`
+	// Active shared results retain their fixed request for lease/TTL recovery.
+	// Unlike optional diagnostics this is operational state, cleared at finish.
+	RecoveryInput   *contracts.ProcessingSpec `json:"recovery_input,omitempty"`
+	SharedTaskID    string                    `json:"shared_task_id,omitempty"`
+	InputSHA256     string                    `json:"input_sha256,omitempty"`
+	Executor        string                    `json:"executor,omitempty"`
+	SourceOwner     string                    `json:"source_owner,omitempty"`
+	ID              string                    `json:"id"`
+	TaskID          string                    `json:"task_id"`
+	ProjectID       string                    `json:"project_id"`
+	Kind            string                    `json:"kind"`
+	Status          string                    `json:"status"`
+	StartedAt       string                    `json:"started_at"`
+	FinishedAt      string                    `json:"finished_at,omitempty"`
+	Provider        string                    `json:"provider,omitempty"`
+	Model           string                    `json:"model,omitempty"`
+	Template        string                    `json:"template,omitempty"`
+	Input           json.RawMessage           `json:"input"`
+	Output          string                    `json:"output,omitempty"`
+	Usage           json.RawMessage           `json:"usage,omitempty"`
+	Error           string                    `json:"error,omitempty"`
+	Base            int64                     `json:"base"`
+	Source          *workgraph.Source         `json:"source,omitempty"`
+	Protected       []workgraph.Source        `json:"protected,omitempty"`
+	NodeID          string                    `json:"node_id,omitempty"`
+	CommitID        string                    `json:"commit_id,omitempty"`
+	Implementation  BuildProvenance           `json:"implementation"`
+	Pinned          bool                      `json:"pinned,omitempty"`
+	Archive         *DiagnosticArchive        `json:"archive,omitempty"`
+	ArchiveReserved int64                     `json:"archive_reserved,omitempty"`
 }
 
 type Task struct {
@@ -320,6 +324,7 @@ func publishRun(tx *bolt.Tx, commit workgraph.Commit) error {
 		return errors.New("attempt is not ready for publication")
 	}
 	run.Status, run.CommitID = "published", commit.ID
+	run.RecoveryInput = nil
 	run.ArchiveReserved = 0
 	proposal, _ := encode(Proposal{Commit: commit, Status: "published"})
 	if err := tx.Bucket([]byte("proposals")).Put(key(commit.ProjectID, commit.ID), proposal); err != nil {
@@ -388,7 +393,6 @@ func (s *Store) Begin(run Run) error {
 		return errors.New("new attempt must start without a result")
 	}
 	run.Implementation = currentBuildProvenance()
-	run.ArchiveReserved = diagnosticResponseReserve
 	return s.db.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte("runs"))
 		if bucket.Get([]byte(run.ID)) != nil {
@@ -422,9 +426,6 @@ func (s *Store) SaveResponse(id, output string, usage json.RawMessage) error {
 }
 
 func (s *Store) SaveModelResponse(id, output string, usage json.RawMessage, model string) error {
-	if len(output) > 4<<20 || len(usage) > 64<<10 || len(usage) > 0 && !json.Valid(usage) {
-		return errors.New("response archive exceeds limits or has invalid usage")
-	}
 	return s.updateRun(id, func(run *Run) error {
 		if run.Status != "running" {
 			return errors.New("attempt response cannot be overwritten")
@@ -434,8 +435,10 @@ func (s *Store) SaveModelResponse(id, output string, usage json.RawMessage, mode
 			run.Model = model
 		}
 		run.Usage = usage
+		if len(output) > 4<<20 || len(usage) > 64<<10 || len(usage) > 0 && !json.Valid(usage) {
+			pruneRunContent(run, time.Now())
+		}
 		run.Status = "responded"
-		run.ArchiveReserved = diagnosticFinalReserve
 		return nil
 	})
 }
@@ -459,6 +462,7 @@ func (s *Store) Finish(id, status, message, at string) error {
 		run.FinishedAt = at
 		if status != "ready" {
 			run.ArchiveReserved = 0
+			run.RecoveryInput = nil
 		}
 		return nil
 	})

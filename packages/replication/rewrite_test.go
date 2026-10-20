@@ -96,7 +96,7 @@ func TestEditableRewindReplicatesAndBootstraps(t *testing.T) {
 		t.Fatal("checkpoint missing", err)
 	}
 	cp := *page.Checkpoint
-	if cp.Checkpoint.Codec != "coconet-state-json-v3" || cp.Anchor.Commit.Codec != "coconet-json-v5" {
+	if cp.Checkpoint.Codec != "coconet-state-json-v4" || cp.Anchor.Commit.Codec != "coconet-json-v6" {
 		t.Fatal("new semantics lack protocol version")
 	}
 	// Relabelling new semantics as an older codec must fail before applying it.

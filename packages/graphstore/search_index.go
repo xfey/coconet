@@ -2,6 +2,7 @@ package graphstore
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -56,6 +57,7 @@ type ContentPage struct {
 	Matches  []ContentMatch
 	More     bool
 	Coverage IndexCoverage
+	Basis    string
 }
 
 // This file is derived from verified compact content and can be rebuilt while
@@ -349,9 +351,9 @@ func (s *Store) IndexCoverage(ctx context.Context, state workgraph.State) (Index
 }
 
 func (s *Store) SearchContent(ctx context.Context, state workgraph.State, query string, offset, limit int, expected IndexCoverage) (ContentPage, error) {
-	result := ContentPage{Matches: []ContentMatch{}}
+	result := ContentPage{Matches: []ContentMatch{}, Basis: fmt.Sprintf("%x", sha256.Sum256(nil))}
 	terms := strings.Fields(strings.ToLower(query))
-	if len(terms) < 1 || len(terms) > 64 || offset < 0 || limit < 0 || limit > 21 {
+	if len(terms) < 1 || len(terms) > 64 || offset < 0 || limit < 0 || limit > 100 {
 		return result, errors.New("search supports 1–64 terms and bounded pagination")
 	}
 	db, err := s.searchDB()
@@ -390,8 +392,46 @@ func (s *Store) SearchContent(ctx context.Context, state workgraph.State, query 
 		unions = append(unions, `SELECT rowid AS id FROM text_fts WHERE text_fts MATCH ?`)
 		args = append(args, strings.Join(long, " OR "))
 	}
-	statement := `WITH hits AS (` + strings.Join(unions, " UNION ") + `) SELECT d.id,d.turn,d.ordinal,d.role,d.text FROM hits h JOIN documents d ON d.id=h.id WHERE d.project=? AND EXISTS(SELECT 1 FROM source_ranges r WHERE r.project=d.project AND r.source IN(SELECT value FROM json_each(?)) AND r.lo<=d.id AND r.hi>=d.id) ORDER BY d.id LIMIT ? OFFSET ?`
-	args = append(args, state.ProjectID, string(encoded), limit+1, offset)
+	// Cursor validity depends on matching documents and their source mappings,
+	// not unrelated project/index writes. Stream identities rather than storing
+	// a result cache or loading every matching conversation into memory.
+	nodeSources := map[string][]string{}
+	for _, node := range state.Nodes {
+		if node.State != "withdrawn" {
+			nodeSources[node.Source.Key()] = append(nodeSources[node.Source.Key()], node.ID)
+		}
+	}
+	for key := range nodeSources {
+		sort.Strings(nodeSources[key])
+	}
+	prefix := `WITH hits AS (` + strings.Join(unions, " UNION ") + `) `
+	args = append(args, state.ProjectID, string(encoded))
+	basisRows, err := tx.QueryContext(ctx, prefix+`SELECT d.id,d.identity,r.source FROM hits h JOIN documents d ON d.id=h.id JOIN source_ranges r ON r.project=d.project AND r.lo<=d.id AND r.hi>=d.id WHERE d.project=? AND r.source IN(SELECT value FROM json_each(?)) ORDER BY d.id,r.source`, args...)
+	if err != nil {
+		return result, err
+	}
+	hash := sha256.New()
+	encoder := json.NewEncoder(hash)
+	for basisRows.Next() {
+		var id int64
+		var identity, source string
+		if err := basisRows.Scan(&id, &identity, &source); err != nil {
+			basisRows.Close()
+			return result, err
+		}
+		if err := encoder.Encode([]any{id, identity, source, nodeSources[source]}); err != nil {
+			basisRows.Close()
+			return result, err
+		}
+	}
+	err = basisRows.Err()
+	basisRows.Close()
+	if err != nil {
+		return result, err
+	}
+	result.Basis = fmt.Sprintf("%x", hash.Sum(nil))
+	statement := prefix + `SELECT d.id,d.turn,d.ordinal,d.role,d.text FROM hits h JOIN documents d ON d.id=h.id WHERE d.project=? AND EXISTS(SELECT 1 FROM source_ranges r WHERE r.project=d.project AND r.source IN(SELECT value FROM json_each(?)) AND r.lo<=d.id AND r.hi>=d.id) ORDER BY d.id LIMIT ? OFFSET ?`
+	args = append(args, limit+1, offset)
 	rows, err := tx.QueryContext(ctx, statement, args...)
 	if err != nil {
 		return result, err
@@ -420,10 +460,6 @@ func (s *Store) SearchContent(ctx context.Context, state workgraph.State, query 
 		result.More = true
 		matches = matches[:limit]
 	}
-	nodeSources := map[string][]string{}
-	for _, node := range state.Nodes {
-		nodeSources[node.Source.Key()] = append(nodeSources[node.Source.Key()], node.ID)
-	}
 	for _, m := range matches {
 		sources, err := tx.QueryContext(ctx, `SELECT source FROM source_ranges WHERE project=? AND source IN(SELECT value FROM json_each(?)) AND lo<=? AND hi>=?`, state.ProjectID, string(encoded), m.id, m.id)
 		if err != nil {
@@ -439,7 +475,7 @@ func (s *Store) SearchContent(ctx context.Context, state workgraph.State, query 
 			a, b := state.Snapshots[key], state.Snapshots[selected]
 			preferred := len(nodeSources[key]) > 0
 			previous := len(nodeSources[selected]) > 0
-			if selected == "" || preferred && !previous || preferred == previous && a.Version > b.Version {
+			if selected == "" || preferred && !previous || preferred == previous && (a.Version > b.Version || a.Version == b.Version && key < selected) {
 				selected = key
 			}
 		}

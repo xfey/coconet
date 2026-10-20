@@ -245,6 +245,11 @@ func runServerServe(ctx context.Context, args []string, stdout, stderr io.Writer
 	}
 	defer storage.close()
 	authority := newAuthority(storage, artifacts)
+	authority.limits, err = deploymentLimitsFromEnvironment()
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
 	webOrigin, err := webOriginFromEnvironment(config.AdvertisedEndpoint)
 	if err != nil {
 		fmt.Fprintln(stderr, err)

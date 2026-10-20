@@ -19,7 +19,7 @@ func librarySelection(t *testing.T, e *Engine) LibraryRequest {
 	id := state.Sessions["session"].Tail
 	return LibraryRequest{RequestID: "collect-request", NodeID: id, Source: state.Nodes[id].Source, Note: "后面可以参考停止条件"}
 }
-func TestCollectSealsFixedSourceReplaysAfterArchivePruneAndRejectsChanges(t *testing.T) {
+func TestCollectPinsFixedSourceReplaysAfterArchivePruneAndRejectsChanges(t *testing.T) {
 	e, s := fixture(t)
 	request := librarySelection(t, e)
 	result, err := e.Collect(context.Background(), "project", request)
@@ -27,8 +27,8 @@ func TestCollectSealsFixedSourceReplaysAfterArchivePruneAndRejectsChanges(t *tes
 		t.Fatal(result, err)
 	}
 	before, _ := s.State("project")
-	if before.Nodes[request.NodeID].State != "sealed" || before.Library[request.NodeID] != request.Note {
-		t.Fatal("collection did not seal exact source")
+	if before.Nodes[request.NodeID].State != "current" || before.LibrarySources[request.NodeID].Source != request.Source || before.Library[request.NodeID] != request.Note {
+		t.Fatal("collection did not pin source independently")
 	}
 	capture(t, e, "session", 2, "先把重试提示写清楚。", "好的，接下来处理并发。")
 	e.Runner = output(stage("start", &workgraph.Text{Objective: "处理并发"}, "e2"))
@@ -51,12 +51,12 @@ func TestCollectSealsFixedSourceReplaysAfterArchivePruneAndRejectsChanges(t *tes
 	}
 	e.Actor = "other"
 	request.RequestID = "other-request"
-	if _, err := e.Collect(context.Background(), "project", request); !errors.Is(err, workgraph.ErrPermission) {
-		t.Fatal("other writer collected own editable state", err)
+	if _, err := e.Collect(context.Background(), "project", request); err != nil {
+		t.Fatal("member could not collect accessible source", err)
 	}
 }
 
-func TestLibraryNoteEditAndRemovalKeepSealedSourceAndRecoverWithoutInference(t *testing.T) {
+func TestLibraryNoteEditAndRemovalKeepAuthorNodeAndRecoverWithoutInference(t *testing.T) {
 	e, store := fixture(t)
 	request := librarySelection(t, e)
 	if _, err := e.Collect(context.Background(), "project", request); err != nil {
@@ -98,9 +98,10 @@ func TestLibraryNoteEditAndRemovalKeepSealedSourceAndRecoverWithoutInference(t *
 	}
 	restarted.Actor = "other"
 	request.RequestID = "not-owned-request"
-	if _, err := restarted.Uncollect(context.Background(), "project", request); !errors.Is(err, workgraph.ErrPermission) {
-		t.Fatal("other account removed entry", err)
+	if _, err := restarted.Uncollect(context.Background(), "project", request); err != nil {
+		t.Fatal("member could not remove entry", err)
 	}
+	after, _ = store.State("project")
 	replay, err := store.Replay("project")
 	if err != nil || workgraph.Digest(replay) != workgraph.Digest(after) {
 		t.Fatal("removal not deterministic", err)
@@ -200,5 +201,47 @@ func TestLibraryAllowsAnotherOwnDeviceButPreservesInferenceOwnership(t *testing.
 	node := state.Nodes[request.NodeID]
 	if _, _, err := workgraph.Apply(state, workgraph.Commit{Schema: 1, ID: "not-owner", ProjectID: "project", Actor: e.Actor, RunID: "run", Base: state.Revision, At: e.stamp(), Relations: &workgraph.RelationDecision{NodeID: node.ID, NodeRevision: node.Revision, Through: node.EndTurn, Complete: true, Reason: "not the device owner"}}); !errors.Is(err, workgraph.ErrPermission) {
 		t.Fatal("Library permission expanded inference ownership", err)
+	}
+}
+
+func TestLibraryReadAndListingRemainFixedWhileAuthorContinues(t *testing.T) {
+	e, store := fixture(t)
+	request := librarySelection(t, e)
+	e.Actor = "colleague"
+	if _, err := e.Collect(context.Background(), "project", request); err != nil {
+		t.Fatal(err)
+	}
+	e.Actor = "owner"
+	capture(t, e, "session", 2, "先把重试提示写清楚。", "好的，这里再补充错误恢复。")
+	e.Runner = output(stage("continue", nil, "e2"))
+	process(t, e, "stage", "session")
+	if err := e.RetireConsumed(context.Background(), "project"); err != nil {
+		t.Fatal(err)
+	}
+	graph, _ := e.Graph("project")
+	library, err := e.GraphPage("project", GraphQuery{}, true)
+	if err != nil || len(graph.Nodes) != 1 || graph.Nodes[0].Source.Version != 2 || len(library.Nodes) != 1 || library.Nodes[0].Source != request.Source || graph.Nodes[0].Library.Source != request.Source {
+		t.Fatal("graph and saved version not independent", graph, library, err)
+	}
+	if _, err := e.ReadSelectedNode(context.Background(), "project", request.NodeID, request.Source, false); err != nil {
+		t.Fatal("saved source unavailable", err)
+	}
+	state, _ := store.State("project")
+	if err := workgraph.ValidateState(state); err != nil {
+		t.Fatal(err)
+	}
+	request.RequestID, request.Note = "remove-saved-version", ""
+	if _, err := e.Uncollect(context.Background(), "project", request); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.RetireConsumed(context.Background(), "project"); err != nil {
+		t.Fatal(err)
+	}
+	state, _ = store.State("project")
+	if _, ok := state.Snapshots[request.Source.Key()]; ok {
+		t.Fatal("unreferenced saved source not retired")
+	}
+	if state.Nodes[request.NodeID].Source.Version != 2 || state.Nodes[request.NodeID].State != "current" {
+		t.Fatal("removal changed author progress")
 	}
 }

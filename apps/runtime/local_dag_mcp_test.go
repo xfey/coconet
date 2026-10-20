@@ -166,11 +166,11 @@ func TestManagedMCPUsesLocalDaemonWithoutLegacyBindingOrTranscriptDiscovery(t *t
 	if search.IsError || len(search.Structured.Nodes) != 1 {
 		t.Fatalf("search failed: %+v", search)
 	}
-	tooLarge := decodeMCPToolCall[mcpFailureView](t, localMCPCall(t, "search_work", map[string]any{"query": "RETRY", "limit": 100}))
+	tooLarge := decodeMCPToolCall[mcpFailureView](t, localMCPCall(t, "search_work", map[string]any{"query": "RETRY", "limit": 101}))
 	if !tooLarge.IsError || len(tooLarge.Structured.Issues) != 1 || tooLarge.Structured.Issues[0].Field != "limit" || tooLarge.Structured.ConnectionStatus != "" {
 		t.Fatal("connected search failure misidentified cause", tooLarge)
 	}
-	corrected := decodeMCPToolCall[localdag.SearchView](t, localMCPCall(t, "search_work", map[string]any{"query": "RETRY", "limit": 20}))
+	corrected := decodeMCPToolCall[localdag.SearchView](t, localMCPCall(t, "search_work", map[string]any{"query": "RETRY", "limit": 100}))
 	if corrected.IsError || len(corrected.Structured.Nodes) != 1 {
 		t.Fatal("search did not recover after correcting limit", corrected)
 	}

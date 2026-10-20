@@ -12,23 +12,29 @@ import (
 	"strings"
 	"time"
 
+	"github.com/xfey/coconet/adapters"
 	"github.com/xfey/coconet/packages/graphstore"
+	"github.com/xfey/coconet/packages/inference"
 	"github.com/xfey/coconet/packages/localdag"
 	"github.com/xfey/coconet/packages/workgraph"
 )
 
 const maxLocalInboxEvents = 4096
 
+var errInvalidPreparedCapture = errors.New("fixed capture observation is invalid")
+
 type localDAGInboxEvent struct {
-	Schema   int                        `json:"schema"`
-	ID       string                     `json:"id"`
-	Request  localDAGObservationRequest `json:"request"`
-	Prepared string                     `json:"prepared,omitempty"`
-	Attempts int                        `json:"attempts"`
-	NextAt   string                     `json:"next_at,omitempty"`
-	Paused   bool                       `json:"paused"`
-	Error    string                     `json:"error,omitempty"`
-	Source   *workgraph.Source          `json:"source,omitempty"`
+	FailedFiles    []string                   `json:"failed_files,omitempty"`
+	FailedRevision string                     `json:"failed_revision,omitempty"`
+	Schema         int                        `json:"schema"`
+	ID             string                     `json:"id"`
+	Request        localDAGObservationRequest `json:"request"`
+	Prepared       string                     `json:"prepared,omitempty"`
+	Attempts       int                        `json:"attempts"`
+	NextAt         string                     `json:"next_at,omitempty"`
+	Paused         bool                       `json:"paused"`
+	Error          string                     `json:"error,omitempty"`
+	Source         *workgraph.Source          `json:"source,omitempty"`
 }
 
 // Hook delivery never opens the daemon-owned database or waits for a model.
@@ -105,6 +111,11 @@ func readLocalDAGInbox(path string) (localDAGInboxEvent, error) {
 	}
 	if event.Schema != 1 || event.ID+".json" != filepath.Base(path) || event.Attempts < 0 {
 		return event, errors.New("invalid capture inbox identity")
+	}
+	if event.NextAt != "" {
+		if _, err := time.Parse(time.RFC3339Nano, event.NextAt); err != nil {
+			return event, errors.New("invalid capture retry time")
+		}
 	}
 	return event, nil
 }
@@ -198,12 +209,13 @@ func drainLocalDAGInbox(ctx context.Context, root string, engine *localdag.Engin
 		if blocked {
 			continue
 		}
-		next, parseErr := time.Parse(time.RFC3339Nano, event.NextAt)
-		if event.NextAt != "" && parseErr != nil {
-			failures = append(failures, errors.New("invalid capture retry time"))
-			continue
-		}
-		if event.Paused || !next.IsZero() && time.Now().Before(next) {
+		ready, changed := event.captureReady(time.Now())
+		if !ready {
+			if changed {
+				if err := atomicWriteJSON(path, event, 0600); err != nil {
+					failures = append(failures, err)
+				}
+			}
 			continue
 		}
 		err = traceLocalDAGInbox(ctx, root, engine, path, &event)
@@ -215,27 +227,60 @@ func drainLocalDAGInbox(ctx context.Context, root string, engine *localdag.Engin
 			}
 			continue
 		}
-		// A predecessor in the durable outbox is a dependency, not a failed
-		// native capture. In particular an offline Fork must not exhaust the
-		// first resumed turn's retry budget while its baseline is unpublished.
-		// Only a pure dependency wait is exempt; a joined archive/write error
-		// must still use the ordinary failure path.
-		waiting := err == localdag.ErrCapturePending
-		if !waiting {
-			event.Attempts++
-			event.Paused = event.Attempts >= 8
-		}
-		event.Error = err.Error()
-		if len(event.Error) > 4000 {
-			event.Error = event.Error[:4000]
-		}
-		event.NextAt = time.Now().UTC().Add(time.Duration(1<<min(event.Attempts, 8)) * time.Second).Format(time.RFC3339Nano)
-		if waiting {
-			event.NextAt = time.Now().UTC().Add(time.Minute).Format(time.RFC3339Nano)
-		}
+		event.captureFailed(err, time.Now())
 		failures = append(failures, err, atomicWriteJSON(path, event, 0600))
 	}
 	return errors.Join(failures...)
+}
+
+// The same source-change and backoff policy applies to Hooks and history intake.
+func (event *localDAGInboxEvent) captureReady(now time.Time) (bool, bool) {
+	next, _ := time.Parse(time.RFC3339Nano, event.NextAt)
+	if next.After(now) {
+		return false, false
+	}
+	if !event.Paused {
+		return true, false
+	}
+	if event.FailedRevision == "" || len(event.FailedFiles) == 0 {
+		return false, false
+	}
+	if current := adapters.CaptureRevision(event.FailedFiles); current == "" || current == event.FailedRevision {
+		event.NextAt = now.UTC().Add(time.Minute).Format(time.RFC3339Nano)
+		return false, true
+	}
+	event.Paused, event.Attempts = false, 0
+	event.FailedFiles, event.FailedRevision = nil, ""
+	return true, true
+}
+
+func (event *localDAGInboxEvent) captureFailed(err error, now time.Time) {
+	// A predecessor in the durable outbox is a dependency, not a failed
+	// native capture. In particular an offline Fork must not exhaust the
+	// first resumed turn's retry budget while its baseline is unpublished.
+	// Only a pure dependency wait is exempt; a joined archive/write error
+	// must still use the ordinary failure path.
+	waiting := err == localdag.ErrCapturePending
+	if !waiting {
+		event.Attempts++
+		var native *adapters.CaptureFailure
+		_, transient := inference.RetryDelay(err)
+		if !transient && errors.As(err, &native) && adapters.CaptureRevision(native.Files) == native.Revision {
+			event.Paused = true
+			event.FailedFiles, event.FailedRevision = native.Files, native.Revision
+		}
+		if errors.Is(err, errInvalidPreparedCapture) {
+			event.Paused = true
+		}
+	}
+	event.Error = err.Error()
+	if len(event.Error) > 4000 {
+		event.Error = event.Error[:4000]
+	}
+	event.NextAt = now.UTC().Add(time.Duration(1<<min(event.Attempts, 8)) * time.Second).Format(time.RFC3339Nano)
+	if waiting {
+		event.NextAt = now.UTC().Add(time.Minute).Format(time.RFC3339Nano)
+	}
 }
 
 func traceLocalDAGInbox(ctx context.Context, root string, engine *localdag.Engine, path string, event *localDAGInboxEvent) error {
@@ -307,7 +352,7 @@ func processLocalDAGInbox(ctx context.Context, root string, engine *localdag.Eng
 			return err
 		}
 		if err := decodeStrict(data, &observation); err != nil {
-			return err
+			return errors.Join(errInvalidPreparedCapture, err)
 		}
 	}
 	source, err := engine.CaptureObservation(ctx, observation)
@@ -348,6 +393,7 @@ func retryLocalDAGInboxProject(root, id, project string) error {
 		return errors.New("capture event is not paused")
 	}
 	event.Paused, event.Attempts, event.NextAt, event.Error = false, 0, "", ""
+	event.FailedFiles, event.FailedRevision = nil, ""
 	if err := atomicWriteJSON(path, event, 0600); err != nil {
 		return err
 	}

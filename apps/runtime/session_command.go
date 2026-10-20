@@ -22,7 +22,7 @@ func runSessionCommandWithAdapters(ctx context.Context, args []string, stdout, s
 	ctx, cancel := context.WithTimeout(ctx, mcpHandoffTimeout)
 	defer cancel()
 	if len(args) == 0 || (args[0] != "read" && args[0] != "pull" && args[0] != "resume") {
-		fmt.Fprintln(stderr, "usage: coconet session <read|pull|resume> --project ID --node ID --session ID --version N [--agent codex|claude|cursor]")
+		fmt.Fprintln(stderr, "usage: coconet session <read|pull|resume> --project ID [--node ID] --session ID --version N [--agent codex|claude|cursor]")
 		return 2
 	}
 	flags := flag.NewFlagSet("session", flag.ContinueOnError)
@@ -34,7 +34,7 @@ func runSessionCommandWithAdapters(ctx context.Context, args []string, stdout, s
 	node := flags.String("node", "", "selected Work Node")
 	raw := flags.Bool("include-artifact", false, "also download native artifact")
 	requestID := flags.String("request-id", "", "stable native continuation request; repeat with the original source")
-	if flags.Parse(args[1:]) != nil || flags.NArg() != 0 || *project == "" || *session == "" || *version < 1 || *node == "" || (*agent != "" && args[0] != "resume") || (args[0] == "resume" && !contracts.ValidAgent(contracts.AgentType(*agent))) {
+	if flags.Parse(args[1:]) != nil || flags.NArg() != 0 || *project == "" || *session == "" || *version < 1 || (*agent != "" && args[0] != "resume") || (args[0] == "resume" && !contracts.ValidAgent(contracts.AgentType(*agent))) {
 		fmt.Fprintln(stderr, "Specify --project, --session and a positive --version. For resume, also specify --agent codex or claude.")
 		return 2
 	}

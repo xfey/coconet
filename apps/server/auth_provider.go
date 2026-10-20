@@ -171,7 +171,7 @@ func (h *serverHandler) startBrowserLogin(w http.ResponseWriter, r *http.Request
 	verifier := oauth2.GenerateVerifier()
 	err = h.authority.store.update(func(db *databaseState) error {
 		pruneAuthorizations(db, h.authority.now())
-		if db.Authorizations.Len() >= 1000 {
+		if db.Authorizations.Len() >= maxPendingAuthorizations {
 			return rateLimitError()
 		}
 		db.Authorizations.Set(hashToken(state), authorizationRecord{Kind: "browser", BrowserHash: hashToken(browser), Verifier: verifier, Nonce: nonce, Provider: h.auth.Issuer, AuthorizationID: input.AuthorizationID, ReturnProjectID: input.ProjectID, ExpiresAt: h.authority.now().Add(authorizationTTL).UTC().Format(time.RFC3339Nano)})

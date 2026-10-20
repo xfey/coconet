@@ -123,7 +123,7 @@ func (adapter Adapter) Discover(ctx context.Context, root string) ([]contracts.D
 	return result, nil
 }
 
-func (adapter Adapter) Observe(ctx context.Context, cwd, nativeSessionID string, checkpoint adapters.ObservationCheckpoint) (contracts.SessionObservation, adapters.ObservationCheckpoint, error) {
+func (adapter Adapter) Observe(ctx context.Context, cwd, nativeSessionID string, checkpoint adapters.ObservationCheckpoint) (result contracts.SessionObservation, next adapters.ObservationCheckpoint, failure error) {
 	client, err := adapter.openClient(ctx, cwd)
 	if err != nil {
 		return contracts.SessionObservation{}, adapters.ObservationCheckpoint{}, err
@@ -149,6 +149,7 @@ func (adapter Adapter) Observe(ctx context.Context, cwd, nativeSessionID string,
 	if err != nil {
 		return contracts.SessionObservation{}, adapters.ObservationCheckpoint{}, err
 	}
+	defer adapters.TrackCaptureFailure(&failure, []string{artifactPath})()
 	// Locate first, then read the effective branch while the native file is
 	// stable. Otherwise a concurrent rollback could pair old text with a new
 	// raw artifact and make that mismatched snapshot available for Fork.

@@ -209,6 +209,11 @@ func (e *Engine) Process(ctx context.Context, task graphstore.Task) error {
 	if err != nil {
 		return err
 	}
+	// The local and shared paths use the same complete request and capsule
+	// limits. Reject known-incomplete input before spending a model attempt.
+	if _, err := fixedProcessingInput(state, task, input); err != nil {
+		return e.waitInput(task, state, err)
+	}
 	noNewText := task.Kind == "stage" && input.Audit.From == input.Audit.Through
 	runner := e.Runner
 	provider, model := e.Provider, e.Model
@@ -264,7 +269,7 @@ func (e *Engine) Process(ctx context.Context, task graphstore.Task) error {
 		response.Text = `{"action":"none","stage":null,"items":{"add":[],"revise":[],"complete":[],"withdraw":[]},"reason":"No new visible dialogue; retain existing stage and commitments.","evidence":[]}`
 		response.Visible = response.Text
 	} else if selectionErr != nil {
-		modelErr = selectionErr
+		modelErr = inference.ConfigurationError(selectionErr)
 	} else {
 		response, modelErr = runner.Infer(ctx, input.Request)
 	}
@@ -325,20 +330,16 @@ func (e *Engine) Process(ctx context.Context, task graphstore.Task) error {
 		if err := e.Store.Finish(runID, "needs_context", "additional evidence required", e.stamp()); err != nil {
 			return err
 		}
-		task.Status = "queued"
+		task.Status = e.contextRetry(state, task, input)
+		task.Attempts = 0
 		task.NextAt = ""
 		task.Error = "additional evidence required"
-		if task.Expanded {
-			task.Status = "paused"
-		}
 		task.Expanded = true
 		return e.Store.PutTask(task)
 	}
 	if needsContext {
-		task.AfterPublish = "queued"
-		if task.Expanded {
-			task.AfterPublish = "paused"
-		}
+		task.AfterPublish = e.contextRetry(state, task, input)
+		task.Attempts = 0
 		task.Expanded = true
 		task.ContextBasis = relationContextBasis(state, task.NodeID)
 	}
@@ -375,6 +376,11 @@ func (e *Engine) fail(task graphstore.Task, status string, cause error) error {
 		task.Status = "paused"
 	}
 	task.NextAt = e.now().Add(time.Duration(1<<min(task.Attempts, 6)) * time.Second).Format(time.RFC3339Nano)
+	if delay, waiting := inference.RetryDelay(cause); waiting {
+		task.Attempts = max(0, task.Attempts-1)
+		task.Status = "retry"
+		task.NextAt = e.now().Add(delay).Format(time.RFC3339Nano)
+	}
 	if err := e.Store.PutTask(task); err != nil {
 		return err
 	}
@@ -387,6 +393,16 @@ func (e *Engine) publish(ctx context.Context, commit workgraph.Commit, task grap
 		err = nil
 		if e.Publisher != nil {
 			err = e.Publisher.Publish(ctx, commit)
+		}
+		if errors.Is(err, contracts.ErrProcessingStale) {
+			var next workgraph.Commit
+			next, err = e.reclaimPublication(ctx, commit)
+			if err == nil {
+				commit = next
+				// A refresh is not acceptance. The new authorization must pass
+				// the ordinary server append transaction, even on the last pass.
+				err = e.Publisher.Publish(ctx, commit)
+			}
 		}
 		if err == nil {
 			_, err = e.Store.Apply(commit, true)
@@ -404,8 +420,8 @@ func (e *Engine) publish(ctx context.Context, commit workgraph.Commit, task grap
 			reusable = session.Revision == d.SessionRevision && session.ProcessedThrough+1 == d.Source.Version
 		}
 		if d := commit.Library; d != nil {
-			node, exists := latest.Nodes[d.NodeID]
-			reusable = exists && d.Source != nil && node.Source == *d.Source
+			_, selectionErr := workgraph.SelectNode(latest, d.NodeID, d.Source)
+			reusable = d.Source != nil && selectionErr == nil
 		}
 		if !reusable || attempt == 2 {
 			break
@@ -465,10 +481,10 @@ func (e *Engine) publish(ctx context.Context, commit workgraph.Commit, task grap
 		task.Status = "publish_pending"
 		task.Error = err.Error()
 		task.NextAt = e.now().Add(time.Duration(1<<min(task.PublishAttempts, 8)) * time.Second).Format(time.RFC3339Nano)
-		// A locally usable Fork cannot lose automatic registration merely
-		// because its device stayed offline. Retain its fixed baseline and
-		// retry at the capped interval; errors remain visible in task status.
-		if task.PublishAttempts >= 8 && !(commit.Snapshot != nil && commit.Snapshot.Inherited) {
+		// Connectivity failures retain the already-generated result indefinitely
+		// at a capped backoff. Permanent semantic/protocol refusals stay visible.
+		var refusal interface{ Permanent() bool }
+		if errors.Is(err, workgraph.ErrPermission) || errors.As(err, &refusal) && refusal.Permanent() {
 			task.Status = "paused"
 		}
 		if saveErr := e.Store.PutTask(task); saveErr != nil {
@@ -677,13 +693,11 @@ func validateEvidence(refs []string, anchors map[string]bool, requireNew bool) e
 		return errors.New("too many evidence anchors")
 	}
 	newEvidence := false
-	seen := map[string]bool{}
 	for _, ref := range refs {
 		new, ok := anchors[ref]
-		if !ok || seen[ref] {
-			return errors.New("unknown or duplicate evidence anchor")
+		if !ok {
+			return errors.New("unknown evidence anchor")
 		}
-		seen[ref] = true
 		newEvidence = newEvidence || new
 	}
 	if requireNew && !newEvidence {
@@ -693,6 +707,9 @@ func validateEvidence(refs []string, anchors map[string]bool, requireNew bool) e
 }
 
 func parseStage(raw string, input prepared) (*workgraph.StageDecision, bool, error) {
+	if !input.Complete {
+		return nil, true, nil
+	}
 	var out struct {
 		Action string          `json:"action"`
 		Stage  *workgraph.Text `json:"stage"`
@@ -709,8 +726,9 @@ func parseStage(raw string, input prepared) (*workgraph.StageDecision, bool, err
 		return nil, false, err
 	}
 	if strings.TrimSpace(out.Reason) == "" || len(out.Reason) > 4000 {
-		return nil, false, errors.New("missing or oversized decision explanation")
+		return nil, false, errors.New("decision reason must contain 1–4000 bytes")
 	}
+	out.Evidence = uniqueEvidence(out.Evidence)
 	if err := validateEvidence(out.Evidence, input.Anchors, out.Action == "start" || out.Action == "continue"); err != nil {
 		return nil, false, err
 	}
@@ -779,6 +797,7 @@ func parseRelations(raw string, input prepared, id string) (*workgraph.RelationD
 		return d, true, nil
 	}
 	for _, selected := range out.Parents {
+		selected.Evidence = uniqueEvidence(selected.Evidence)
 		parent, ok := input.Audit.Candidates[selected.ID]
 		if !ok {
 			return nil, false, errors.New("unknown parent reference")
@@ -792,6 +811,18 @@ func parseRelations(raw string, input prepared, id string) (*workgraph.RelationD
 		d.Parents = append(d.Parents, workgraph.Parent{NodeID: parent.ID, Revision: parent.Revision, Source: parent.Source, Reason: selected.Reason, Evidence: selected.Evidence})
 	}
 	return d, false, nil
+}
+
+func uniqueEvidence(refs []string) []string {
+	seen := map[string]bool{}
+	result := make([]string, 0, len(refs))
+	for _, ref := range refs {
+		if !seen[ref] {
+			result = append(result, ref)
+			seen[ref] = true
+		}
+	}
+	return result
 }
 
 func obsoleteTask(state workgraph.State, task graphstore.Task) bool {

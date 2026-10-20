@@ -27,9 +27,9 @@ func TestMCPArgumentFailuresIdentifyFieldsAndGuideRecovery(t *testing.T) {
 	managedMCPConfig(t, root, nil)
 	chdirMCPTest(t, t.TempDir())
 	tests := []struct{ tool, arguments, field, detail string }{
-		{"search_work", `{"query":"CPT 数据生成","limit":100}`, "limit", "1 to 20"},
-		{"search_work", `{"query":"ok","limit":0}`, "limit", "1 to 20"},
-		{"search_work", `{"query":"ok","limit":-1}`, "limit", "1 to 20"},
+		{"search_work", `{"query":"CPT 数据生成","limit":101}`, "limit", "1 to 100"},
+		{"search_work", `{"query":"ok","limit":0}`, "limit", "1 to 100"},
+		{"search_work", `{"query":"ok","limit":-1}`, "limit", "1 to 100"},
 		{"search_work", `{"query":"ok","limit":1.5}`, "limit", "integer"},
 		{"search_work", `{"query":"ok","limit":"20"}`, "limit", "integer"},
 		{"search_work", `{"query":"ok","limit":null}`, "limit", "integer"},
@@ -47,7 +47,6 @@ func TestMCPArgumentFailuresIdentifyFieldsAndGuideRecovery(t *testing.T) {
 		{"pull_session", `{"source":{"session_id":" ","version":1}}`, "source.session_id", "whitespace"},
 		{"pull_session", `{"source":{"session_id":"session","version":0}}`, "source.version", "positive integer"},
 		{"pull_session", `{"source":{"session_id":"session","version":1,"other":true}}`, "source.other", "not supported"},
-		{"pull_session", `{"source":{"session_id":"session","version":1},"include_artifact":true}`, "work_node_id", "include_artifact"},
 		{"add_session_to_library", `{"request_id":"short","work_node_id":"node","source":{"session_id":"s","version":1}}`, "request_id", "8–200"},
 		{"add_session_to_library", fmt.Sprintf(`{"request_id":"request-1","work_node_id":"node","source":{"session_id":"s","version":1},"note":%q}`, strings.Repeat("中", 1001)), "note", "1000"},
 		{"remove_session_from_library", `{"request_id":"request-1","work_node_id":"node","source":{"session_id":"s","version":1},"note":""}`, "note", "not supported"},
@@ -89,7 +88,7 @@ func TestMCPValidInputSeparatesDisconnectedWorkspaceFromParameterErrors(t *testi
 	chdirMCPTest(t, t.TempDir())
 	for name, args := range map[string]any{
 		"coconet_health":              map[string]any{},
-		"search_work":                 map[string]any{"query": "CPT 数据生成", "limit": 20},
+		"search_work":                 map[string]any{"query": "CPT 数据生成", "limit": 100},
 		"read_project_work_graph":     map[string]any{"limit": 100},
 		"list_library_entries":        map[string]any{},
 		"pull_session":                map[string]any{"source": map[string]any{"session_id": "session", "version": 1}},

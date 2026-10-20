@@ -15,14 +15,14 @@ type GraphQuery struct {
 	Cursor string `json:"cursor,omitempty"`
 }
 type discoveryCursor struct {
-	Revision int64  `json:"revision"`
+	Basis    string `json:"basis"`
 	Scope    string `json:"scope"`
 	Nodes    int    `json:"nodes"`
 	Sessions int    `json:"sessions"`
 }
 
-func readDiscoveryCursor(raw string, revision int64, scope string) (discoveryCursor, error) {
-	c := discoveryCursor{Revision: revision, Scope: scope}
+func readDiscoveryCursor(raw string, scope string) (discoveryCursor, error) {
+	c := discoveryCursor{Scope: scope}
 	if raw == "" {
 		return c, nil
 	}
@@ -30,20 +30,24 @@ func readDiscoveryCursor(raw string, revision int64, scope string) (discoveryCur
 		return c, errors.New("cursor exceeds 1024 characters; use next_cursor from the previous response or restart without a cursor")
 	}
 	data, err := base64.RawURLEncoding.DecodeString(raw)
-	if err != nil || json.Unmarshal(data, &c) != nil || c.Nodes < 0 || c.Sessions < 0 || c.Scope != scope {
+	if err != nil || json.Unmarshal(data, &c) != nil || c.Nodes < 0 || c.Sessions < 0 || c.Scope != scope || c.Basis == "" {
 		return c, errors.New("cursor is invalid or belongs to another selection; restart without a cursor and use next_cursor with the same tool and query")
 	}
-	if c.Revision != revision {
-		return c, errors.New("project changed between pages; restart this selection without a cursor")
-	}
 	return c, nil
+}
+
+func validateDiscoveryBasis(cursor discoveryCursor, basis string) error {
+	if cursor.Basis != "" && cursor.Basis != basis {
+		return errors.New("selected results changed between pages; restart this selection without a cursor")
+	}
+	return nil
 }
 func nextDiscoveryCursor(c discoveryCursor) string {
 	data, _ := json.Marshal(c)
 	return base64.RawURLEncoding.EncodeToString(data)
 }
 
-// GraphPage pages nodes and Session items independently at one accepted revision.
+// GraphPage pages nodes and Session items against their selected content.
 // Returned edge IDs may lie on other pages; they are not removed or reinterpreted.
 func (e *Engine) GraphPage(project string, query GraphQuery, libraryOnly bool) (GraphView, error) {
 	if query.Limit < 0 || query.Limit > 100 {
@@ -56,7 +60,16 @@ func (e *Engine) GraphPage(project string, query GraphQuery, libraryOnly bool) (
 	if err != nil {
 		return GraphView{}, err
 	}
-	graph := projectGraphWithHistory(state, libraryOnly)
+	viewState := state
+	if libraryOnly {
+		viewState.Nodes = map[string]workgraph.Node{}
+		for id := range state.Library {
+			if node, ok := workgraph.LibraryNode(state, id); ok {
+				viewState.Nodes[id] = node
+			}
+		}
+	}
+	graph := projectGraphWithHistory(viewState, libraryOnly)
 	if libraryOnly {
 		selected := []WorkNode{}
 		for _, node := range graph.Nodes {
@@ -69,8 +82,12 @@ func (e *Engine) GraphPage(project string, query GraphQuery, libraryOnly bool) (
 		graph.Coverage.Scope = "collected_nodes"
 	}
 	scope := workgraph.Digest([]any{project, libraryOnly})
-	cursor, err := readDiscoveryCursor(query.Cursor, graph.Revision, scope)
+	cursor, err := readDiscoveryCursor(query.Cursor, scope)
 	if err != nil {
+		return GraphView{}, err
+	}
+	basis := workgraph.Digest([]any{graph.Nodes, graph.SessionWork})
+	if err := validateDiscoveryBasis(cursor, basis); err != nil {
 		return GraphView{}, err
 	}
 	if cursor.Nodes > len(graph.Nodes) || cursor.Sessions > len(graph.SessionWork) {
@@ -83,7 +100,7 @@ func (e *Engine) GraphPage(project string, query GraphQuery, libraryOnly bool) (
 		more := cursor.Nodes+len(graph.Nodes) < totalNodes || cursor.Sessions+len(graph.SessionWork) < totalSessions
 		graph.Coverage.Truncated = more || cursor.Nodes > 0 || cursor.Sessions > 0
 		if more {
-			graph.NextCursor = nextDiscoveryCursor(discoveryCursor{graph.Revision, scope, cursor.Nodes + len(graph.Nodes), cursor.Sessions + len(graph.SessionWork)})
+			graph.NextCursor = nextDiscoveryCursor(discoveryCursor{basis, scope, cursor.Nodes + len(graph.Nodes), cursor.Sessions + len(graph.SessionWork)})
 		} else {
 			graph.NextCursor = ""
 		}

@@ -11,17 +11,18 @@ export function createLibraryActions({ request, accepted = async () => {}, chang
     pending(project, node) { return !!attempts.get(key(project, node))?.busy; },
     async change(project, node) {
       const id = key(project, node), remove = !!node.library, currentEpoch = epoch;
+      const source = remove ? node.library.source || node.source : node.source;
       let attempt = attempts.get(id);
       if (attempt?.busy) return false;
-      if (!attempt || attempt.input.remove !== remove || attempt.input.source.session_id !== node.source.session_id || attempt.input.source.version !== node.source.version) {
-        attempt = { input: { schema_version: 1, request_id: requestID(), work_node_id: node.id, source: { ...node.source }, remove }, busy: false };
+      if (!attempt || attempt.input.remove !== remove || attempt.input.source.session_id !== source.session_id || attempt.input.source.version !== source.version) {
+        attempt = { input: { schema_version: 1, request_id: requestID(), work_node_id: node.id, source: { ...source }, remove }, busy: false };
         attempts.set(id, attempt);
       }
       attempt.busy = true; changed();
       try {
         const result = await request(project, attempt.input);
         if (epoch !== currentEpoch) return false;
-        if (result?.schema_version !== 1 || result.request_id !== attempt.input.request_id || result.work_node_id !== node.id || result.source?.session_id !== node.source.session_id || result.source.version !== node.source.version || result.state !== (remove ? 'removed' : 'collected') || !Number.isSafeInteger(result.revision) || result.revision < 1) throw new Error('library_update_failed');
+        if (result?.schema_version !== 1 || result.request_id !== attempt.input.request_id || result.work_node_id !== node.id || result.source?.session_id !== source.session_id || result.source.version !== source.version || result.state !== (remove ? 'removed' : 'collected') || !Number.isSafeInteger(result.revision) || result.revision < 1) throw new Error('library_update_failed');
         await accepted(project, result);
         if (epoch !== currentEpoch) return false;
         attempts.delete(id);

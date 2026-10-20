@@ -99,16 +99,21 @@ func (r Local) Infer(ctx context.Context, request Request) (Response, error) {
 		ctx, cancel = context.WithTimeout(ctx, c.Timeout)
 		defer cancel()
 	}
+	var response Response
 	switch c.Provider {
 	case "codex":
-		return r.codex(ctx, work, request)
+		response, err = r.codex(ctx, work, request)
 	case "claude":
-		return r.claude(ctx, work, request)
+		response, err = r.claude(ctx, work, request)
 	case "cursor":
-		return r.cursor(ctx, work, request)
+		response, err = r.cursor(ctx, work, request)
 	default:
 		return Response{}, fmt.Errorf("unsupported inference provider %q", c.Provider)
 	}
+	if err == nil {
+		response.Text = unwrapJSON(response.Text)
+	}
+	return response, err
 }
 
 func (r Local) command(work string, args ...string) *exec.Cmd {
@@ -123,17 +128,26 @@ func (r Local) command(work string, args ...string) *exec.Cmd {
 		if strings.HasPrefix(key, "COCONET_") || key == "CODEX_HOME" || key == "CLAUDE_CONFIG_DIR" || key == "CLAUDE_CODE_SIMPLE" || key == "CLAUDE_CODE_SAFE_MODE" || key == "CURSOR_CONFIG_DIR" || key == "CURSOR_DATA_DIR" || key == "CURSOR_AGENT_PERSIST_SESSION" || key == "CURSOR_CONVERSATION_ID" || key == "CURSOR_AGENT" {
 			continue
 		}
-		if r.Config.Provider == "claude" && (key == "MAX_THINKING_TOKENS" || key == "CLAUDE_CODE_DISABLE_THINKING" || key == "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING") {
-			continue
-		}
 		filtered = append(filtered, entry)
 	}
 	cmd.Env = append(filtered, "COCONET_INTERNAL_INFERENCE=1", "CODEX_HOME="+r.Config.ConfigRoot, "CLAUDE_CONFIG_DIR="+r.Config.ConfigRoot, "CLAUDE_CODE_SIMPLE=1")
 	if r.Config.Provider == "cursor" {
 		cmd.Env = append(cmd.Env, "CURSOR_CONFIG_DIR="+r.Config.ConfigRoot, "CURSOR_DATA_DIR="+filepath.Join(work, "data"))
 	}
-	if r.Config.Provider == "claude" {
-		cmd.Env = append(cmd.Env, "MAX_THINKING_TOKENS=0", "CLAUDE_CODE_DISABLE_THINKING=1")
-	}
 	return cmd
+}
+
+// Normalize only a complete, single JSON fence. Preserve the raw receipt in
+// Response.Visible and leave semantic/schema validation to the caller.
+func unwrapJSON(raw string) string {
+	text := strings.TrimSpace(raw)
+	header, body, ok := strings.Cut(text, "\n")
+	if !ok || (strings.TrimSpace(header) != "```json" && strings.TrimSpace(header) != "```") || !strings.HasSuffix(body, "```") {
+		return raw
+	}
+	body = strings.TrimSpace(strings.TrimSuffix(body, "```"))
+	if !json.Valid([]byte(body)) {
+		return raw
+	}
+	return body
 }

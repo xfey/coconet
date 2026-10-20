@@ -133,3 +133,21 @@ Install the [storage and backup tools](../deploy/STORAGE.md). Monitor whole-host
 disk usage in addition to application quotas. Keep backups and credentials outside
 the source checkout. Upgrade the server and cooperating clients together when
 the connection or processing contract changes.
+
+
+## Deployment quotas
+
+`COCONET_MAX_PROJECTS_PER_ACCOUNT` sets the active-project limit per creator
+(default `20`); `COCONET_MAX_MEMBERS_PER_PROJECT` sets active members per project
+(default `50`). Both accept positive integers and take effect after restarting
+the server. These are administrator settings; clients need only the server URL.
+Reducing a quota preserves existing projects and memberships and affects new
+admissions. Retrying an already accepted creation/join remains idempotent.
+Project names accept 1–120 Unicode characters, including Chinese and emoji.
+
+Request-rate limits are separate from those quotas. Defaults are centralized in
+`apps/server/deployment_limits.go`: creation allows 20 requests per IP and 10 per
+account per hour; joining allows 60 per IP per minute. Other authentication and
+metadata limits remain unchanged. HTTP 429 responses identify the limited
+operation and include the actual remaining window in `Retry-After`; clients
+should wait before retrying. Shared-IP teams retain independent account quotas.

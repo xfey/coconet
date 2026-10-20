@@ -50,7 +50,7 @@ func TestLocalSearchUsesOnlyStructuredTextAndReportsTruncation(t *testing.T) {
 	if err != nil || len(result.Nodes) != 0 || result.Coverage.Scope != "node_text_library_notes_and_indexed_conversations" {
 		t.Fatal("search read conversation bodies", err)
 	}
-	for _, q := range []WorkSearch{{}, {Query: "  "}, {Query: "retry", Limit: -1}, {Query: "retry", Limit: 21}, {Query: strings.Repeat("中", 4001)}} {
+	for _, q := range []WorkSearch{{}, {Query: "  "}, {Query: "retry", Limit: -1}, {Query: "retry", Limit: 101}, {Query: strings.Repeat("中", 4001)}} {
 		if _, err := e.Search("project", q); err == nil {
 			t.Fatal("invalid query accepted")
 		}

@@ -226,8 +226,8 @@ func (h *serverHandler) handleDashboardAPI(w http.ResponseWriter, r *http.Reques
 				h.writeError(w, requestID, forbidden("provider_login_required", "use the configured login provider"))
 				return
 			}
-			if !h.limiter.allow("dashboard.login", h.addressResolver.resolve(r), 10, time.Minute) {
-				h.writeError(w, requestID, rateLimitError())
+			if err := h.limiter.check("dashboard.login", h.addressResolver.resolve(r)); err != nil {
+				h.writeError(w, requestID, err)
 				return
 			}
 			var input contracts.DashboardLoginRequest
@@ -281,8 +281,8 @@ func (h *serverHandler) handleDashboardAPI(w http.ResponseWriter, r *http.Reques
 		projectID := parts[3]
 		switch {
 		case len(parts) == 5 && parts[4] == "preview" && r.Method == http.MethodGet:
-			if !h.limiter.allow("project.preview.account", actor.AccountID, 60, time.Minute) {
-				h.writeError(w, requestID, rateLimitError())
+			if err := h.limiter.check("project.preview.account", actor.AccountID); err != nil {
+				h.writeError(w, requestID, err)
 				return
 			}
 			result, err := h.authority.dashboardProjectPreview(projectID)
@@ -328,8 +328,8 @@ func (h *serverHandler) handleAccountKey(w http.ResponseWriter, r *http.Request,
 		h.writeError(w, requestID, invalid("invalid_json", "invalid key replacement"))
 		return
 	}
-	if !h.limiter.allow("account.key", actor.AccountID, 10, time.Minute) {
-		h.writeError(w, requestID, rateLimitError())
+	if err := h.limiter.check("account.key", actor.AccountID); err != nil {
+		h.writeError(w, requestID, err)
 		return
 	}
 	key := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")

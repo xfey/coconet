@@ -11,6 +11,45 @@ import (
 	"github.com/xfey/coconet/packages/workgraph"
 )
 
+func TestSearchHundredResultsAndQueryBoundCursor(t *testing.T) {
+	e, store := fixture(t)
+	texts := make([]string, 105)
+	for i := range texts {
+		texts[i] = "matching_search_marker"
+	}
+	capture(t, e, "large", 1, texts...)
+	ctx := context.Background()
+	if _, err := store.IndexProject(ctx, "project", 64); err != nil {
+		t.Fatal(err)
+	}
+	first, err := e.Search("project", WorkSearch{Query: "matching_search_marker", Limit: 100})
+	if err != nil || len(first.ContentMatches) != 100 || first.NextCursor == "" {
+		t.Fatal("100-result page unavailable", err, len(first.ContentMatches))
+	}
+	capture(t, e, "unrelated", 1, "different topic")
+	if _, err := store.IndexProject(ctx, "project", 64); err != nil {
+		t.Fatal(err)
+	}
+	next, err := e.Search("project", WorkSearch{Query: "matching_search_marker", Limit: 100, Cursor: first.NextCursor})
+	if err != nil || len(next.ContentMatches) != 5 || next.NextCursor != "" {
+		t.Fatal("unrelated indexing invalidated selected results", err, len(next.ContentMatches))
+	}
+	seen := map[string]bool{}
+	for _, m := range append(first.ContentMatches, next.ContentMatches...) {
+		if seen[m.TurnID] {
+			t.Fatal("duplicate result across pages", m.TurnID)
+		}
+		seen[m.TurnID] = true
+	}
+	capture(t, e, "matching-new", 1, "matching_search_marker")
+	if _, err := store.IndexProject(ctx, "project", 64); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.Search("project", WorkSearch{Query: "matching_search_marker", Cursor: first.NextCursor}); err == nil {
+		t.Fatal("changed matching result set reused old offsets")
+	}
+}
+
 func TestContentSearchFindsExactVersionsAndDeduplicatesPrefixes(t *testing.T) {
 	e, store := fixture(t)
 	ctx := context.Background()
@@ -115,9 +154,12 @@ func TestContentSearchHonorsVisibleTextAndProjectBoundaries(t *testing.T) {
 	}
 }
 
-func TestUnprocessedSearchSourceSupportsCompactReadOnly(t *testing.T) {
+func TestUnprocessedSearchSourceSupportsCompactAndNativeRead(t *testing.T) {
 	e, store := fixture(t)
-	capture(t, e, "session", 1, "这个边界先记录下来，还没有形成节点。")
+	_, err := e.Capture(context.Background(), Capture{ProjectID: "project", Agent: "fixture", NativeID: "unprocessed", Artifact: []byte("fixed native artifact"), Entries: []conversation.Entry{{Turn: contracts.NormalizedTurn{TurnID: "turn", Role: "user", Kind: "message", Text: "这个边界先记录下来，还没有形成节点。"}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx := context.Background()
 	if _, err := store.IndexProject(ctx, "project", 16); err != nil {
 		t.Fatal(err)
@@ -131,8 +173,8 @@ func TestUnprocessedSearchSourceSupportsCompactReadOnly(t *testing.T) {
 	if err != nil || read.NodeID != "" || read.CompactPath == "" || read.Source != source {
 		t.Fatal(read, err)
 	}
-	if _, err := e.ReadSelectedNode(ctx, "project", "", source, true); err == nil {
-		t.Fatal("native content opened without a node")
+	if native, err := e.ReadSelectedNode(ctx, "project", "", source, true); err != nil || native.NativePath == "" || native.Source != source {
+		t.Fatal("unprocessed native source unavailable", native, err)
 	}
 	source.Version++
 	if _, err := e.ReadSelectedNode(ctx, "project", "", source, false); err == nil {

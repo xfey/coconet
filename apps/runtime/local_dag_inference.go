@@ -80,7 +80,7 @@ func automaticInferenceResolver(root string) func(string, workgraph.Session) (in
 		if err != nil {
 			return nil, err
 		}
-		matches := []agentIntegration{}
+		matches := map[string]bool{}
 		for _, entry := range state.Integrations {
 			if entry.Type != agentplugin.Host(source.Agent) {
 				continue
@@ -90,20 +90,23 @@ func automaticInferenceResolver(root string) func(string, workgraph.Session) (in
 				continue
 			}
 			if profile == source.Profile {
-				matches = append(matches, entry)
+				executable, err := exec.LookPath(entry.Command)
+				if err != nil {
+					continue
+				}
+				executable, err = canonicalPath(executable)
+				if err == nil {
+					matches[executable] = true
+				}
 			}
 		}
 		if len(matches) != 1 {
 			return nil, fmt.Errorf("cannot identify the %s installation for this conversation; inspect coconet agent list --verbose", source.Agent)
 		}
-		executable, err := exec.LookPath(matches[0].Command)
-		if err != nil {
-			return nil, fmt.Errorf("the source %s executable is unavailable; check its installation", source.Agent)
+		var executable string
+		for path := range matches {
+			executable = path
 		}
-		executable, err = filepath.Abs(executable)
-		if err != nil {
-			return nil, err
-		}
-		return inference.Local{Config: inference.Config{Provider: source.Agent, Command: executable, ConfigRoot: source.Profile, WorkRoot: filepath.Join(root, "inference-work"), Timeout: 120 * time.Second}}, nil
+		return inference.Local{Config: inference.Config{Provider: source.Agent, Command: executable, ConfigRoot: source.Profile, WorkRoot: filepath.Join(root, "inference-work")}}, nil
 	}
 }

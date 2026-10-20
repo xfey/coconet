@@ -61,7 +61,7 @@ func TestDashboardLibrarySharesAgentStateAndRetryReceipts(t *testing.T) {
 		t.Fatal(err)
 	}
 	after, _ := producer.Store.State(project.ProjectID)
-	if _, ok := after.Library[node.ID]; !ok || after.Nodes[node.ID].State != "sealed" || after.Nodes[node.ID].Source != node.Source {
+	if _, ok := after.Library[node.ID]; !ok || after.Nodes[node.ID].State != node.State || after.LibrarySources[node.ID].Source != node.Source {
 		t.Fatal("device did not receive exact collection")
 	}
 	if workgraph.Digest(after.Nodes[node.ID].Text) != workgraph.Digest(node.Text) {
@@ -93,10 +93,10 @@ func TestDashboardLibrarySharesAgentStateAndRetryReceipts(t *testing.T) {
 	if _, ok := final.Library[node.ID]; ok {
 		t.Fatal("old browser save overwrote Agent removal")
 	}
-	if final.Nodes[node.ID].State != "sealed" {
+	if final.Nodes[node.ID].State != node.State {
 		t.Fatal("removal reopened fixed work")
 	}
-	// Other project members retain read access, but cannot collect this author's work.
+	// Other project members can collect the same fixed source.
 	other, otherToken := issueTestIdentity(t, a, "Other", "other-library@test")
 	if _, err := a.joinProject(other, project.ProjectID, "join-library-test"); err != nil {
 		t.Fatal(err)
@@ -107,8 +107,8 @@ func TestDashboardLibrarySharesAgentStateAndRetryReceipts(t *testing.T) {
 	}
 	input.RequestID = "foreign-save-request"
 	response, body = dashboardRequest(t, server, "POST", path, input, &http.Cookie{Name: dashboardCookieName, Value: otherSecret}, server.URL)
-	if response.StatusCode != 403 {
-		t.Fatal("foreign collection", response.StatusCode, string(body))
+	if response.StatusCode != 200 {
+		t.Fatal("member collection", response.StatusCode, string(body))
 	}
 	archiveTestProject(t, a, project.ProjectID)
 	response, _ = dashboardRequest(t, server, "POST", path, input, cookie, server.URL)
@@ -153,7 +153,7 @@ func TestDashboardLibraryReadsUnpublishedTailAndRejectsChangedSelection(t *testi
 		t.Fatal(err)
 	}
 	current, _ = producer.Store.State(project.ProjectID)
-	if current.Nodes["docs"].Source != input.Source || current.Nodes["docs"].State != "sealed" {
+	if current.LibrarySources["docs"].Source != input.Source || current.Nodes["docs"].State != "current" {
 		t.Fatal("wrong source collected")
 	}
 }

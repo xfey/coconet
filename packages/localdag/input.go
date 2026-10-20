@@ -54,6 +54,12 @@ type relationInput struct {
 
 // Audit stays outside the model input. Aliases map to the fixed private state,
 // including candidate revisions/sources required when validating a decision.
+type candidateAudit struct {
+	ID       string           `json:"id"`
+	Revision int64            `json:"revision"`
+	Source   workgraph.Source `json:"source"`
+}
+
 type Audit struct {
 	From             int                       `json:"from"`
 	Through          int                       `json:"through"`
@@ -62,7 +68,7 @@ type Audit struct {
 	CandidateCount   int                       `json:"candidate_count"`
 	CandidateOmitted int                       `json:"candidate_omitted"`
 	Items            map[string]string         `json:"items,omitempty"`
-	Candidates       map[string]workgraph.Node `json:"candidates,omitempty"`
+	Candidates       map[string]candidateAudit `json:"candidates,omitempty"`
 }
 type prepared struct {
 	Execution       any               `json:"execution,omitempty"`
@@ -111,19 +117,14 @@ func readEntries(store *graphstore.Store, snapshot workgraph.Snapshot, start, en
 	return conversation.Read(manifest, start, end, func(block conversation.Block) ([]byte, error) { return store.Object(block.SHA256) })
 }
 
-func makeEvidence(entries []conversation.Entry, from, budget int, cumulative bool, stageStart int) (evidence, Audit, map[string]bool) {
+func makeEvidence(entries []conversation.Entry, from int, cumulative bool, stageStart int) (evidence, Audit, map[string]bool) {
 	ev := evidence{Scope: "delta", Turns: []turn{}}
 	if cumulative {
 		ev.Scope = "cumulative"
 	}
 	audit := Audit{From: from}
 	anchors := map[string]bool{}
-	// Reserve space for recent dialogue before earlier context. Oversized text
-	// is shortened at UTF-8 boundaries, explicitly marked, never silently lost.
-	selected := []turn{}
-	used := 128
-	for i := len(entries) - 1; i >= 0; i-- {
-		entry := entries[i]
+	for _, entry := range entries {
 		t := entry.Turn
 		if (t.Role != "user" && t.Role != "assistant") || t.Kind == "tool_result" || t.Kind == "event" {
 			continue
@@ -144,28 +145,6 @@ func makeEvidence(entries []conversation.Entry, from, budget int, cumulative boo
 		}
 		// Imported entries retain explicit inherited provenance when supplied by
 		// adapters; native IDs and paths are never used as model-visible anchors.
-		encoded, _ := json.Marshal(row)
-		if len(encoded)+used > budget {
-			available := budget - used - 256
-			if available > 512 {
-				row.Text = clip(text, available/2)
-				row.Truncated = true
-				encoded, _ = json.Marshal(row)
-				if len(encoded)+used <= budget {
-					audit.Truncated++
-					selected = append(selected, row)
-					used += len(encoded) + 1
-					continue
-				}
-			}
-			audit.Omitted++
-			continue
-		}
-		selected = append(selected, row)
-		used += len(encoded) + 1
-	}
-	for i := len(selected) - 1; i >= 0; i-- {
-		row := selected[i]
 		ev.Turns = append(ev.Turns, row)
 		anchors[row.ID] = !row.Context && !row.Inherited
 	}
@@ -193,16 +172,14 @@ func prepareStage(store *graphstore.Store, state workgraph.State, source workgra
 	}
 	from := session.ConsumedTurns
 	start := max(0, from-6)
-	budget := 48 << 10
 	if expanded {
 		start = 0
-		budget = 256 << 10
 	}
 	entries, err := readEntries(store, snapshot, start, snapshot.Turns)
 	if err != nil {
 		return prepared{}, err
 	}
-	ev, audit, anchors := makeEvidence(entries, from, budget, expanded || from == 0, -1)
+	ev, audit, anchors := makeEvidence(entries, from, expanded || from == 0, -1)
 	audit.Through = snapshot.Turns
 	audit.Items = map[string]string{}
 	prior := previous{Items: []workgraph.Item{}, State: "absent"}
@@ -234,18 +211,16 @@ func prepareRelations(store *graphstore.Store, state workgraph.State, id string,
 	// but never allow it alone to prove new adoption in this node.
 	from := max(node.StartTurn, node.RelationThrough)
 	start := max(0, from-6)
-	budget := 48 << 10
 	if expanded {
 		start = max(0, node.StartTurn-6)
-		budget = 256 << 10
 	}
 	entries, err := readEntries(store, snapshot, start, node.EndTurn)
 	if err != nil {
 		return prepared{}, err
 	}
-	ev, audit, anchors := makeEvidence(entries, from, budget, false, node.StartTurn)
+	ev, audit, anchors := makeEvidence(entries, from, false, node.StartTurn)
 	audit.Through = node.EndTurn
-	audit.Candidates = map[string]workgraph.Node{}
+	audit.Candidates = map[string]candidateAudit{}
 	input := relationInput{Current: node.Text, Existing: []string{}, Candidates: []candidate{}, Evidence: ev}
 	ids := []string{}
 	aliases := map[string]string{}
@@ -261,7 +236,6 @@ func prepareRelations(store *graphstore.Store, state workgraph.State, id string,
 	for _, edge := range node.Parents {
 		input.Existing = append(input.Existing, aliases[edge.Parent])
 	}
-	used := 0
 	for _, candidateID := range ids {
 		parent := state.Nodes[candidateID]
 		// Descendants cannot become parents. Keep them out deterministically.
@@ -272,14 +246,8 @@ func prepareRelations(store *graphstore.Store, state workgraph.State, id string,
 		// Graph topology enforces eligibility above; it is not evidence that
 		// the current conversation used a candidate's result.
 		item := candidate{ID: aliases[candidateID], Text: parent.Text}
-		encoded, _ := json.Marshal(item)
-		if used+len(encoded) > 192<<10 {
-			audit.CandidateOmitted++
-			continue
-		}
-		used += len(encoded) + 1
 		input.Candidates = append(input.Candidates, item)
-		audit.Candidates[item.ID] = parent
+		audit.Candidates[item.ID] = candidateAudit{ID: parent.ID, Revision: parent.Revision, Source: parent.Source}
 	}
 	input.CandidateOmissions = audit.CandidateOmitted > 0
 	data, _ := json.Marshal(input)

@@ -22,11 +22,16 @@ type CheckpointTransport interface {
 func decodeCheckpoint(project string, r contracts.RelayCheckpointReceipt) (workgraph.State, workgraph.Commit, error) {
 	var state workgraph.State
 	cp := r.Checkpoint
+	switch cp.Codec {
+	case "coconet-state-json-v1", "coconet-state-json-v2", "coconet-state-json-v3", "coconet-state-json-v4":
+	default:
+		return state, workgraph.Commit{}, errors.New("unsupported project checkpoint format; update Coconet on this device and retry synchronization")
+	}
 	anchor, err := decodeReceipt(project, r.Anchor)
 	if err != nil {
 		return state, anchor, err
 	}
-	if r.SchemaVersion != 1 || r.ProjectID != project || r.Writer == "" || cp.SchemaVersion != 1 || (cp.Codec != "coconet-state-json-v1" && cp.Codec != "coconet-state-json-v2" && cp.Codec != "coconet-state-json-v3") || cp.Revision != r.Anchor.Revision || cp.CommitID != anchor.ID || cp.SHA256 != r.Anchor.Commit.StateSHA256 || len(cp.Payload) > contracts.MaxRelayCheckpointBytes || graphstore.ObjectDigest(cp.Payload) != cp.SHA256 {
+	if r.SchemaVersion != 1 || r.ProjectID != project || r.Writer == "" || cp.SchemaVersion != 1 || cp.Revision != r.Anchor.Revision || cp.CommitID != anchor.ID || cp.SHA256 != r.Anchor.Commit.StateSHA256 || len(cp.Payload) > contracts.MaxRelayCheckpointBytes || graphstore.ObjectDigest(cp.Payload) != cp.SHA256 {
 		return state, anchor, errors.New("invalid checkpoint anchor or envelope")
 	}
 	decoder := json.NewDecoder(bytes.NewReader(cp.Payload))
@@ -37,12 +42,15 @@ func decodeCheckpoint(project string, r contracts.RelayCheckpointReceipt) (workg
 	if decoder.Decode(&struct{}{}) != io.EOF || state.ProjectID != project || state.Revision != cp.Revision || workgraph.Digest(state) != cp.SHA256 {
 		return state, anchor, errors.New("checkpoint state differs from anchor")
 	}
-	if cp.Codec != "coconet-state-json-v3" {
+	if cp.Codec != "coconet-state-json-v3" && cp.Codec != "coconet-state-json-v4" {
 		for _, snapshot := range state.Snapshots {
 			if r := snapshot.Rewrite; r != nil && r.RestoreEditableTails {
 				return state, anchor, errors.New("editable rewind requires coconet-state-json-v3")
 			}
 		}
+	}
+	if len(state.LibrarySources) > 0 && cp.Codec != "coconet-state-json-v4" {
+		return state, anchor, errors.New("fixed Library sources require coconet-state-json-v4; update Coconet")
 	}
 	return state, anchor, workgraph.ValidateState(state)
 }
@@ -133,7 +141,7 @@ func (c *Client) PublishCheckpoint(ctx context.Context, project string) (failure
 	if len(payload) > contracts.MaxRelayCheckpointBytes {
 		return errors.New("DAG checkpoint exceeds 16 MiB limit")
 	}
-	input := contracts.RelayCheckpoint{SchemaVersion: 1, DeviceID: c.Device, Revision: state.Revision, CommitID: commit.ID, Codec: "coconet-state-json-v3", SHA256: graphstore.ObjectDigest(payload), Payload: payload}
+	input := contracts.RelayCheckpoint{SchemaVersion: 1, DeviceID: c.Device, Revision: state.Revision, CommitID: commit.ID, Codec: "coconet-state-json-v4", SHA256: graphstore.ObjectDigest(payload), Payload: payload}
 	record.SHA256 = input.SHA256
 	head, err := remote.CheckpointHead(ctx, project)
 	if err != nil {

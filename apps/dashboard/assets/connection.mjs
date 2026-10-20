@@ -4,6 +4,8 @@ import { createButton } from './button.mjs';
 import { icon } from './icons.mjs';
 import { isProjectID, projectFromPath } from './catalog.mjs';
 
+export const validProjectName = value => [...value.trim()].length >= 1 && [...value.trim()].length <= 120;
+
 export function sharingScope({ t, element }) {
   const scope = disclosure(t('sharing_scope'), { element, key: 'sharing-scope' });
   scope.body.append(element('p', t('sharing_content'), 'dialog-description'));
@@ -47,7 +49,8 @@ export function mountProjectChoices({ content, error, projects = [], suggestedID
       }
       if (active.some(item => item.project_id === suggestedID)) input.value = suggestedID;
     } else {
-      input.maxLength = kind === 'join' ? 2048 : 120; input.autocomplete = 'off';
+      if (kind === 'join') input.maxLength = 2048;
+      input.autocomplete = 'off';
       input.value = kind === 'join' ? suggestedID : projectName;
       if (kind === 'join') { input.spellcheck = false; input.placeholder = t('project_link_placeholder'); }
     }
@@ -110,6 +113,7 @@ export function mountProjectChoices({ content, error, projects = [], suggestedID
   }
   function update() {
     const busy = saving || blocked();
+    fields.create.setCustomValidity(validProjectName(fields.create.value) ? '' : t('invalid_project_name'));
     for (const kind of kinds) {
       fields[kind].disabled = busy;
       controls[kind].disabled = busy || pending() || !fields[kind].value.trim();
@@ -123,6 +127,7 @@ export function mountProjectChoices({ content, error, projects = [], suggestedID
     if (saving || blocked() || pending()) return;
     const newProject = kind === 'create';
     if (newProject && !fields.create.value.trim()) { error.textContent = t('project_name_required'); return; }
+    if (newProject && !validProjectName(fields.create.value)) { error.textContent = t('invalid_project_name'); return; }
     let id;
     if (!newProject) {
       try { id = parseProjectInput(fields[kind].value); }
@@ -245,5 +250,5 @@ export function parseProjectInput(value, origins = [location.origin, document.qu
 }
 
 export function connectionErrorKey(error) {
-  return ['invalid_project_id', 'invalid_project_link', 'project_not_found', 'project_archived', 'project_member_limit_reached', 'authorization_account_mismatch', 'authorization_expired', 'authorization_completed', 'directory_changed'].includes(error?.code) ? error.code : 'account_action_error';
+  return ['invalid_project_name', 'project_limit_reached', 'invalid_project_id', 'invalid_project_link', 'project_not_found', 'project_archived', 'project_member_limit_reached', 'authorization_account_mismatch', 'authorization_expired', 'authorization_completed', 'directory_changed'].includes(error?.code) ? error.code : 'account_action_error';
 }

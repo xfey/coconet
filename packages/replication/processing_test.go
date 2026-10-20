@@ -5,8 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/xfey/coconet/packages/graphstore"
+	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
+
+	bolt "go.etcd.io/bbolt"
 
 	"github.com/xfey/coconet/packages/contracts"
 	"github.com/xfey/coconet/packages/inference"
@@ -37,6 +41,118 @@ func (f processingModel) Infer(_ context.Context, r inference.Request) (inferenc
 
 const acceptedStage = `{"action":"start","stage":{"objective":"完善重试反馈","summary":"已明确停止条件","approach":"失败有限重试"},"items":{"add":[],"revise":[],"complete":[],"withdraw":[]},"reason":"accepted delivery","evidence":["e1"]}`
 const acceptedRelations = `{"status":"complete","parents":[],"reason":"self-contained work"}`
+
+type offlineProcessingWire struct {
+	processingWire
+	offline bool
+}
+
+func (w *offlineProcessingWire) Append(ctx context.Context, project string, c contracts.RelayCommit) (contracts.RelayReceipt, error) {
+	if w.offline {
+		return contracts.RelayReceipt{}, errors.New("offline after model completed")
+	}
+	return w.processingWire.Append(ctx, project, c)
+}
+
+// Advance persisted expiry in a closed, isolated fixture. This exercises the
+// production restart/recreation path without sleeping through a 24-hour TTL.
+func expireProcessingFixture(t *testing.T, root string, all bool) {
+	t.Helper()
+	db, err := bolt.Open(filepath.Join(root, "relay.db"), 0600, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	err = db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("processing"))
+		return b.ForEach(func(k, v []byte) error {
+			var task contracts.ProcessingTask
+			if err := json.Unmarshal(v, &task); err != nil {
+				return err
+			}
+			task.ClaimedUntil = time.Now().Add(-time.Hour).UTC().Format(time.RFC3339Nano)
+			if all {
+				task.ExpiresAt = task.ClaimedUntil
+			}
+			data, err := json.Marshal(task)
+			if err != nil {
+				return err
+			}
+			return b.Put(k, data)
+		})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCompletedSharedResultSurvivesLeaseAndTaskExpiry(t *testing.T) {
+	for _, wholeTask := range []bool{false, true} {
+		t.Run(map[bool]string{false: "lease", true: "task"}[wholeTask], func(t *testing.T) {
+			ctx := context.Background()
+			root := t.TempDir()
+			server, err := relay.Open(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { server.Close() }()
+			client, e, transport := replica(t, server, "alice", "a")
+			wire := &offlineProcessingWire{processingWire: processingWire{transport}}
+			client.Remote = wire
+			if _, err := e.Capture(ctx, source("expiry", "继续完善失败提示。")); err != nil {
+				t.Fatal(err)
+			}
+			calls := 0
+			e.Runner = processingModel(func(inference.Request) (inference.Response, error) {
+				calls++
+				wire.offline = true
+				return inference.Response{Text: acceptedStage}, nil
+			})
+			if err := e.Drain(ctx, "project", 1); err == nil {
+				t.Fatal("outage hidden")
+			}
+			runs, _ := client.Store.Runs("project")
+			var retained bool
+			for _, run := range runs {
+				retained = retained || run.RecoveryInput != nil && len(run.RecoveryInput.Payload) > 0
+			}
+			if !retained {
+				t.Fatal("fixed recovery capsule was not persisted")
+			}
+			if err := server.Close(); err != nil {
+				t.Fatal(err)
+			}
+			expireProcessingFixture(t, root, wholeTask)
+			server, err = relay.Open(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			transport.s = server
+			wire.offline = false
+			e.Now = func() time.Time { return time.Now().Add(time.Hour) }
+			if err := e.RecoverLocal(ctx, "project"); err != nil {
+				t.Fatal(err)
+			}
+			if err := e.Flush(ctx, "project"); err != nil {
+				t.Fatal(err)
+			}
+			state, _ := client.Store.State("project")
+			if calls != 1 || len(state.Nodes) != 1 {
+				t.Fatal("completed inference repeated or lost", calls, state)
+			}
+			_, peer, _ := replica(t, server, "bob", "b")
+			if err := peer.Recover(ctx, "project"); err != nil {
+				t.Fatal(err)
+			}
+			runs, _ = client.Store.Runs("project")
+			for _, run := range runs {
+				if run.RecoveryInput != nil {
+					t.Fatal("completed capsule was not released")
+				}
+			}
+		})
+	}
+}
 
 func TestSharedTaskHandoffUsesIdenticalInputBeforeOwnWorkAndKeepsAuthor(t *testing.T) {
 	ctx := context.Background()

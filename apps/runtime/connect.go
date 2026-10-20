@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"slices"
 	"time"
+	"unicode/utf8"
 
 	"github.com/xfey/coconet/packages/cliui"
 	"github.com/xfey/coconet/packages/contracts"
@@ -139,7 +140,7 @@ func runConnect(ctx context.Context, args []string, stdin io.Reader, stdout, std
 		}
 	} else {
 		input := contracts.DeviceAuthorizationRequest{ConnectProject: true, Directory: &directory, SuggestedProjectID: options.project}
-		if name := filepath.Base(repository.root); len(name) <= 120 {
+		if name := filepath.Base(repository.root); utf8.ValidString(name) && utf8.RuneCountInString(name) <= 120 {
 			input.ProjectName = name
 		}
 		bindings, loadErr := loadBindingState(paths)

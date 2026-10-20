@@ -384,10 +384,10 @@ func (s *Store) Append(project, account string, input contracts.RelayCommit) (co
 
 func (s *Store) append(project, account string, input contracts.RelayCommit, checkpoint *contracts.RelayCheckpoint) (contracts.RelayReceipt, error) {
 	var receipt contracts.RelayReceipt
-	if !validID(project) || !validID(account) || !validID(input.ID) || !validID(input.DeviceID) || input.SchemaVersion != 1 || input.Base < 0 || input.Base >= 9007199254740991 || (input.Codec != "coconet-json-v2" && input.Codec != "coconet-json-v3" && input.Codec != "coconet-json-v4" && input.Codec != "coconet-json-v5") || len(input.Payload) == 0 || len(input.Payload) > MaxPayload || contentstore.ObjectDigest(input.Payload) != input.SHA256 || input.Objects == nil || len(input.Objects) > 8192 {
+	if !validID(project) || !validID(account) || !validID(input.ID) || !validID(input.DeviceID) || input.SchemaVersion != 1 || input.Base < 0 || input.Base >= 9007199254740991 || (input.Codec != "coconet-json-v2" && input.Codec != "coconet-json-v3" && input.Codec != "coconet-json-v4" && input.Codec != "coconet-json-v5" && input.Codec != "coconet-json-v6") || len(input.Payload) == 0 || len(input.Payload) > MaxPayload || contentstore.ObjectDigest(input.Payload) != input.SHA256 || input.Objects == nil || len(input.Objects) > 8192 {
 		return receipt, invalid("invalid relay commit envelope")
 	}
-	if input.Codec != "coconet-json-v4" && input.Codec != "coconet-json-v5" && (input.Processing != nil) != (input.Codec == "coconet-json-v3") {
+	if input.Codec != "coconet-json-v4" && input.Codec != "coconet-json-v5" && input.Codec != "coconet-json-v6" && (input.Processing != nil) != (input.Codec == "coconet-json-v3") {
 		return receipt, invalid("processing authorization requires matching codec")
 	}
 	if input.StateSHA256 != "" && !validDigest(input.StateSHA256) {

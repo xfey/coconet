@@ -20,8 +20,8 @@ type NodeRead struct {
 
 var ErrSelectionChanged = errors.New("work node source changed; refresh the project graph and select its current source")
 
-// ReadNode resolves a fixed source from the accepted DAG. Callers cannot request
-// arbitrary historical versions that no longer appear on retained work nodes.
+// ReadNode resolves a current or collected node from the accepted DAG.
+// ReadSelectedNode also accepts a synchronized readable source without a node.
 func (e *Engine) ReadNode(ctx context.Context, project, id string, native bool) (result NodeRead, failure error) {
 	return e.readNode(ctx, project, id, nil, native)
 }
@@ -60,19 +60,9 @@ func (e *Engine) readNode(ctx context.Context, project, id string, expected *wor
 	if err != nil {
 		return NodeRead{}, err
 	}
-	node, ok := state.Nodes[id]
-	if id == "" {
-		if expected == nil || native || !workgraph.ActiveSources(state)[expected.Key()] {
-			return NodeRead{}, errors.New("compact reading requires a retained exact source; original artifacts require a work node")
-		}
-		node.Source = *expected
-	} else {
-		if !ok {
-			return NodeRead{}, errors.New("work node is unavailable; refresh the project graph")
-		}
-		if expected != nil && *expected != node.Source {
-			return NodeRead{}, ErrSelectionChanged
-		}
+	node, err := workgraph.SelectNode(state, id, expected)
+	if err != nil {
+		return NodeRead{}, ErrSelectionChanged
 	}
 	snapshot, ok := state.Snapshots[node.Source.Key()]
 	if !ok {

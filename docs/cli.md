@@ -23,11 +23,11 @@ Put flags after the command/subcommand. Required positional arguments such as `a
 | [server](#coconet-server) | Select the default server and list known endpoints |
 | [agent](#coconet-agent) | Inspect and manage Agent integrations |
 | [inference](#coconet-inference) | Inspect, pause or resume automatic local processing |
-| [history](#coconet-history) | Preview and import explicitly selected historical sessions |
+| [history](#coconet-history) | Import historical sessions from this connected folder |
 | [projection](#coconet-projection) | Inspect processing progress and retry a selected failure |
 | [diagnostics](#coconet-diagnostics) | Inspect and manage local processing records |
 | [storage](#coconet-storage) | Manage local replicas, limits and offline archives |
-| [session](#coconet-session) | Read or continue a fixed source selected from the DAG |
+| [session](#coconet-session) | Read or continue a fixed synchronized source |
 | [library](#coconet-library) | List or update collected fixed session sources |
 | [fork](#coconet-fork) | Create an independent native session from a selected source |
 | [account](#coconet-account) | Inspect or replace your account key |
@@ -268,7 +268,7 @@ coconet inference resume
 
 ### `coconet history`
 
-Preview and import explicitly selected historical sessions
+Import historical sessions from this connected folder
 
 ```sh
 coconet history <command> [options]
@@ -276,16 +276,16 @@ coconet history <command> [options]
 
 | Option | Default | Meaning |
 |---|---|---|
-| `--plan ID` | — | Required except for preview/list; take the exact plan ID from preview or list |
-| `--agent codex\|claude\|cursor` | — | Required for preview: native history provider |
-| `--sessions ID,ID` | — | Required for start: comma-separated native Session IDs selected from the preview |
-| `--batch-size N` | 5 | start: selected sessions per batch, 1-20; resume starts the next batch |
+| `--plan ID` | — | Required for status/pause/resume/retry/forget; optional for start after a preview |
+| `--agent codex\|claude\|cursor` | — | Required for preview or start without a plan: native history provider |
+| `--sessions ID,ID` | — | Optional for start: restrict import to these discovered native Session IDs |
+| `--batch-size N` | 5 | start: sessions per automatic batch, 1-20 |
 | `--json` | false | Write machine-readable JSON |
 
 Run in a connected folder. Import is explicit, uses the Agent's default model and consumes its model allowance.
 
 ```sh
-coconet history preview --agent claude
+coconet history start --agent claude
 coconet history start --plan PLAN_ID --sessions SESSION_A,SESSION_B --batch-size 2
 ```
 
@@ -315,10 +315,10 @@ coconet history status --plan ID [--json]
 
 #### `coconet history start`
 
-Import selected sessions in batches
+Import this folder’s sessions in automatic batches
 
 ```sh
-coconet history start --plan ID --sessions ID,ID [--batch-size N] [--json]
+coconet history start --agent codex|claude|cursor | --plan ID [--sessions ID,ID] [--batch-size N] [--json]
 ```
 
 #### `coconet history pause`
@@ -329,11 +329,11 @@ Pause an import plan
 coconet history pause --plan ID [--json]
 ```
 
-An in-flight model call or publication may finish; pause prevents new calls.
+Stops this device’s import work; in-flight calls, publication and already shared tasks may finish.
 
 #### `coconet history resume`
 
-Resume the plan and advance to its next batch
+Resume a paused import plan
 
 ```sh
 coconet history resume --plan ID [--json]
@@ -562,7 +562,7 @@ For a connected project, restores content against the current graph without rewi
 
 ### `coconet session`
 
-Read or continue a fixed source selected from the DAG
+Read or continue a fixed synchronized source
 
 ```sh
 coconet session <read|pull|resume> [options]
@@ -570,22 +570,22 @@ coconet session <read|pull|resume> [options]
 
 | Option | Default | Meaning |
 |---|---|---|
-| `--node ID` | — | Required for a fixed source: select a current DAG node |
-| `--session ID` | — | Required for a fixed source: use that node's Session ID |
-| `--version N` | 0 | Required for a fixed source: use that node's positive version number |
+| `--node ID` | — | Required for Library edits; optional for reading or continuing a synchronized source |
+| `--session ID` | — | Required for a fixed source: use the selected Session ID |
+| `--version N` | 0 | Required for a fixed source: use the selected positive version number |
 | `--project ID` | — | Required: expected project ID; must match this folder's connection |
 | `--agent codex\|claude\|cursor` | — | Required for resume and invalid for read/pull; selects the target Agent |
 | `--include-artifact` | false | read/pull: also materialize the native session artifact |
 | `--request-id ID` | — | resume only: generated if omitted; retry with the printed ID and all original arguments |
 
-Select --node, --session and --version together from the current DAG. Withdrawn or unavailable sources are rejected, never silently replaced.
+Select --session and --version from graph, Library or search results. Include --node when selecting a node. A synchronized source can be read or continued before a node exists; withdrawn sources need an explicit Library reference. Sources are never silently replaced.
 
 #### `coconet session read`
 
 Print compact conversation JSONL
 
 ```sh
-coconet session read --project ID --node ID --session ID --version N [--include-artifact]
+coconet session read --project ID [--node ID] --session ID --version N [--include-artifact]
 ```
 
 #### `coconet session pull`
@@ -593,7 +593,7 @@ coconet session read --project ID --node ID --session ID --version N [--include-
 Return local source paths and metadata as JSON
 
 ```sh
-coconet session pull --project ID --node ID --session ID --version N [--include-artifact]
+coconet session pull --project ID [--node ID] --session ID --version N [--include-artifact]
 ```
 
 #### `coconet session resume`
@@ -601,7 +601,7 @@ coconet session pull --project ID --node ID --session ID --version N [--include-
 Create a separate native continuation; equivalent to fork
 
 ```sh
-coconet session resume --project ID --node ID --session ID --version N --agent codex|claude|cursor [--request-id ID]
+coconet session resume --project ID [--node ID] --session ID --version N --agent codex|claude|cursor [--request-id ID]
 ```
 
 ### `coconet library`
@@ -614,16 +614,16 @@ coconet library <list|add|remove> [options]
 
 | Option | Default | Meaning |
 |---|---|---|
-| `--node ID` | — | Required for a fixed source: select a current DAG node |
-| `--session ID` | — | Required for a fixed source: use that node's Session ID |
-| `--version N` | 0 | Required for a fixed source: use that node's positive version number |
+| `--node ID` | — | Required for Library edits; optional for reading or continuing a synchronized source |
+| `--session ID` | — | Required for a fixed source: use the selected Session ID |
+| `--version N` | 0 | Required for a fixed source: use the selected positive version number |
 | `--request-id ID` | — | Generated if omitted; on retry reuse the printed ID and all original arguments |
 | `--note TEXT` | — | add: optional collection purpose; preserve it when retrying the request |
 | `--limit N` | 50 | list: nodes per page, 1-100 |
 | `--cursor CURSOR` | — | list: next_cursor from the same selection |
 | `--json` | false | Write machine-readable JSON |
 
-Run in a connected folder. Collection updates are shared with the Dashboard star state.
+Run in a connected folder. Members can collect any accessible node. Collection fixes its source independently of the author node and shares state with Dashboard stars. Removal uses the saved Library source, which may differ from the current node.
 
 #### `coconet library list`
 
@@ -654,14 +654,14 @@ coconet library remove --node ID --session ID --version N [--request-id ID] [--j
 Create an independent native session from a selected source
 
 ```sh
-coconet fork --agent codex|claude|cursor --node ID --session ID --version N [options]
+coconet fork --agent codex|claude|cursor [--node ID] --session ID --version N [options]
 ```
 
 | Option | Default | Meaning |
 |---|---|---|
-| `--node ID` | — | Required for a fixed source: select a current DAG node |
-| `--session ID` | — | Required for a fixed source: use that node's Session ID |
-| `--version N` | 0 | Required for a fixed source: use that node's positive version number |
+| `--node ID` | — | Required for Library edits; optional for reading or continuing a synchronized source |
+| `--session ID` | — | Required for a fixed source: use the selected Session ID |
+| `--version N` | 0 | Required for a fixed source: use the selected positive version number |
 | `--agent codex\|claude\|cursor` | — | Required: target Agent; Codex, Claude and Cursor sources support cross-Agent text continuation |
 | `--request-id ID` | — | Generated if omitted; on retry reuse the printed ID and all original arguments |
 | `--json` | false | Write machine-readable JSON |
@@ -819,6 +819,8 @@ coconet-server serve --config FILE
 | Option | Default | Meaning |
 |---|---|---|
 | `--config FILE` | — | Required: server.json created by init or a completed deployment restore |
+
+Administrator quotas: COCONET_MAX_PROJECTS_PER_ACCOUNT (default 20), COCONET_MAX_MEMBERS_PER_PROJECT (default 50). Positive integers; restart to apply. Existing access and accepted retries remain valid.
 
 ```sh
 coconet-server serve --config /var/lib/coconet/server.json

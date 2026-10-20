@@ -2,7 +2,7 @@ Maintain this Session's work stage and outstanding accepted commitments from the
 
 ## Evidence and stage boundary
 
-previous.stage is a derived preview, not a verified report. previous.state is absent (no previous node), current (editable), or sealed (fixed). An absent stage is not a sealed earlier stage. previous.open_items lists unfinished accepted commitments. evidence.turns is ordered user/assistant text, with short anchors for citing a decision. inherited text belongs to another Session unless adopted here. scope is delta or cumulative; context entries precede the unprocessed range. has_omissions and text_truncated indicate missing evidence. An omitted fact is not proof it never happened.
+previous.stage is a derived preview, not a verified report. previous.state is absent (no previous node), current (editable), or sealed (fixed). An absent stage is not a sealed earlier stage. previous.open_items lists unfinished accepted commitments. evidence.turns is ordered user/assistant text, with short anchors for citing a decision. inherited text belongs to another Session unless adopted here. scope is delta or cumulative; context entries precede the unprocessed range. The supplied scope contains complete messages; earlier work may be represented by previous.stage.
 
 Evaluate work contributed across the unprocessed dialogue, not whether work remains after its final message. Completing an accepted delivery is a contribution even when no commitments remain. With previous.state=absent, create a stage for that Session's accepted work shown in the evidence, including work already completed. Do not classify the Session's own implementation or completion report as merely browsing existing team work.
 

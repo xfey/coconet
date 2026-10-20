@@ -6,9 +6,9 @@ func Runtime() Command {
 	root := option("root", "DIR", "", "Absolute private Runtime store; otherwise use the connected folder")
 	project := option("project", "ID", "", "Project ID when selecting an explicit Runtime store")
 	fixed := []Option{
-		option("node", "ID", "", "Required for a fixed source: select a current DAG node"),
-		option("session", "ID", "", "Required for a fixed source: use that node's Session ID"),
-		option("version", "N", "0", "Required for a fixed source: use that node's positive version number"),
+		option("node", "ID", "", "Required for Library edits; optional for reading or continuing a synchronized source"),
+		option("session", "ID", "", "Required for a fixed source: use the selected Session ID"),
+		option("version", "N", "0", "Required for a fixed source: use the selected positive version number"),
 	}
 	request := option("request-id", "ID", "", "Generated if omitted; on retry reuse the printed ID and all original arguments")
 	connect := Command{Name: "connect", Summary: "Connect this folder; choose or create a project in your browser", Usage: "[PROJECT_ID] [options]", Options: []Option{
@@ -40,21 +40,21 @@ func Runtime() Command {
 		leaf("pause", "Pause local model processing", ""),
 		leaf("resume", "Resume local model processing", ""),
 	}, Examples: []string{"coconet inference status"}}
-	history := Command{Name: "history", Summary: "Preview and import explicitly selected historical sessions", Usage: "<command> [options]", Options: []Option{
-		option("plan", "ID", "", "Required except for preview/list; take the exact plan ID from preview or list"),
-		option("agent", "codex|claude|cursor", "", "Required for preview: native history provider"),
-		option("sessions", "ID,ID", "", "Required for start: comma-separated native Session IDs selected from the preview"),
-		option("batch-size", "N", "5", "start: selected sessions per batch, 1-20; resume starts the next batch"), json,
+	history := Command{Name: "history", Summary: "Import historical sessions from this connected folder", Usage: "<command> [options]", Options: []Option{
+		option("plan", "ID", "", "Required for status/pause/resume/retry/forget; optional for start after a preview"),
+		option("agent", "codex|claude|cursor", "", "Required for preview or start without a plan: native history provider"),
+		option("sessions", "ID,ID", "", "Optional for start: restrict import to these discovered native Session IDs"),
+		option("batch-size", "N", "5", "start: sessions per automatic batch, 1-20"), json,
 	}, Notes: []string{"Run in a connected folder. Import is explicit, uses the Agent's default model and consumes its model allowance."}, Children: []Command{
 		leaf("preview", "Preview eligible history without importing it", "--agent codex|claude|cursor [--json]"),
 		leaf("list", "List existing import plans", "[--json]"),
 		leaf("status", "Inspect a selected import plan", "--plan ID [--json]"),
-		leaf("start", "Import selected sessions in batches", "--plan ID --sessions ID,ID [--batch-size N] [--json]"),
-		leaf("pause", "Pause an import plan", "--plan ID [--json]", "An in-flight model call or publication may finish; pause prevents new calls."),
-		leaf("resume", "Resume the plan and advance to its next batch", "--plan ID [--json]"),
+		leaf("start", "Import this folder’s sessions in automatic batches", "--agent codex|claude|cursor | --plan ID [--sessions ID,ID] [--batch-size N] [--json]"),
+		leaf("pause", "Pause an import plan", "--plan ID [--json]", "Stops this device’s import work; in-flight calls, publication and already shared tasks may finish."),
+		leaf("resume", "Resume a paused import plan", "--plan ID [--json]"),
 		leaf("retry", "Retry failed fixed inputs in a plan", "--plan ID [--json]"),
 		leaf("forget", "Remove local plan metadata", "--plan ID [--json]", "Only completed plans or unstarted previews can be removed. Published work and native Agent histories are preserved."),
-	}, Examples: []string{"coconet history preview --agent claude", "coconet history start --plan PLAN_ID --sessions SESSION_A,SESSION_B --batch-size 2"}}
+	}, Examples: []string{"coconet history start --agent claude", "coconet history start --plan PLAN_ID --sessions SESSION_A,SESSION_B --batch-size 2"}}
 	projection := Command{Name: "projection", Summary: "Inspect processing progress and retry a selected failure", Usage: "<status|retry> [options]", Options: []Option{json,
 		option("task", "ID", "", "retry: exact paused model or publication task"),
 		option("capture", "ID", "", "retry: exact paused capture event"),
@@ -92,14 +92,14 @@ func Runtime() Command {
 		leaf("export", "Archive the project graph and retained local content", "--file /absolute/archive.tar [options]", "Requires all retained content to be present and a new output file. Excludes credentials, unpublished tasks and private model archives."),
 		leaf("restore", "Restore a private replica archive", "--file /absolute/archive.tar [options]", "For a connected project, restores content against the current graph without rewinding it. An explicit new --root and --project can create a separate offline recovery store."),
 	}, Examples: []string{"coconet storage status", "coconet storage configure --max-mib 8192", "coconet storage export --file /absolute/project-backup.tar"}}
-	session := Command{Name: "session", Summary: "Read or continue a fixed source selected from the DAG", Usage: "<read|pull|resume> [options]", Options: append(append([]Option{}, fixed...),
+	session := Command{Name: "session", Summary: "Read or continue a fixed synchronized source", Usage: "<read|pull|resume> [options]", Options: append(append([]Option{}, fixed...),
 		option("project", "ID", "", "Required: expected project ID; must match this folder's connection"),
 		option("agent", "codex|claude|cursor", "", "Required for resume and invalid for read/pull; selects the target Agent"),
 		boolean("include-artifact", "read/pull: also materialize the native session artifact"), option("request-id", "ID", "", "resume only: generated if omitted; retry with the printed ID and all original arguments")),
-		Notes: []string{"Select --node, --session and --version together from the current DAG. Withdrawn or unavailable sources are rejected, never silently replaced."}, Children: []Command{
-			leaf("read", "Print compact conversation JSONL", "--project ID --node ID --session ID --version N [--include-artifact]"),
-			leaf("pull", "Return local source paths and metadata as JSON", "--project ID --node ID --session ID --version N [--include-artifact]"),
-			leaf("resume", "Create a separate native continuation; equivalent to fork", "--project ID --node ID --session ID --version N --agent codex|claude|cursor [--request-id ID]"),
+		Notes: []string{"Select --session and --version from graph, Library or search results. Include --node when selecting a node. A synchronized source can be read or continued before a node exists; withdrawn sources need an explicit Library reference. Sources are never silently replaced."}, Children: []Command{
+			leaf("read", "Print compact conversation JSONL", "--project ID [--node ID] --session ID --version N [--include-artifact]"),
+			leaf("pull", "Return local source paths and metadata as JSON", "--project ID [--node ID] --session ID --version N [--include-artifact]"),
+			leaf("resume", "Create a separate native continuation; equivalent to fork", "--project ID [--node ID] --session ID --version N --agent codex|claude|cursor [--request-id ID]"),
 		}}
 	library := Command{Name: "library", Summary: "List or update collected fixed session sources", Usage: "<list|add|remove> [options]", Options: append(append([]Option{}, fixed...), request,
 		option("note", "TEXT", "", "add: optional collection purpose; preserve it when retrying the request"),
@@ -107,8 +107,8 @@ func Runtime() Command {
 		leaf("list", "List collected sources", "[--limit N] [--cursor CURSOR] [--json]"),
 		leaf("add", "Collect a node's fixed session source", "--node ID --session ID --version N [--request-id ID] [--note TEXT] [--json]"),
 		leaf("remove", "Remove a source from the collection", "--node ID --session ID --version N [--request-id ID] [--json]"),
-	}, Notes: []string{"Run in a connected folder. Collection updates are shared with the Dashboard star state."}}
-	fork := Command{Name: "fork", Summary: "Create an independent native session from a selected source", Usage: "--agent codex|claude|cursor --node ID --session ID --version N [options]", Options: append(append([]Option{}, fixed...), option("agent", "codex|claude|cursor", "", "Required: target Agent; Codex, Claude and Cursor sources support cross-Agent text continuation"), request, json), Notes: []string{"Run in a connected folder. Uses retained local source content, preserves the original history and prints a native continuation command. Same-Agent Fork preserves native history; cross-Agent Fork imports user/assistant text, excluding tools, reasoning and media. Publication can finish later in the background."}, Examples: []string{"coconet fork --agent claude --node NODE_ID --session SESSION_ID --version 3"}}
+	}, Notes: []string{"Run in a connected folder. Members can collect any accessible node. Collection fixes its source independently of the author node and shares state with Dashboard stars. Removal uses the saved Library source, which may differ from the current node."}}
+	fork := Command{Name: "fork", Summary: "Create an independent native session from a selected source", Usage: "--agent codex|claude|cursor [--node ID] --session ID --version N [options]", Options: append(append([]Option{}, fixed...), option("agent", "codex|claude|cursor", "", "Required: target Agent; Codex, Claude and Cursor sources support cross-Agent text continuation"), request, json), Notes: []string{"Run in a connected folder. Uses retained local source content, preserves the original history and prints a native continuation command. Same-Agent Fork preserves native history; cross-Agent Fork imports user/assistant text, excluding tools, reasoning and media. Publication can finish later in the background."}, Examples: []string{"coconet fork --agent claude --node NODE_ID --session SESSION_ID --version 3"}}
 	account := Command{Name: "account", Summary: "Inspect or replace your account key", Usage: "<key|reset-key> [--server URL]", Options: []Option{server}, Children: []Command{
 		leaf("key", "Print the stored account key", "[--server URL]", "Output contains a credential. Keep it private."),
 		leaf("reset-key", "Replace the account key", "[--server URL]", "Signs out other devices and browser sessions. If interrupted, repeat the command to complete the same reset."),

@@ -124,8 +124,8 @@ func (h *serverHandler) handleWorkspaceReport(w http.ResponseWriter, r *http.Req
 		h.methodNotAllowed(w, requestID, http.MethodPut)
 		return
 	}
-	if !h.limiter.allow("workspace.report", actor.AccountID, 60, time.Minute) {
-		h.writeError(w, requestID, rateLimitError())
+	if err := h.limiter.check("workspace.report", actor.AccountID); err != nil {
+		h.writeError(w, requestID, err)
 		return
 	}
 	var input contracts.WorkspaceReport

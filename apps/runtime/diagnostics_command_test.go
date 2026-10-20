@@ -11,9 +11,30 @@ import (
 	"testing"
 	"time"
 
+	"github.com/xfey/coconet/packages/contracts"
 	"github.com/xfey/coconet/packages/graphstore"
 	"github.com/xfey/coconet/packages/localdag"
 )
+
+func TestDiagnosticMetadataDoesNotExportPendingRecoveryInput(t *testing.T) {
+	_, store := diagnosticStoreFixture(t)
+	defer store.Close()
+	if err := store.Begin(graphstore.Run{ID: "pending", TaskID: "pending", ProjectID: "project", Kind: "stage", Status: "running", Input: json.RawMessage(`{}`), RecoveryInput: &contracts.ProcessingSpec{Payload: json.RawMessage(`{"secret":"fixed private input"}`)}}); err != nil {
+		t.Fatal(err)
+	}
+	result, err := localDiagnostics(store, "diagnostics-export", localDAGClientOptions{Project: "project", Task: "pending"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, _ := json.Marshal(result)
+	if bytes.Contains(data, []byte("fixed private input")) {
+		t.Fatal("metadata export included recovery input")
+	}
+	run, err := store.Run("project", "pending")
+	if err != nil || run.RecoveryInput == nil {
+		t.Fatal("export removed durable recovery state", err)
+	}
+}
 
 func diagnosticStoreFixture(t *testing.T) (string, *graphstore.Store) {
 	t.Helper()

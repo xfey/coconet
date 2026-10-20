@@ -3,6 +3,7 @@ package localdag
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/xfey/coconet/packages/contracts"
 	"github.com/xfey/coconet/packages/graphstore"
@@ -21,6 +22,9 @@ type taskInput struct {
 }
 
 func fixedProcessingInput(state workgraph.State, task graphstore.Task, input prepared) (contracts.ProcessingSpec, error) {
+	if err := validateInput(input); err != nil {
+		return contracts.ProcessingSpec{}, err
+	}
 	input.Execution = nil
 	capsule := taskInput{Schema: 1, Kind: task.Kind, Expanded: task.Expanded, Prepared: input}
 	if task.Kind == "relations" {
@@ -31,7 +35,7 @@ func fixedProcessingInput(state workgraph.State, task graphstore.Task, input pre
 		return contracts.ProcessingSpec{}, err
 	}
 	if len(data) > contracts.MaxProcessingInputBytes {
-		return contracts.ProcessingSpec{}, errors.New("fixed task input exceeds shared processing limit")
+		return contracts.ProcessingSpec{}, fmt.Errorf("complete task package requires %d bytes; limit is %d bytes; input was retained without calling the model", len(data), contracts.MaxProcessingInputBytes)
 	}
 	return contracts.ProcessingSpec{Key: task.ID, Kind: task.Kind, Owner: state.Sessions[input.Source.SessionID].Owner, SessionID: input.Source.SessionID, Version: input.Source.Version, NodeID: task.NodeID, NodeRevision: input.NodeRevision, Payload: data, SHA256: graphstore.ObjectDigest(data)}, nil
 }
@@ -45,6 +49,9 @@ func readProcessingInput(t contracts.ProcessingTask) (taskInput, error) {
 		return value, err
 	}
 	p := value.Prepared
+	if err := validateInput(p); err != nil {
+		return value, err
+	}
 	if value.Schema != 1 || value.Kind != t.Spec.Kind || p.Execution != nil || p.Source.SessionID != t.Spec.SessionID || p.Source.Version != t.Spec.Version || p.NodeRevision != t.Spec.NodeRevision || p.Audit.Through < p.Audit.From || p.Anchors == nil {
 		return value, errors.New("shared processing input metadata differs")
 	}
@@ -58,6 +65,49 @@ func readProcessingInput(t contracts.ProcessingTask) (taskInput, error) {
 		return value, errors.New("shared processing template requires a compatible client version")
 	}
 	return value, nil
+}
+
+const maxModelRequestBytes = 512 << 10
+
+func validateInput(input prepared) error {
+	if !input.Complete || input.Audit.Omitted != 0 || input.Audit.Truncated != 0 || input.Audit.CandidateOmitted != 0 {
+		return errors.New("incomplete task input; no model call or partial result is allowed")
+	}
+	size := len(input.Request.System) + len(input.Request.Input) + len(input.Request.Schema)
+	if size > maxModelRequestBytes {
+		return fmt.Errorf("complete model request requires %d bytes; limit is %d bytes (512 KiB), covering turns %d–%d and %d candidates; no text was truncated or sent to the model", size, maxModelRequestBytes, input.Audit.From+1, input.Audit.Through, input.Audit.CandidateCount)
+	}
+	return nil
+}
+
+func (e *Engine) waitInput(task graphstore.Task, state workgraph.State, cause error) error {
+	task.Status, task.NextAt, task.Error = "paused", "", cause.Error()
+	if task.Kind == "relations" {
+		task.ContextBasis = relationContextBasis(state, task.NodeID)
+	}
+	if err := e.Store.PutTask(task); err != nil {
+		return err
+	}
+	return cause
+}
+
+// Context expansion may add background, never just repeat the same request
+// under a larger size tier. An unchanged insufficient input waits for evidence.
+func (e *Engine) contextRetry(state workgraph.State, task graphstore.Task, input prepared) string {
+	if task.Expanded {
+		return "paused"
+	}
+	var expanded prepared
+	var err error
+	if task.Kind == "stage" {
+		expanded, err = prepareStage(e.Store, state, input.Source, true)
+	} else {
+		expanded, err = prepareRelations(e.Store, state, task.NodeID, true)
+	}
+	if err != nil || len(expanded.Anchors) <= len(input.Anchors) {
+		return "paused"
+	}
+	return "queued"
 }
 
 func processingBaselineCurrent(state workgraph.State, t contracts.ProcessingTask, value taskInput) bool {

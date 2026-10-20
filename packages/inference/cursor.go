@@ -54,41 +54,30 @@ func (r Local) cursor(ctx context.Context, work string, request Request) (Respon
 			// bounded diagnostic locally; never include its contents in errors.
 			failure = out.String()
 		}
-		return response, fmt.Errorf("Cursor inference failed (%s): %w", cursorFailure(failure+"\n"+diagnostic.String()), err)
+		classification := cursorFailure(failure + "\n" + diagnostic.String())
+		return response, providerFailure(classification, fmt.Errorf("Cursor inference failed (%s): %w", classification, err))
 	}
 	if parseErr != nil {
 		return response, errors.New("Cursor returned an invalid result envelope; update Cursor CLI and retry")
 	}
 	if result.IsError || result.Subtype != "success" {
-		return response, fmt.Errorf("Cursor did not complete inference (%s)", cursorFailure(result.Result))
+		classification := cursorFailure(result.Result)
+		return response, providerFailure(classification, fmt.Errorf("Cursor did not complete inference (%s)", classification))
 	}
-	response.Text = unwrapCursorJSON(result.Result)
+	response.Text = result.Result
 	if strings.TrimSpace(response.Text) == "" {
 		return response, errors.New("Cursor returned no final output")
 	}
 	return response, nil
 }
 
-// Cursor's JSON output mode structures the CLI envelope, not the model's result.
-// Accept a single complete JSON code block without searching through prose or
-// repairing its contents. The DAG still applies its full response schema.
-// Visible keeps the original envelope for diagnosis and replay.
-func unwrapCursorJSON(raw string) string {
-	text := strings.TrimSpace(raw)
-	header, body, ok := strings.Cut(text, "\n")
-	if !ok || (strings.TrimSpace(header) != "```json" && strings.TrimSpace(header) != "```") || !strings.HasSuffix(body, "```") {
-		return raw
-	}
-	body = strings.TrimSpace(strings.TrimSuffix(body, "```"))
-	if !json.Valid([]byte(body)) {
-		return raw
-	}
-	return body
-}
-
 func cursorFailure(message string) string {
 	m := strings.ToLower(message)
 	switch {
+	case strings.Contains(m, "context length") || strings.Contains(m, "context window") || strings.Contains(m, "prompt is too long"):
+		return "context_capacity_exceeded: the source model cannot accept the complete request; no content was truncated"
+	case strings.Contains(m, "connection reset") || strings.Contains(m, "connection refused") || strings.Contains(m, "network error") || strings.Contains(m, "503") || strings.Contains(m, "502"):
+		return "transient_network: provider connection is temporarily unavailable; Coconet will retry automatically"
 	case strings.Contains(m, "authentication") || strings.Contains(m, "unauthenticated") || strings.Contains(m, "401"):
 		return "authentication_required: sign in with the same Cursor installation, then retry paused Coconet tasks"
 	case strings.Contains(m, "usage limit") || strings.Contains(m, "free requests limit") || strings.Contains(m, "included_usage") || strings.Contains(m, "quota exceeded") || strings.Contains(m, "spending limit") || strings.Contains(m, "spend limit"):

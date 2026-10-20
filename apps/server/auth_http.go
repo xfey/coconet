@@ -3,7 +3,6 @@ package main
 import (
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/xfey/coconet/packages/contracts"
 )
@@ -35,12 +34,8 @@ func (h *serverHandler) handleAuthAPI(w http.ResponseWriter, r *http.Request, re
 		h.writeError(w, requestID, forbidden("login_origin_invalid", "same-origin request required"))
 		return
 	}
-	limit := 20
-	if r.URL.Path == "/v1/auth/token" {
-		limit = 120
-	}
-	if !h.limiter.allow("auth"+r.URL.Path, h.addressResolver.resolve(r), limit, time.Minute) {
-		h.writeError(w, requestID, rateLimitError())
+	if err := h.limiter.check("auth"+r.URL.Path, h.addressResolver.resolve(r)); err != nil {
+		h.writeError(w, requestID, err)
 		return
 	}
 	switch r.URL.Path {
@@ -111,12 +106,12 @@ func (h *serverHandler) handleDashboardAccount(w http.ResponseWriter, r *http.Re
 			h.writeError(w, requestID, invalid("invalid_authorization", "invalid authorization decision"))
 			return true
 		}
-		limit, category := 30, "auth.decision"
+		category := "auth.decision"
 		if input.Approve == nil && !input.ChooseDirectory {
-			limit, category = 120, "auth.preview"
+			category = "auth.preview"
 		}
-		if !h.limiter.allow(category, actor.AccountID, limit, time.Minute) {
-			h.writeError(w, requestID, rateLimitError())
+		if err := h.limiter.check(category, actor.AccountID); err != nil {
+			h.writeError(w, requestID, err)
 			return true
 		}
 		result, err := h.authority.decideDeviceAuthorization(actor, input)

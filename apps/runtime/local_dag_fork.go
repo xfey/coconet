@@ -80,8 +80,8 @@ func localForkDirectory(root string) (string, error) {
 // This local operation reuses the tested native Adapters. Relay never runs an
 // Agent, restores a workspace or writes a user's native history.
 func forkLocalDAG(ctx context.Context, root string, engine *localdag.Engine, request localNativeForkRequest, configured adapters.ForkAdapter) (result localNativeForkResult, failure error) {
-	if utf8.RuneCountInString(request.RequestID) < 8 || utf8.RuneCountInString(request.RequestID) > 200 || request.ProjectID == "" || request.NodeID == "" || request.Source.SessionID == "" || request.Source.Version < 1 || !contracts.ValidAgent(request.Agent) || !filepath.IsAbs(request.CWD) || !filepath.IsAbs(request.ConfigRoot) {
-		return result, errors.New("native Fork requires a stable request_id, exact node source and current Agent workspace")
+	if utf8.RuneCountInString(request.RequestID) < 8 || utf8.RuneCountInString(request.RequestID) > 200 || request.ProjectID == "" || request.Source.SessionID == "" || request.Source.Version < 1 || !contracts.ValidAgent(request.Agent) || !filepath.IsAbs(request.CWD) || !filepath.IsAbs(request.ConfigRoot) {
+		return result, errors.New("native Fork requires a stable request_id, exact source and current Agent workspace")
 	}
 	config, err := loadLocalDAGService(root)
 	if err != nil {
@@ -140,6 +140,13 @@ func forkLocalDAG(ctx context.Context, root string, engine *localdag.Engine, req
 	}
 	defer releaseLock()
 	key := workgraph.Digest([]string{request.ProjectID, engine.Actor, request.RequestID})
+	completed, err := forkReceiptDirectory(directory)
+	if err != nil {
+		return result, err
+	}
+	if saved, found, err := readForkReceipt(completed, key, request); err != nil || found {
+		return saved, err
+	}
 	attemptDirectory := filepath.Join(directory, key)
 	if info, err := os.Lstat(attemptDirectory); err == nil {
 		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
@@ -148,13 +155,6 @@ func forkLocalDAG(ctx context.Context, root string, engine *localdag.Engine, req
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return result, err
 	} else {
-		entries, err := os.ReadDir(directory)
-		if err != nil {
-			return result, err
-		}
-		if len(entries) >= 4097 {
-			return result, errors.New("native Fork request archive reached its 4096-operation limit")
-		}
 		if err := os.Mkdir(attemptDirectory, 0700); err != nil {
 			return result, err
 		}
@@ -167,7 +167,7 @@ func forkLocalDAG(ctx context.Context, root string, engine *localdag.Engine, req
 			return result, errors.New("Fork request_id already selects different source, Agent or workspace")
 		}
 		if attempt.Result != nil {
-			return *attempt.Result, nil
+			return *attempt.Result, completeForkReceipt(directory, key, request, *attempt.Result)
 		}
 	} else if !errors.Is(readErr, os.ErrNotExist) {
 		return result, readErr
@@ -197,6 +197,9 @@ func forkLocalDAG(ctx context.Context, root string, engine *localdag.Engine, req
 		if failure == nil {
 			attempt.Result = &result
 			failure = atomicWriteJSON(selectionPath, attempt, 0600)
+			if failure == nil {
+				failure = completeForkReceipt(directory, key, request, result)
+			}
 		}
 	}()
 	if errors.Is(readErr, os.ErrNotExist) {
@@ -204,8 +207,8 @@ func forkLocalDAG(ctx context.Context, root string, engine *localdag.Engine, req
 		if err != nil {
 			return result, err
 		}
-		node, ok := state.Nodes[request.NodeID]
-		if !ok || node.Source != request.Source {
+		_, selectErr := workgraph.SelectNode(state, request.NodeID, &request.Source)
+		if selectErr != nil {
 			return result, localdag.ErrSelectionChanged
 		}
 		snapshot, ok := state.Snapshots[request.Source.Key()]
@@ -242,10 +245,6 @@ func forkLocalDAG(ctx context.Context, root string, engine *localdag.Engine, req
 	}
 	if attempt.TransferFormat != "" && attempt.TransferFormat != adapters.TextImportFormat || attempt.Snapshot.Source != request.Source || (attempt.Snapshot.Agent != string(request.Agent)) != (attempt.TransferFormat == adapters.TextImportFormat) {
 		return result, errors.New("fixed Fork source metadata differs")
-	}
-	before, err := captureGitSnapshot(ctx, request.CWD)
-	if err != nil {
-		return result, fmt.Errorf("verify Fork workspace: %w", err)
 	}
 	var child adapters.ForkResult
 	var textRequest adapters.TextImportRequest
@@ -320,13 +319,6 @@ func forkLocalDAG(ctx context.Context, root string, engine *localdag.Engine, req
 	if err != nil {
 		return result, err
 	}
-	after, err := captureGitSnapshot(ctx, cwd)
-	if err != nil {
-		return result, err
-	}
-	if before.Fingerprint != after.Fingerprint {
-		return result, errors.New("workspace changed during native Fork; inspect the current files before retrying")
-	}
 	resume := adapter.ResumeCommand(child.NativeSessionID)
 	profileVariable := "CODEX_HOME"
 	if request.Agent == contracts.AgentClaude {
@@ -388,11 +380,14 @@ func localForkCacheRoots(root string, store *graphstore.Store) (graphstore.Cache
 	if err != nil {
 		return roots, err
 	}
-	if len(entries) > 4097 {
-		return roots, errors.New("native Fork archive exceeds its entry limit")
-	}
 	for _, entry := range entries {
 		if entry.Name() == "operations.lock" {
+			continue
+		}
+		if entry.Name() == "completed" {
+			if !entry.IsDir() || entry.Type()&os.ModeSymlink != 0 {
+				return roots, errors.New("invalid completed Fork directory")
+			}
 			continue
 		}
 		if len(entry.Name()) != 64 || !entry.IsDir() || entry.Type()&os.ModeSymlink != 0 {
@@ -410,6 +405,9 @@ func localForkCacheRoots(root string, store *graphstore.Store) (graphstore.Cache
 			return roots, errors.New("invalid native Fork request")
 		}
 		if attempt.Result != nil {
+			if err := completeForkReceipt(directory, entry.Name(), attempt.Request, *attempt.Result); err != nil {
+				return roots, err
+			}
 			continue
 		}
 		if attempt.TransferFormat == adapters.TextImportFormat {

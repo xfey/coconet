@@ -40,7 +40,7 @@ type localHistoryRequest struct {
 type localHistoryItem struct {
 	Session   contracts.DiscoveredSession `json:"session"`
 	SessionID string                      `json:"session_id"`
-	Status    string                      `json:"status"` // selected, captured, complete, failed
+	Status    string                      `json:"status"` // selected, captured, complete, failed, skipped
 	Source    *workgraph.Source           `json:"source,omitempty"`
 	Error     string                      `json:"error,omitempty"`
 }
@@ -143,7 +143,7 @@ func readHistoryPlans(root string) ([]localHistoryPlan, error) {
 		if err := decodeStrict(data, &plan); err != nil {
 			return nil, err
 		}
-		if plan.Schema != 1 || plan.ID+".json" != entry.Name() || plan.ProjectID == "" || plan.Actor == "" || len(plan.Candidates) > maxHistoryCandidates || len(plan.Items) > 50 || plan.UsedCalls < 0 || plan.MaxCalls < 0 || (plan.MaxCalls > 0 && plan.MaxCalls < plan.UsedCalls) || plan.MaxCalls > 10000 || plan.BatchThrough < 0 || plan.BatchThrough > len(plan.Items) || !slices.Contains([]string{"preview", "running", "paused", "failed", "configuration_wait", "budget_wait", "batch_wait", "complete"}, plan.Status) {
+		if plan.Schema != 1 || plan.ID+".json" != entry.Name() || plan.ProjectID == "" || plan.Actor == "" || len(plan.Candidates) > maxHistoryCandidates || len(plan.Items) > maxHistoryCandidates || plan.UsedCalls < 0 || plan.MaxCalls < 0 || (plan.MaxCalls > 0 && plan.MaxCalls < plan.UsedCalls) || plan.MaxCalls > 10000 || plan.BatchThrough < 0 || plan.BatchThrough > len(plan.Items) || !slices.Contains([]string{"preview", "running", "paused", "failed", "configuration_wait", "budget_wait", "batch_wait", "complete"}, plan.Status) {
 			return nil, errors.New("invalid history plan")
 		}
 		if plan.Status != "preview" && (len(plan.Items) == 0 || plan.BatchSize < 1 || plan.BatchSize > 20 || plan.BatchThrough < 1) {
@@ -152,7 +152,7 @@ func readHistoryPlans(root string) ([]localHistoryPlan, error) {
 		seen := map[string]bool{}
 		for _, item := range plan.Items {
 			id := localdag.ObservationSessionID(plan.ProjectID, plan.Actor, string(plan.Agent), item.Session.NativeSessionID)
-			if item.SessionID != id || seen[id] || !slices.Contains([]string{"selected", "captured", "complete", "failed"}, item.Status) || item.Source != nil && (item.Source.SessionID != id || item.Source.Version != 1) || (item.Status == "captured" || item.Status == "complete") && item.Source == nil {
+			if item.SessionID != id || seen[id] || !slices.Contains([]string{"selected", "captured", "complete", "failed", "skipped"}, item.Status) || item.Source != nil && (item.Source.SessionID != id || item.Source.Version != 1) || (item.Status == "captured" || item.Status == "complete") && item.Source == nil {
 				return nil, errors.New("invalid imported session identity or phase")
 			}
 			seen[id] = true
@@ -205,7 +205,9 @@ func historyItemEvent(root string, plan localHistoryPlan, item localHistoryItem)
 }
 
 func historyOwnsSession(plan localHistoryPlan, session string) bool {
-	return slices.ContainsFunc(plan.Items, func(item localHistoryItem) bool { return item.SessionID == session && item.Status != "complete" })
+	return slices.ContainsFunc(plan.Items, func(item localHistoryItem) bool {
+		return item.SessionID == session && item.Status != "complete" && item.Status != "skipped"
+	})
 }
 
 func localHistoryBlocksCapture(ctx context.Context, root string, engine *localdag.Engine, request localDAGObservationRequest) (bool, error) {
@@ -220,8 +222,13 @@ func localHistoryBlocksCapture(ctx context.Context, root string, engine *localda
 	}
 	session := localdag.ObservationSessionID(request.ProjectID, engine.Actor, string(request.Agent), request.NativeID)
 	for _, plan := range plans {
-		if plan.ProjectID == request.ProjectID && historyOwnsSession(plan, session) {
-			return true, nil
+		if plan.ProjectID != request.ProjectID {
+			continue
+		}
+		for _, item := range plan.Items {
+			if item.SessionID == session && item.Source == nil && item.Status == "selected" {
+				return true, nil
+			}
 		}
 	}
 	return false, nil
@@ -251,6 +258,20 @@ func historyAdapter(agent contracts.AgentType, profile string) (adapters.Adapter
 }
 
 func localHistoryAction(ctx context.Context, root string, engine *localdag.Engine, project, action string, request localHistoryRequest, adapter adapters.Adapter) (any, error) {
+	// A single start imports the current connected folder; preview and an exact
+	// selection remain optional. Discovery does not scan other folders.
+	if action == "history-start" && request.PlanID == "" {
+		value, err := localHistoryAction(ctx, root, engine, project, "history-preview", request, adapter)
+		if err != nil {
+			return nil, err
+		}
+		request.PlanID = value.(localHistoryPlan).ID
+		return localHistoryAction(ctx, root, engine, project, action, request, adapter)
+	}
+	if request.BatchSize == 0 {
+		request.BatchSize = 5
+	}
+
 	// Capture, selection and cache collection share this order. Selection cannot
 	// race an ordinary Hook into publishing the same native Session first.
 	unlockInbox, err := acquireLocalFileLock(ctx, filepath.Join(root, "inbox-processing.lock"))
@@ -285,9 +306,6 @@ func localHistoryAction(ctx context.Context, root string, engine *localdag.Engin
 		}
 		if len(plans) >= maxHistoryPlans {
 			return nil, errors.New("history plan capacity reached; forget completed plans or unused previews")
-		}
-		if config.Provider == "" || config.Model == "" {
-			return nil, errors.New("configure a local provider and model before previewing history")
 		}
 		workspace, pathErr := canonicalPath(request.Root)
 		if pathErr != nil || !slices.ContainsFunc(config.Workspaces, func(w localDAGWorkspace) bool { return w.ProjectID == project && samePath(w.Path, workspace) }) {
@@ -338,7 +356,7 @@ func localHistoryAction(ctx context.Context, root string, engine *localdag.Engin
 		if len(available) > maxHistoryCandidates {
 			available = available[:maxHistoryCandidates]
 		}
-		plan := localHistoryPlan{Schema: 1, ID: workgraph.Digest([]string{project, engine.Actor, newRequestID()}), ProjectID: project, Actor: engine.Actor, Root: workspace, ConfigRoot: profile, Agent: request.Agent, CreatedAt: time.Now().UTC().Format(time.RFC3339Nano), Provider: config.Provider, Model: config.Model, Configuration: historyConfiguration(config), DailyLimit: config.MaxCalls, Status: "preview", Candidates: available, Items: []localHistoryItem{}, ScopeNote: fmt.Sprintf("Metadata only; showing %d of %d discovered, not-yet-captured sessions. No model call or transcript read. Start selects at most 50; each is captured once at processing time, without reconstructing past versions. Selected conversations use their source Agent and its default model.", len(available), count)}
+		plan := localHistoryPlan{Schema: 1, ID: workgraph.Digest([]string{project, engine.Actor, newRequestID()}), ProjectID: project, Actor: engine.Actor, Root: workspace, ConfigRoot: profile, Agent: request.Agent, CreatedAt: time.Now().UTC().Format(time.RFC3339Nano), Provider: config.Provider, Model: config.Model, Configuration: historyConfiguration(config), DailyLimit: config.MaxCalls, Status: "preview", Candidates: available, Items: []localHistoryItem{}, ScopeNote: fmt.Sprintf("Metadata only; showing %d of %d discovered, not-yet-captured sessions. No model call or transcript read. Start imports these sessions in automatic batches; each is captured once at processing time, without reconstructing past versions. Selected conversations use their source Agent and its default model.", len(available), count)}
 		if partial {
 			plan.ScopeNote += " Native discovery reached its limit; this is a partial inventory."
 		}
@@ -362,7 +380,7 @@ func localHistoryAction(ctx context.Context, root string, engine *localdag.Engin
 		for _, item := range plan.Items {
 			selected = append(selected, item.Session.NativeSessionID)
 		}
-		if slices.Equal(selected, request.Sessions) && plan.MaxCalls == request.MaxCalls && plan.BatchSize == request.BatchSize {
+		if (len(request.Sessions) == 0 || slices.Equal(selected, request.Sessions)) && plan.MaxCalls == request.MaxCalls && plan.BatchSize == request.BatchSize {
 			return plan, nil
 		}
 		return nil, errors.New("history plan already started with a different selection")
@@ -401,13 +419,21 @@ func localHistoryAction(ctx context.Context, root string, engine *localdag.Engin
 		if err != nil {
 			return nil, err
 		}
-		if plan.Configuration != historyConfiguration(config) || config.PauseReason != "" {
+		if (plan.MaxCalls > 0 || request.MaxCalls > 0) && plan.Configuration != historyConfiguration(config) || config.PauseReason != "" {
 			return nil, errors.New("restore the previewed inference configuration and sign-in before continuing history")
 		}
 		switch action {
 		case "history-start":
-			if plan.Status != "preview" || len(request.Sessions) == 0 || len(request.Sessions) > 50 || request.MaxCalls < 0 || request.MaxCalls > 100 || request.BatchSize < 1 || request.BatchSize > 20 {
-				return nil, errors.New("start requires an unused preview, 1–50 selected IDs, a batch size of 1–20")
+			if len(request.Sessions) == 0 {
+				for _, candidate := range plan.Candidates {
+					request.Sessions = append(request.Sessions, candidate.NativeSessionID)
+				}
+			}
+			if len(request.Sessions) == 0 {
+				return nil, errors.New("no uncaptured sessions found in this connected folder")
+			}
+			if plan.Status != "preview" || len(request.Sessions) == 0 || len(request.Sessions) > maxHistoryCandidates || request.MaxCalls < 0 || request.MaxCalls > 100 || request.BatchSize < 1 || request.BatchSize > 20 {
+				return nil, errors.New("start requires 1–100 discovered sessions and a batch size of 1–20")
 			}
 			state, err := engine.Store.State(project)
 			if err != nil {
@@ -456,6 +482,15 @@ func localHistoryAction(ctx context.Context, root string, engine *localdag.Engin
 						continue
 					}
 					item.Status, item.Error = "selected", ""
+					path, event, err := historyItemEvent(root, plan, *item)
+					if err != nil {
+						return nil, err
+					}
+					event.Paused, event.Attempts, event.NextAt, event.Error = false, 0, "", ""
+					event.FailedFiles, event.FailedRevision = nil, ""
+					if err := atomicWriteJSON(path, event, 0600); err != nil {
+						return nil, err
+					}
 					if item.Source != nil {
 						item.Status = "captured"
 					}
@@ -522,19 +557,28 @@ func localHistoryTaskContext(root string, engine *localdag.Engine) func(context.
 			if plan.ProjectID != task.ProjectID || !historyOwnsSession(plan, session) {
 				continue
 			}
+			if !slices.ContainsFunc(plan.Items, func(item localHistoryItem) bool { return historyOwnsTask(item, task, state) }) {
+				continue
+			}
 			config, err := loadLocalDAGService(root)
 			if err != nil {
 				return ctx, false, err
 			}
-			if plan.Actor != engine.Actor || !historyEngineMatches(engine, config) || plan.Configuration != historyConfiguration(config) || plan.Status != "running" || (plan.MaxCalls > 0 && plan.UsedCalls >= plan.MaxCalls) {
+			if plan.Actor != engine.Actor || plan.MaxCalls > 0 && (!historyEngineMatches(engine, config) || plan.Configuration != historyConfiguration(config)) || plan.Status != "running" || (plan.MaxCalls > 0 && plan.UsedCalls >= plan.MaxCalls) {
 				return ctx, false, nil
 			}
 			for i, item := range plan.Items {
 				if item.SessionID == session {
+					if !historyOwnsTask(item, task, state) {
+						return ctx, true, nil
+					}
 					if i >= plan.BatchThrough || item.Status != "captured" {
 						return ctx, false, nil
 					}
-					return context.WithValue(localdag.PrivateProcessing(ctx), historyCallKey{}, historyCallReservation{root, plan.ID, session}), true, nil
+					if plan.MaxCalls > 0 {
+						ctx = localdag.PrivateProcessing(ctx)
+					}
+					return context.WithValue(ctx, historyCallKey{}, historyCallReservation{root, plan.ID, session}), true, nil
 				}
 			}
 		}
@@ -571,8 +615,22 @@ func reserveHistoryCall(ctx context.Context) error {
 	return errors.New("history model reservation lost its plan")
 }
 
-// Make one bounded capture per pass. Accepted input, queued model tasks and
-// publication receipts survive independently; model work runs on its own loop.
+// Only the imported baseline belongs to the plan. Later native updates use the
+// ordinary queue, even while baseline relations are still being resolved.
+func historyOwnsTask(item localHistoryItem, task graphstore.Task, state workgraph.State) bool {
+	if item.Source == nil || item.Status == "complete" {
+		return false
+	}
+	source := task.Source
+	if source == nil {
+		node := state.Nodes[task.NodeID]
+		source = &node.Source
+	}
+	return source.SessionID == item.SessionID && source.Version <= item.Source.Version
+}
+
+// Capture one source per pass; batches bound intake rather than requiring a
+// user to approve each continuation. Other sessions proceed past failed items.
 func tickLocalHistory(ctx context.Context, root string, engine *localdag.Engine) error {
 	unlockInbox, err := acquireLocalFileLock(ctx, filepath.Join(root, "inbox-processing.lock"))
 	if err != nil {
@@ -588,29 +646,20 @@ func tickLocalHistory(ctx context.Context, root string, engine *localdag.Engine)
 	if err != nil {
 		return err
 	}
-planLoop:
 	for _, plan := range plans {
-		if plan.Status != "running" && plan.Status != "budget_wait" {
+		if plan.Status == "preview" || plan.Status == "paused" || plan.Status == "complete" {
 			continue
-		}
-		before := workgraph.Digest(plan)
-		persist := func() error {
-			if workgraph.Digest(plan) == before {
-				return nil
-			}
-			return saveHistoryPlan(root, plan)
 		}
 		config, err := loadLocalDAGService(root)
 		if err != nil {
 			return err
 		}
-		if plan.Configuration != historyConfiguration(config) || config.PauseReason != "" {
+		if plan.MaxCalls > 0 && plan.Configuration != historyConfiguration(config) || config.PauseReason != "" || localDAGIsConnectedRoot(root) && !slices.ContainsFunc(config.Workspaces, func(w localDAGWorkspace) bool { return w.ProjectID == plan.ProjectID && samePath(w.Path, plan.Root) }) {
 			plan.Status = "configuration_wait"
-			return saveHistoryPlan(root, plan)
-		}
-		if localDAGIsConnectedRoot(root) && !slices.ContainsFunc(config.Workspaces, func(w localDAGWorkspace) bool { return w.ProjectID == plan.ProjectID && samePath(w.Path, plan.Root) }) {
-			plan.Status = "configuration_wait"
-			return saveHistoryPlan(root, plan)
+			if err := saveHistoryPlan(root, plan); err != nil {
+				return err
+			}
+			continue
 		}
 		state, err := engine.Store.State(plan.ProjectID)
 		if err != nil {
@@ -620,72 +669,87 @@ planLoop:
 		if err != nil {
 			return err
 		}
-		for i := range plan.Items {
-			if i >= plan.BatchThrough {
-				break
-			}
+		plan.Status = "running"
+		for i := 0; i < plan.BatchThrough; i++ {
 			item := &plan.Items[i]
-			if item.Status == "complete" {
+			if item.Status == "complete" || item.Status == "skipped" {
 				continue
 			}
-			if item.Status == "captured" {
-				for _, task := range tasks {
-					if historyTaskSession(task, state) == item.SessionID && task.Status == "paused" {
-						item.Status, item.Error, plan.Status = "failed", task.Error, "failed"
-						return saveHistoryPlan(root, plan)
-					}
+			// A live Hook may have recovered a previously failed initial capture.
+			if item.Source == nil && state.Sessions[item.SessionID].Latest > 0 {
+				first := workgraph.Source{SessionID: item.SessionID, Version: 1}
+				if _, ok := state.Snapshots[first.Key()]; ok {
+					item.Source, item.Status, item.Error = &first, "captured", ""
 				}
-				pending := slices.ContainsFunc(tasks, func(t graphstore.Task) bool { return historyTaskSession(t, state) == item.SessionID })
-				relations := false
-				for _, node := range state.Nodes {
-					if node.Source.SessionID == item.SessionID && node.Relations != "ready" {
-						relations = true
-					}
-				}
-				if item.Source != nil && state.Sessions[item.SessionID].ProcessedThrough >= item.Source.Version && !pending && !relations {
-					item.Status = "complete"
-					continue
-				}
-				if plan.MaxCalls > 0 && plan.UsedCalls >= plan.MaxCalls {
-					plan.Status = "budget_wait"
-				}
-				if err := persist(); err != nil {
-					return err
-				}
-				continue planLoop
 			}
-			if item.Status == "failed" {
-				plan.Status = "failed"
-				return saveHistoryPlan(root, plan)
+			if item.Source != nil {
+				pending, paused := false, false
+				for _, task := range tasks {
+					if !historyOwnsTask(*item, task, state) {
+						continue
+					}
+					pending = true
+					if task.Status == "paused" {
+						paused = true
+						item.Error = task.Error
+					}
+				}
+				switch {
+				case paused:
+					item.Status = "failed"
+				case !pending && state.Sessions[item.SessionID].ProcessedThrough >= item.Source.Version:
+					item.Status, item.Error = "complete", ""
+				default:
+					item.Status, item.Error = "captured", ""
+				}
+				continue
 			}
 			if plan.MaxCalls > 0 && plan.UsedCalls >= plan.MaxCalls {
 				plan.Status = "budget_wait"
-				if err := persist(); err != nil {
-					return err
-				}
-				continue planLoop
+				continue
 			}
 			path, event, err := historyItemEvent(root, plan, *item)
 			if err != nil {
 				return err
 			}
+			ready, changed := event.captureReady(time.Now())
+			if !ready {
+				if changed {
+					if err := atomicWriteJSON(path, event, 0600); err != nil {
+						return err
+					}
+				}
+				continue
+			}
 			if err := atomicWriteJSON(path, event, 0600); err != nil {
 				return err
 			}
 			err = traceLocalDAGInbox(ctx, root, engine, path, &event)
-			if err != nil {
-				item.Status, item.Error, plan.Status = "failed", err.Error(), "failed"
-				if len(item.Error) > 4000 {
-					item.Error = item.Error[:4000]
+			if errors.Is(err, errEmptyNativeSession) {
+				item.Status, item.Error = "skipped", ""
+				err = nil
+			} else if err != nil {
+				event.captureFailed(err, time.Now())
+				item.Status, item.Error = "failed", event.Error
+				if saveErr := atomicWriteJSON(path, event, 0600); saveErr != nil {
+					return saveErr
 				}
 			} else {
-				item.Status, item.Source = "captured", event.Source
+				item.Status, item.Source, item.Error = "captured", event.Source, ""
 			}
 			return errors.Join(err, saveHistoryPlan(root, plan))
 		}
-		plan.Status = "complete"
-		if plan.BatchThrough < len(plan.Items) {
-			plan.Status = "batch_wait"
+		if plan.BatchThrough < len(plan.Items) && !slices.ContainsFunc(plan.Items[:plan.BatchThrough], func(i localHistoryItem) bool { return i.Status == "selected" }) {
+			plan.BatchThrough = min(plan.BatchThrough+plan.BatchSize, len(plan.Items))
+		}
+		if slices.ContainsFunc(plan.Items, func(i localHistoryItem) bool { return i.Status == "selected" || i.Status == "captured" }) {
+			if plan.MaxCalls > 0 && plan.UsedCalls >= plan.MaxCalls {
+				plan.Status = "budget_wait"
+			}
+		} else if slices.ContainsFunc(plan.Items, func(i localHistoryItem) bool { return i.Status == "failed" }) {
+			plan.Status = "failed"
+		} else {
+			plan.Status = "complete"
 		}
 		if err := saveHistoryPlan(root, plan); err != nil {
 			return err
@@ -734,7 +798,7 @@ func localHistoryCacheRoots(ctx context.Context, root string, store *graphstore.
 	roots := graphstore.CacheRoots{}
 	for _, plan := range plans {
 		for _, item := range plan.Items {
-			if item.Status == "complete" {
+			if item.Status == "complete" || item.Status == "skipped" {
 				continue
 			}
 			_, event, err := historyItemEvent(root, plan, item)

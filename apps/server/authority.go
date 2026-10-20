@@ -6,26 +6,24 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"net/mail"
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/xfey/coconet/packages/contracts"
 	"github.com/xfey/coconet/packages/projectlink"
 )
 
-const (
-	maxProjectsPerAccount      = 20
-	maxActiveMembersPerProject = 50
-)
-
 type authorityError struct {
-	HTTPStatus int
-	Status     contracts.Status
-	Code       string
-	Message    string
-	Retryable  bool
+	HTTPStatus        int
+	Status            contracts.Status
+	Code              string
+	Message           string
+	Retryable         bool
+	RetryAfterSeconds int
 }
 
 func (e *authorityError) Error() string { return e.Message }
@@ -46,10 +44,11 @@ type authority struct {
 	store     *store
 	artifacts artifactStore
 	now       func() time.Time
+	limits    deploymentLimits
 }
 
 func newAuthority(store *store, artifacts ...artifactStore) *authority {
-	result := &authority{store: store, now: time.Now}
+	result := &authority{store: store, now: time.Now, limits: defaultDeploymentLimits()}
 	if len(artifacts) > 0 {
 		result.artifacts = artifacts[0]
 	}
@@ -117,9 +116,14 @@ func (a *authority) authenticate(token string) (contracts.Account, error) {
 	return account, err
 }
 
+func validProjectName(value string) bool {
+	value = strings.TrimSpace(value)
+	return value != "" && utf8.ValidString(value) && utf8.RuneCountInString(value) <= 120
+}
+
 func (a *authority) createProject(actor contracts.Account, request contracts.CreateProjectRequest) (contracts.ProjectAccess, error) {
 	name := strings.TrimSpace(request.Name)
-	if name == "" || len(name) > 120 {
+	if !validProjectName(name) {
 		return contracts.ProjectAccess{}, invalid("invalid_project_name", "project name must contain 1 to 120 characters")
 	}
 	if err := validateRequestID(request.RequestID); err != nil {
@@ -140,8 +144,8 @@ func (a *authority) createProject(actor contracts.Account, request contracts.Cre
 				projectCount++
 			}
 		}
-		if projectCount >= maxProjectsPerAccount {
-			return conflict("project_limit_reached", "Account active Project limit was reached")
+		if projectCount >= a.limits.ProjectsPerAccount {
+			return conflict("project_limit_reached", fmt.Sprintf("this server allows %d active projects per creator; archive unused projects or ask the administrator to adjust COCONET_MAX_PROJECTS_PER_ACCOUNT", a.limits.ProjectsPerAccount))
 		}
 		var projectID string
 		for attempt := 0; attempt < 8; attempt++ {
@@ -243,8 +247,8 @@ func (a *authority) joinProjectInState(state *databaseState, actor contracts.Acc
 			activeMembers++
 		}
 	}
-	if activeMembers >= maxActiveMembersPerProject {
-		return contracts.Membership{}, conflict("project_member_limit_reached", "Project active member limit was reached")
+	if activeMembers >= a.limits.MembersPerProject {
+		return contracts.Membership{}, conflict("project_member_limit_reached", fmt.Sprintf("this server allows %d active members per project; ask the administrator to adjust COCONET_MAX_MEMBERS_PER_PROJECT", a.limits.MembersPerProject))
 	}
 	timestamp := a.timestamp()
 	createdAt := timestamp

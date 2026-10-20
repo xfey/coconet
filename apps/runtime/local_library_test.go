@@ -96,7 +96,7 @@ func TestManagedLibraryMCPAndCLIUseFixedLocalTransaction(t *testing.T) {
 		t.Fatal("CLI removal retry failed", stderr.String(), out.String())
 	}
 	state, _ = store.State("project")
-	if len(state.Library) != 0 || state.Nodes["node"].State != "sealed" || state.Nodes["node"].Source != source {
+	if len(state.Library) != 0 || state.Nodes["node"].State != "current" || state.Nodes["node"].Source != source {
 		t.Fatal("Library removal changed preserved work")
 	}
 	if _, err := os.Stat(filepath.Join(root, "materialized")); !os.IsNotExist(err) {

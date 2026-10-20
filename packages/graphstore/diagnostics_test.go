@@ -2,11 +2,12 @@ package graphstore
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/xfey/coconet/packages/workgraph"
 )
 
 func TestDiagnosticRetentionKeepsAuditAndExplicitlyMarksPrunedContent(t *testing.T) {
@@ -62,26 +63,44 @@ func TestDiagnosticRetentionKeepsAuditAndExplicitlyMarksPrunedContent(t *testing
 		t.Fatal("foreign run read")
 	}
 }
-func TestDiagnosticQuotaReservesResponseBeforeInferenceAndSurvivesRestart(t *testing.T) {
+func TestDiagnosticBudgetDegradesDetailsWithoutBlockingDurableWork(t *testing.T) {
 	root := t.TempDir()
 	s, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { s.Close() }()
-	if err := s.SetDiagnosticPolicy(DiagnosticPolicy{Days: 7, MaxBytes: 80 << 20}); err != nil {
+	if err := s.SetDiagnosticPolicy(DiagnosticPolicy{Days: 7, MaxBytes: 32 << 20}); err != nil {
 		t.Fatal(err)
 	}
+	stamp := time.Now().UTC().Format(time.RFC3339Nano)
 	begin := func(id string) error {
-		return s.Begin(Run{ID: id, TaskID: id, ProjectID: "p", Kind: "stage", Status: "running", StartedAt: time.Now().UTC().Format(time.RFC3339Nano), Input: json.RawMessage(`{}`)})
+		return s.Begin(Run{ID: id, TaskID: id, ProjectID: "p", Kind: "stage", Status: "running", StartedAt: stamp, Input: json.RawMessage(`{"prompt":"original"}`), Protected: []workgraph.Source{{SessionID: "source", Version: 1}}})
 	}
-	for i := 0; i < 3; i++ {
-		if err := begin(fmt.Sprint(i)); err != nil {
+	// Fill the diagnostic budget with explicitly pinned completed archives.
+	for i := range 2 {
+		id := fmt.Sprint(i)
+		if err := begin(id); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.PinRun("p", id, true); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.SaveResponse(id, strings.Repeat("\x00", 3<<20), nil); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.Finish(id, "completed", "", stamp); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := begin("over-cap"); !errors.Is(err, ErrDiagnosticQuota) {
-		t.Fatal("unreserved model attempt allowed", err)
+	if err := begin("over-budget"); err != nil {
+		t.Fatal("diagnostics blocked work", err)
+	}
+	if err := s.SaveResponse("over-budget", "valid result", json.RawMessage(`{"tokens":9}`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Finish("over-budget", "ready", "", stamp); err != nil {
+		t.Fatal(err)
 	}
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
@@ -90,34 +109,22 @@ func TestDiagnosticQuotaReservesResponseBeforeInferenceAndSurvivesRestart(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := begin("after-restart"); !errors.Is(err, ErrDiagnosticQuota) {
-		t.Fatal("restart lost reservations", err)
+	run, err := s.Run("p", "over-budget")
+	if err != nil || run.Status != "ready" || run.Archive == nil || run.Archive.InputSHA256 != ObjectDigest([]byte(`{"prompt":"original"}`)) || run.Archive.OutputSHA256 != ObjectDigest([]byte("valid result")) || len(run.Protected) != 1 || run.Output != "" || run.ArchiveReserved != 0 {
+		t.Fatalf("lost minimal recovery state: %+v %v", run, err)
 	}
-	// A task that already reserved space can save its maximum bounded output.
-	if err := s.SaveResponse("0", strings.Repeat("\x00", 4<<20), nil); err != nil {
-		t.Fatal("reserved output could not be archived", err)
+	protected, err := s.ProtectedSources("p")
+	if err != nil || !protected[workgraph.Source{SessionID: "source", Version: 1}.Key()] {
+		t.Fatal("lost active source root", protected, err)
 	}
-	if err := s.Finish("0", "completed", "", time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+	if err := begin("after-restart"); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.PinRun("p", "0", true); err != nil {
+	if err := s.Finish("over-budget", "superseded", "", stamp); err != nil {
 		t.Fatal(err)
-	}
-	if err := begin("still-full"); !errors.Is(err, ErrDiagnosticQuota) {
-		t.Fatal("pinned archive evicted", err)
-	}
-	if err := s.PinRun("p", "0", false); err != nil {
-		t.Fatal(err)
-	}
-	if err := begin("after-pruning"); err != nil {
-		t.Fatal(err)
-	}
-	run, err := s.Run("p", "0")
-	if err != nil || run.Archive == nil {
-		t.Fatal("byte pressure did not evict eligible content", err)
 	}
 	usage, err := s.DiagnosticUsage()
-	if err != nil || usage.Bytes+usage.Reserved > usage.Policy.MaxBytes || usage.Pruned != 1 {
+	if err != nil || usage.Reserved != 0 || usage.Pinned != 2 || usage.Pruned != 2 {
 		t.Fatal(usage, err)
 	}
 }

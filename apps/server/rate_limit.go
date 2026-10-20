@@ -38,8 +38,12 @@ func newRequestLimiter() *requestLimiter {
 }
 
 func (limiter *requestLimiter) allow(scope, key string, limit int, window time.Duration) bool {
+	return limiter.reserve(scope, key, limit, window) == 0
+}
+
+func (limiter *requestLimiter) reserve(scope, key string, limit int, window time.Duration) time.Duration {
 	if limiter == nil || limit <= 0 || window <= 0 {
-		return true
+		return 0
 	}
 	limiter.mu.Lock()
 	defer limiter.mu.Unlock()
@@ -53,17 +57,23 @@ func (limiter *requestLimiter) allow(scope, key string, limit int, window time.D
 	current, exists := limiter.windows[windowKey]
 	if !exists {
 		if len(limiter.windows) >= maxRateLimitKeys {
-			return false
+			wait := window
+			for _, existing := range limiter.windows {
+				if remaining := existing.expires.Sub(now); remaining < wait {
+					wait = remaining
+				}
+			}
+			return wait
 		}
 		limiter.windows[windowKey] = rateWindow{expires: now.Add(window), count: 1}
-		return true
+		return 0
 	}
 	if current.count >= limit {
-		return false
+		return current.expires.Sub(now)
 	}
 	current.count++
 	limiter.windows[windowKey] = current
-	return true
+	return 0
 }
 
 func clientAddress(request *http.Request) string {
@@ -127,7 +137,7 @@ func (resolver clientAddressResolver) trusted(address net.IP) bool {
 	return false
 }
 
-func rateLimitError() error {
+func rateLimitError() *authorityError {
 	return &authorityError{
 		HTTPStatus: http.StatusTooManyRequests, Status: contracts.StatusUnavailable,
 		Code: "rate_limit_exceeded", Message: "request rate limit was reached", Retryable: true,

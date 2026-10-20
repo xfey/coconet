@@ -190,3 +190,32 @@ test('editable rewind checkpoint projects restored and protected tail states', a
     await assert.rejects(publishedGraph(page, 'p'));
   }
 });
+
+test('Library displays its saved version independently of live progress and rewind', async () => {
+  const state = fixture();
+  state.library.n = 'saved by a colleague';
+  state.library_sources = { n: { ...state.nodes.n, state: 'sealed', relations: 'ready', parents: [] } };
+  state.nodes.n = { ...state.nodes.n, objective: 'Updated author progress', source: { session_id: 's', version: 2 } };
+  state.sessions.s.processed_through = 2;
+  state.snapshots['s/2'] = { session_id: 's', version: 2, owner: 'a.d' };
+  const wrap = () => {
+    const response = envelope(state);
+    response.relay.checkpoint.checkpoint.codec = 'coconet-state-json-v4';
+    response.relay.checkpoint.anchor.commit.codec = 'coconet-json-v6';
+    return response;
+  };
+  let graph = await publishedGraph(wrap(), 'p');
+  assert.equal(graph.nodes[0].source.version, 2);
+  assert.equal(graph.nodes[0].library.source.version, 1);
+  assert.equal(graph.library[0].source.version, 1);
+  assert.notEqual(graph.library[0].objective, graph.nodes[0].objective);
+  assert.match(publishedSessionActions('p', graph.library[0])[1].text, /"version": 1/);
+  delete state.nodes.n;
+  state.snapshots['s/1'].superseded = true;
+  graph = await publishedGraph(wrap(), 'p');
+  assert.equal(graph.nodes.length, 0);
+  assert.equal(graph.library.length, 1);
+  await assert.rejects(publishedGraph(envelope(state), 'p'), 'old codec must not declare new semantics');
+  state.library_sources.n.source.version = 99;
+  await assert.rejects(publishedGraph(wrap(), 'p'));
+});

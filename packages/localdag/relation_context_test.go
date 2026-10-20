@@ -30,14 +30,14 @@ func TestUnresolvedRelationsPublishSharedStateAndWakeForLateCandidates(t *testin
 		t.Fatal("missing context was not shared, or consumed evidence")
 	}
 	job := task(t, e, "relations", "")
-	if !job.Expanded || job.Status != "queued" || job.RunID != "" {
+	if !job.Expanded || job.Status != "paused" || job.RunID != "" {
 		t.Fatal("publication lost bounded continuation", job)
 	}
 	if err := e.RecoverLocal(context.Background(), "project"); err != nil {
 		t.Fatal(err)
 	}
 	job = task(t, e, "relations", "")
-	if !job.Expanded || job.Status != "queued" {
+	if !job.Expanded || job.Status != "paused" {
 		t.Fatal("recovery reset continuation")
 	}
 	e.Publisher = nil

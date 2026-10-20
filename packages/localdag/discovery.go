@@ -31,7 +31,8 @@ type WorkNode struct {
 }
 
 type LibraryNote struct {
-	Note string `json:"note"`
+	Note   string           `json:"note"`
+	Source workgraph.Source `json:"source"`
 }
 
 type SessionWork struct {
@@ -92,7 +93,8 @@ func projectGraphWithHistory(state workgraph.State, includeWithdrawn bool) Graph
 		sort.Strings(value.Parents)
 		sort.Strings(value.Children)
 		if note, ok := state.Library[node.ID]; ok {
-			value.Library = &LibraryNote{Note: note}
+			pinned, _ := workgraph.LibraryNode(state, node.ID)
+			value.Library = &LibraryNote{Note: note, Source: pinned.Source}
 		}
 		if node.Relations != "ready" {
 			view.Coverage.RelationsPending++
@@ -136,8 +138,8 @@ type SearchView struct {
 // Search combines accepted node text with locally indexed compact conversations.
 // It performs no download or inference and reports exact index coverage.
 func (e *Engine) Search(project string, query WorkSearch) (SearchView, error) {
-	if len(strings.Fields(query.Query)) > 64 || strings.TrimSpace(query.Query) == "" || utf8.RuneCountInString(query.Query) > 4000 || query.Limit < 0 || query.Limit > 20 {
-		return SearchView{}, errors.New("search requires 1–4000 characters, at most 64 terms and a limit of 1–20")
+	if len(strings.Fields(query.Query)) > 64 || strings.TrimSpace(query.Query) == "" || utf8.RuneCountInString(query.Query) > 4000 || query.Limit < 0 || query.Limit > 100 {
+		return SearchView{}, errors.New("search requires 1–4000 characters, at most 64 terms and a limit of 1–100")
 	}
 	if query.Limit == 0 {
 		query.Limit = 10
@@ -183,8 +185,8 @@ func (e *Engine) Search(project string, query WorkSearch) (SearchView, error) {
 		}
 		return a.ID < b.ID
 	})
-	scope := workgraph.Digest([]any{project, query.Query, index.Instance, index.Generation})
-	cursor, err := readDiscoveryCursor(query.Cursor, graph.Revision, scope)
+	scope := workgraph.Digest([]any{project, query.Query, "search"})
+	cursor, err := readDiscoveryCursor(query.Cursor, scope)
 	if err != nil {
 		return SearchView{}, err
 	}
@@ -192,16 +194,21 @@ func (e *Engine) Search(project string, query WorkSearch) (SearchView, error) {
 		return SearchView{}, errors.New("cursor offset is unavailable; restart this search without a cursor")
 	}
 	total := len(result.Nodes)
+	nodeBasis := workgraph.Digest(result.Nodes)
 	result.Nodes = result.Nodes[cursor.Nodes:min(total, cursor.Nodes+query.Limit)]
 	body, err := e.Store.SearchContent(ctx, state, query.Query, cursor.Sessions, query.Limit-len(result.Nodes), index)
 	if err != nil {
+		return SearchView{}, err
+	}
+	basis := workgraph.Digest([]string{nodeBasis, body.Basis})
+	if err := validateDiscoveryBasis(cursor, basis); err != nil {
 		return SearchView{}, err
 	}
 	result.ContentMatches = body.Matches
 	for {
 		result.Coverage.Truncated = cursor.Nodes > 0 || cursor.Sessions > 0 || cursor.Nodes+len(result.Nodes) < total || body.More
 		if cursor.Nodes+len(result.Nodes) < total || body.More {
-			result.NextCursor = nextDiscoveryCursor(discoveryCursor{graph.Revision, scope, cursor.Nodes + len(result.Nodes), cursor.Sessions + len(result.ContentMatches)})
+			result.NextCursor = nextDiscoveryCursor(discoveryCursor{basis, scope, cursor.Nodes + len(result.Nodes), cursor.Sessions + len(result.ContentMatches)})
 		} else {
 			result.NextCursor = ""
 		}

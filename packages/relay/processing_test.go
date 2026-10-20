@@ -132,7 +132,7 @@ func TestProcessingFailuresShareBudgetAndExplicitRetry(t *testing.T) {
 	}
 }
 
-func TestRepeatedOwnerFailuresReserveAnAttemptForALaterPeer(t *testing.T) {
+func TestSharedAttemptsDoNotAddAPerDeviceHardStop(t *testing.T) {
 	s := fixture(t)
 	now := time.Now()
 	s.now = func() time.Time { return now }
@@ -147,13 +147,20 @@ func TestRepeatedOwnerFailuresReserveAnAttemptForALaterPeer(t *testing.T) {
 		}
 		now = now.Add(2 * time.Minute)
 	}
-	if _, err := s.ActProcessing("project", "alice", task.ID, processingAction("a", "claim", "")); !errors.Is(err, contracts.ErrProcessingYielded) {
-		t.Fatal("owner consumed every handoff opportunity", err)
+	last, err := s.ActProcessing("project", "alice", task.ID, processingAction("a", "claim", ""))
+	if err != nil || last.Attempts != 3 {
+		t.Fatal("same device cannot use shared third attempt", err)
+	}
+	if _, err = s.ActProcessing("project", "alice", task.ID, processingAction("a", "fail", last.Lease)); err != nil {
+		t.Fatal(err)
 	}
 	now = now.Add(time.Hour)
-	peer, err := s.ActProcessing("project", "bob", task.ID, processingAction("b", "claim", ""))
-	if err != nil || peer.Attempts != 3 {
-		t.Fatal("later peer cannot take over", err)
+	if _, err = s.ActProcessing("project", "bob", task.ID, processingAction("b", "claim", "")); !errors.Is(err, contracts.ErrProcessingPaused) {
+		t.Fatal("global retry limit not enforced", err)
+	}
+	ready, err := s.ActProcessing("project", "alice", task.ID, processingAction("a", "claim_result", ""))
+	if err != nil || ready.Attempts != 3 {
+		t.Fatal("completed result was counted as another model attempt", ready, err)
 	}
 }
 

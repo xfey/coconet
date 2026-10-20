@@ -21,8 +21,8 @@ func runNativeForkCommand(ctx context.Context, args []string, stdout, stderr io.
 	version := flags.Int("version", 0, "selected fixed version")
 	request := flags.String("request-id", "", "stable request ID; retry with all original arguments")
 	asJSON := flags.Bool("json", false, "write structured native Fork result")
-	if flags.Parse(args) != nil || flags.NArg() != 0 || !contracts.ValidAgent(contracts.AgentType(*agent)) || *node == "" || *session == "" || *version < 1 {
-		fmt.Fprintln(stderr, "usage: coconet fork --agent codex|claude|cursor --node ID --session ID --version N [--request-id ID] [--json]")
+	if flags.Parse(args) != nil || flags.NArg() != 0 || !contracts.ValidAgent(contracts.AgentType(*agent)) || *session == "" || *version < 1 {
+		fmt.Fprintln(stderr, "usage: coconet fork --agent codex|claude|cursor [--node ID] --session ID --version N [--request-id ID] [--json]")
 		return 2
 	}
 	project, managed, err := resolveLocalMCPProject()

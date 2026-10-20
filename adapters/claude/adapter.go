@@ -94,7 +94,8 @@ func (adapter Adapter) Discover(ctx context.Context, root string) ([]contracts.D
 	return filtered, nil
 }
 
-func (adapter Adapter) Observe(ctx context.Context, cwd, nativeSessionID string, checkpoint adapters.ObservationCheckpoint) (contracts.SessionObservation, adapters.ObservationCheckpoint, error) {
+func (adapter Adapter) Observe(ctx context.Context, cwd, nativeSessionID string, checkpoint adapters.ObservationCheckpoint) (result contracts.SessionObservation, next adapters.ObservationCheckpoint, failure error) {
+	defer adapters.TrackCaptureFailure(&failure, []string{adapter.TranscriptPath})()
 	content, err := adapter.runHelper(ctx, helperRequest{Action: "observe", TranscriptPath: adapter.TranscriptPath, NativeSessionID: nativeSessionID, CWD: cwd, ConfigRoot: adapter.ConfigRoot, ClientVersion: adapter.ClientVersion, AdapterVersion: adapterVersion})
 	if err != nil {
 		return contracts.SessionObservation{}, adapters.ObservationCheckpoint{}, err

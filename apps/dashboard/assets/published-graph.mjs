@@ -27,11 +27,13 @@ export async function publishedGraph(response, project) {
   if (page.checkpoint === null) return empty;
   if (!record(page.checkpoint)) fail();
   const receipt = page.checkpoint, cp = receipt.checkpoint, anchor = receipt.anchor;
-  if (receipt.schema_version !== 1 || receipt.project_id !== project || cp?.schema_version !== 1 || !['coconet-state-json-v1', 'coconet-state-json-v2', 'coconet-state-json-v3'].includes(cp.codec) || !integer(cp.revision) || cp.revision < 1 || cp.revision > page.head || anchor?.schema_version !== 1 || anchor.project_id !== project || anchor.revision !== cp.revision || anchor.commit?.schema_version !== 1 || !['coconet-json-v2', 'coconet-json-v3', 'coconet-json-v4', 'coconet-json-v5'].includes(anchor.commit.codec) || anchor.commit.base + 1 !== cp.revision || anchor.commit.id !== cp.commit_id || anchor.commit.state_sha256 !== cp.sha256) fail();
+  if (receipt.schema_version !== 1 || receipt.project_id !== project || cp?.schema_version !== 1 || !['coconet-state-json-v1', 'coconet-state-json-v2', 'coconet-state-json-v3', 'coconet-state-json-v4'].includes(cp.codec) || !integer(cp.revision) || cp.revision < 1 || cp.revision > page.head || anchor?.schema_version !== 1 || anchor.project_id !== project || anchor.revision !== cp.revision || anchor.commit?.schema_version !== 1 || !['coconet-json-v2', 'coconet-json-v3', 'coconet-json-v4', 'coconet-json-v5', 'coconet-json-v6'].includes(anchor.commit.codec) || anchor.commit.base + 1 !== cp.revision || anchor.commit.id !== cp.commit_id || anchor.commit.state_sha256 !== cp.sha256) fail();
   const [state, commit] = await Promise.all([verifiedJSON(cp.payload, cp.sha256, 16 << 20), verifiedJSON(anchor.commit.payload, anchor.commit.sha256, 1 << 20)]);
   if (!record(state) || !record(commit)) fail();
   if (commit.project_id !== project || commit.id !== cp.commit_id || commit.actor !== anchor.writer || commit.base + 1 !== cp.revision || state.schema !== 1 || state.project_id !== project || state.revision !== cp.revision || !['nodes', 'sessions', 'snapshots', 'library'].every(key => record(state[key]))) fail();
   if (JSON.stringify(commit.processing || null) !== JSON.stringify(anchor.commit.processing || null)) fail();
+  const pins = state.library_sources ?? {};
+  if (!record(pins) || Object.keys(pins).length && cp.codec !== 'coconet-state-json-v4' || commit.library?.pin && anchor.commit.codec !== 'coconet-json-v6') fail();
   const result = { ...empty, revision: cp.revision, warning: cp.revision < page.head ? 'published_graph_behind' : '', writer: receipt.writer, accepted_at: receipt.accepted_at };
   const sourceExists = source => validID(source?.session_id) && integer(source.version) && source.version > 0 && own(state.snapshots, `${source.session_id}/${source.version}`);
   for (const [id, session] of Object.entries(state.sessions)) {
@@ -40,7 +42,7 @@ export async function publishedGraph(response, project) {
     if (session.processed_through < session.latest) result.pending++;
     result.sessions.push({ id, owner: session.owner, items: session.items, objective: own(state.nodes, session.tail || '') && record(state.nodes[session.tail]) ? state.nodes[session.tail].objective : '' });
   }
-  for (const [id, node] of Object.entries(state.nodes)) {
+  function projectNode(id, node, pinned = false) {
     if (!record(node)) fail();
     if (!validID(id) || node.id !== id || !sourceExists(node.source) || !own(state.sessions, node.source.session_id) || typeof node.objective !== 'string' || !node.objective.trim() || node.objective.length > 1200 || ['summary', 'approach'].some(key => node[key] !== undefined && (typeof node[key] !== 'string' || node[key].length > 8000)) || !['current', 'sealed', 'withdrawn'].includes(node.state) || !['pending', 'needs_context', 'ready'].includes(node.relations) || !Array.isArray(node.parents) || !Number.isFinite(Date.parse(node.updated_at))) fail();
     const session = state.sessions[node.source.session_id];
@@ -55,15 +57,23 @@ export async function publishedGraph(response, project) {
       if (parent.state !== 'sealed' || edge.source.session_id !== parent.source.session_id || edge.source.version !== parent.source.version) fail();
     }
     if (node.state === 'withdrawn' && (!own(state.library, id) || node.parents.length)) fail();
-    if (node.state !== 'withdrawn' && snapshot.superseded) fail();
-    if (node.state !== 'withdrawn' && node.relations !== 'ready') result.relations++;
+    if (pinned && (!own(state.library, id) || node.state !== 'sealed' || node.relations !== 'ready' || node.parents.length || node.checkpoint != null)) fail();
+    if (!pinned && node.state !== 'withdrawn' && snapshot.superseded) fail();
     const ownerAccount = session.owner.split('.')[0];
-    result.nodes.push({ id, objective: node.objective, summary: node.summary || '', approach: node.approach || '', source: node.source, revision: node.revision, state: node.state, agent: session.agent, relations: node.relations, parents: node.parents.map(edge => edge.parent), author: { account_id: ownerAccount, display_name: typeof response.authors?.[ownerAccount] === 'string' ? response.authors[ownerAccount] : (session.agent || ownerAccount) }, owner: session.owner, work_time: { end: node.updated_at }, ...(own(state.library, id) ? { library: { note: state.library[id] } } : {}) });
+    return { id, objective: node.objective, summary: node.summary || '', approach: node.approach || '', source: node.source, revision: node.revision, state: node.state, agent: session.agent, relations: node.relations, parents: node.parents.map(edge => edge.parent), author: { account_id: ownerAccount, display_name: typeof response.authors?.[ownerAccount] === 'string' ? response.authors[ownerAccount] : (session.agent || ownerAccount) }, owner: session.owner, work_time: { end: node.updated_at }, ...(own(state.library, id) ? { library: { note: state.library[id], source: own(pins, id) ? pins[id]?.source : node.source } } : {}) };
   }
-  for (const [id, note] of Object.entries(state.library)) { if (!own(state.nodes, id) || typeof note !== 'string' || note.length > 8000) fail(); }
+  for (const [id, node] of Object.entries(state.nodes)) {
+    result.nodes.push(projectNode(id, node));
+    if (node.state !== 'withdrawn' && node.relations !== 'ready') result.relations++;
+  }
+  for (const [id, pin] of Object.entries(pins)) projectNode(id, pin, true);
+  for (const [id, note] of Object.entries(state.library)) {
+    if ((!own(pins, id) && !own(state.nodes, id)) || typeof note !== 'string' || note.length > 8000) fail();
+    result.library.push(own(pins, id) ? projectNode(id, pins[id], true) : projectNode(id, state.nodes[id]));
+  }
   try { graphStructure(result.nodes); } catch { fail(); }
   result.nodes.sort((a, b) => a.id.localeCompare(b.id));
-  result.library = result.nodes.filter(node => node.library);
+  result.library.sort((a, b) => a.id.localeCompare(b.id));
   result.nodes = result.nodes.filter(node => node.state !== 'withdrawn');
   // These are reading leads, never inferred completion of a Session's items.
   // Include references to any stage in the Session, not just its current tail.

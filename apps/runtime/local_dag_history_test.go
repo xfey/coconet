@@ -27,6 +27,9 @@ func (f historyModelFunc) Infer(ctx context.Context, r inference.Request) (infer
 
 func historyFixture(t *testing.T, names ...string) (string, *localdag.Engine, localHistoryPlan) {
 	t.Helper()
+	t.Setenv("COCONET_CODEX_COMMAND", "coconet-test-no-native-codex")
+	t.Setenv("COCONET_CLAUDE_COMMAND", "coconet-test-no-native-claude")
+	t.Setenv("COCONET_CURSOR_COMMAND", "coconet-test-no-native-cursor")
 	root, workspace, profile := t.TempDir(), t.TempDir(), t.TempDir()
 	workspace, _ = canonicalPath(workspace)
 	profile, _ = canonicalPath(profile)
@@ -139,8 +142,8 @@ func TestHistorySelectionBatchBudgetAndCompletion(t *testing.T) {
 	}
 	historyTick(t, root, engine)
 	plan = historyAction(t, root, engine, "status", localHistoryRequest{PlanID: plan.ID})
-	if plan.Status != "batch_wait" || plan.UsedCalls != 1 || plan.Items[0].Status != "complete" || plan.Items[1].Status != "selected" {
-		t.Fatalf("batch did not stop after first item: %+v", plan)
+	if plan.Status != "budget_wait" || plan.UsedCalls != 1 || plan.Items[0].Status != "complete" || plan.Items[1].Status != "selected" {
+		t.Fatalf("explicit call cap was not retained: %+v", plan)
 	}
 	if _, err := localHistoryAction(context.Background(), root, engine, "project", "history-resume", localHistoryRequest{PlanID: plan.ID}, nil); err == nil {
 		t.Fatal("resume reset spent budget")
@@ -183,15 +186,8 @@ func TestHistoryPauseRestartAndRelationsShareOnePersistentBudget(t *testing.T) {
 	if err := engine.Drain(context.Background(), "project", 5); err != nil || calls != 0 {
 		t.Fatal("paused history invoked model", err, calls)
 	}
-	if err := enqueueLocalDAGObservation(root, event.Request); err != nil {
-		t.Fatal(err)
-	}
-	if err := drainLocalDAGInbox(context.Background(), root, engine); err != nil {
-		t.Fatal(err)
-	}
-	queue, _ := localDAGInbox(root)
-	if len(queue) != 1 {
-		t.Fatal("new native history bypassed a paused import")
+	if blocked, err := localHistoryBlocksCapture(context.Background(), root, engine, event.Request); err != nil || blocked {
+		t.Fatal("a captured baseline must not block ongoing capture while inference is paused", err)
 	}
 	historyAction(t, root, engine, "resume", localHistoryRequest{PlanID: plan.ID})
 	if err := engine.Drain(context.Background(), "project", 5); err != nil || calls != 1 {
@@ -328,10 +324,10 @@ func TestHistoryInFlightPauseDoesNotSpendAnotherCallOrBlockUnrelatedWork(t *test
 	if plan.Status != "paused" || plan.UsedCalls != 1 {
 		t.Fatal("in-flight receipt changed the pause or quota")
 	}
-	// A later ordinary update of this native identity stays queued, while a
-	// different Session remains usable through the regular capture interface.
-	if _, err := captureLocalDAG(context.Background(), root, engine, localdag.Capture{ProjectID: "project", Agent: "codex", NativeID: "first"}); err == nil {
-		t.Fatal("direct capture bypassed import boundary")
+	// Pausing imported inference does not suspend capture of new conversation.
+	request := localDAGObservationRequest{ProjectID: plan.ProjectID, Agent: plan.Agent, NativeID: "first"}
+	if blocked, err := localHistoryBlocksCapture(context.Background(), root, engine, request); err != nil || blocked {
+		t.Fatal("captured baseline still blocks live input", err)
 	}
 	if _, err := captureLocalDAG(context.Background(), root, engine, localdag.Capture{ProjectID: "project", Agent: "codex", NativeID: "independent"}); err != nil {
 		t.Fatal("paused import blocked other work", err)
@@ -418,6 +414,99 @@ func TestHistorySelectionWithoutModelQuota(t *testing.T) {
 	historyTick(t, root, engine)
 	plan = historyAction(t, root, engine, "status", localHistoryRequest{PlanID: plan.ID})
 	if plan.Status != "complete" || plan.UsedCalls != 125 || plan.MaxCalls != 0 {
+		t.Fatal(plan)
+	}
+}
+
+func TestHistoryAutomaticallyAdvancesPastBadSourceWithoutBlockingLiveCapture(t *testing.T) {
+	root, engine, plan := historyFixture(t, "bad", "first", "second", "third", "fourth", "fifth", "sixth")
+	// No preview selection or call cap is required; the plan defaults to all
+	// discovered sessions in this connected folder.
+	plan = historyAction(t, root, engine, "start", localHistoryRequest{PlanID: plan.ID, BatchSize: 2})
+	for i := range plan.Items {
+		historyPrepared(t, root, engine, plan, i)
+	}
+	badPath, bad, err := historyItemEvent(root, plan, plan.Items[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	bad.Prepared, err = engine.Store.PutObject([]byte("{"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := atomicWriteJSON(badPath, bad, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := tickLocalHistory(context.Background(), root, engine); err == nil {
+		t.Fatal("bad fixed input accepted")
+	}
+	historyTick(t, root, engine)
+	plan = historyAction(t, root, engine, "status", localHistoryRequest{PlanID: plan.ID})
+	if plan.Items[1].Source == nil {
+		t.Fatal("bad source blocked unrelated capture")
+	}
+	path, event, err := historyItemEvent(root, plan, plan.Items[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = path
+	if blocked, err := localHistoryBlocksCapture(context.Background(), root, engine, event.Request); err != nil || blocked {
+		t.Fatal("baseline still blocks live capture", err)
+	}
+	data, err := engine.Store.Object(event.Prepared)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var observation localdag.Observation
+	if err := json.Unmarshal(data, &observation); err != nil {
+		t.Fatal(err)
+	}
+	turn := contracts.NormalizedTurn{TurnID: "new", Ordinal: 1, Role: "user", Kind: "message", Text: "继续补充测试。", ContentHash: adapters.Digest("继续补充测试。")}
+	observation.Normalized, _ = adapters.ApplyCheckpoint(append(observation.Normalized.Turns, turn), adapters.ObservationCheckpoint{})
+	observation.Visible.SourceCursor = observation.Normalized.ToCursor
+	observation.Visible.Turns = append(observation.Visible.Turns, contracts.VisibleTextTurn{TurnID: turn.TurnID, ContentHash: turn.ContentHash, Ranges: []contracts.TextRange{{Start: 0, End: len(turn.Text)}}})
+	source, err := engine.CaptureObservation(context.Background(), observation)
+	if err != nil || source.Version != 2 {
+		t.Fatal("live source was not queued after baseline", source, err)
+	}
+	calls := 0
+	engine.Runner = historyModelFunc(func(context.Context, inference.Request) (inference.Response, error) {
+		calls++
+		return inference.Response{Text: historyNoWork}, nil
+	})
+	for i := 0; i < 25; i++ {
+		historyTick(t, root, engine)
+		if err := engine.Drain(context.Background(), "project", 20); err != nil {
+			t.Fatal(err)
+		}
+	}
+	plan = historyAction(t, root, engine, "status", localHistoryRequest{PlanID: plan.ID})
+	if plan.Status != "failed" || plan.BatchThrough != 7 || plan.Items[0].Status != "failed" || calls != 7 {
+		t.Fatal("automatic intake stalled or repeated inference", plan, calls)
+	}
+	for _, item := range plan.Items[1:] {
+		if item.Status != "complete" {
+			t.Fatal(item)
+		}
+	}
+	state, _ := engine.Store.State("project")
+	if state.Sessions[source.SessionID].ProcessedThrough != 2 {
+		t.Fatal("live update not processed after baseline")
+	}
+	bad, _ = readLocalDAGInbox(badPath)
+	if bad.Attempts != 1 || !bad.Paused {
+		t.Fatal("fixed bad content was parsed repeatedly", bad)
+	}
+}
+
+func TestHistoryStartDiscoversCurrentFolderWithoutPreview(t *testing.T) {
+	root, engine, preview := historyFixture(t, "first", "second")
+	value, err := localHistoryAction(context.Background(), root, engine, "project", "history-start", localHistoryRequest{Agent: preview.Agent, Root: preview.Root, ConfigRoot: preview.ConfigRoot}, previewAdapter{agent: preview.Agent, sessions: preview.Candidates})
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan := value.(localHistoryPlan)
+	if plan.Status != "running" || len(plan.Items) != 2 || plan.MaxCalls != 0 || plan.BatchSize != 5 {
 		t.Fatal(plan)
 	}
 }

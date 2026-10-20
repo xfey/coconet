@@ -32,7 +32,8 @@ func rewriteConversation(state *State, snapshot Snapshot, at string) error {
 			for _, edge := range node.Parents {
 				released[edge.Parent] = true
 			}
-			if _, collected := state.Library[id]; collected {
+			_, fixedSeparately := state.LibrarySources[id]
+			if _, collected := state.Library[id]; collected && !fixedSeparately {
 				node.State, node.Parents, node.Relations = "withdrawn", []Edge{}, "ready"
 				node.RelationThrough = node.EndTurn
 				node.Revision++
@@ -104,7 +105,8 @@ func restoreEditableTails(state *State, candidates map[string]bool, incoming Sna
 		if !exists || node.State != "sealed" || pinned[id] {
 			continue
 		}
-		if _, collected := state.Library[id]; collected {
+		_, fixedSeparately := state.LibrarySources[id]
+		if _, collected := state.Library[id]; collected && !fixedSeparately {
 			continue
 		}
 		session := state.Sessions[node.Source.SessionID]
@@ -140,7 +142,7 @@ func ActiveSources(state State) map[string]bool {
 func ReadableSources(state State) map[string]bool {
 	readable := ActiveSources(state)
 	for id := range state.Library {
-		if node, ok := state.Nodes[id]; ok {
+		if node, ok := LibraryNode(state, id); ok {
 			readable[node.Source.Key()] = true
 		}
 	}

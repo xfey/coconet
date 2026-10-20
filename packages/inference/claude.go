@@ -35,7 +35,7 @@ func (r Local) claude(ctx context.Context, work string, request Request) (Respon
 	args := []string{"-p", "--output-format", "json",
 		"--system-prompt", request.System, "--json-schema", string(request.Schema),
 		"--tools", "", "--strict-mcp-config", "--mcp-config", `{"mcpServers":{}}`,
-		"--setting-sources", "user", "--settings", `{"disableAllHooks":true,"alwaysThinkingEnabled":false}`,
+		"--setting-sources", "user", "--settings", `{"disableAllHooks":true}`,
 		"--disable-slash-commands", "--no-session-persistence", "--permission-mode", "dontAsk"}
 	if r.Config.Model != "" {
 		args = append(args, "--model", r.Config.Model)
@@ -64,13 +64,15 @@ func (r Local) claude(ctx context.Context, work string, request Request) (Respon
 	if err != nil {
 		// Provider text and stderr may contain credentials. Only a fixed
 		// classification enters ordinary logs; the private receipt keeps detail.
-		return response, fmt.Errorf("claude process failed (%s): %w", claudeFailure(result.Result), err)
+		classification := claudeFailure(result.Result + "\n" + diagnostic.String())
+		return response, providerFailure(classification, fmt.Errorf("claude process failed (%s): %w", classification, err))
 	}
 	if parseErr != nil {
 		return response, errors.New("claude returned an invalid result envelope")
 	}
 	if result.Type != "result" || result.IsError || result.Subtype != "success" {
-		return response, fmt.Errorf("claude did not complete inference successfully (%s)", claudeFailure(result.Result))
+		classification := claudeFailure(result.Result)
+		return response, providerFailure(classification, fmt.Errorf("claude did not complete inference successfully (%s)", classification))
 	}
 	response.Text = result.Result
 	if len(result.Structured) > 0 && string(result.Structured) != "null" {
@@ -121,6 +123,10 @@ func decodeClaudeResult(output []byte) (claudeResult, error) {
 func claudeFailure(message string) string {
 	message = strings.ToLower(message)
 	switch {
+	case strings.Contains(message, "context length") || strings.Contains(message, "context window") || strings.Contains(message, "prompt is too long"):
+		return "context_capacity_exceeded: the source model cannot accept the complete request; no content was truncated"
+	case strings.Contains(message, "connection reset") || strings.Contains(message, "connection refused") || strings.Contains(message, "network error") || strings.Contains(message, "503") || strings.Contains(message, "502"):
+		return "transient_network: provider connection is temporarily unavailable; Coconet will retry automatically"
 	case strings.Contains(message, "thinking") && (strings.Contains(message, "not supported") || strings.Contains(message, "unsupported")):
 		return "thinking_configuration_rejected"
 	case strings.Contains(message, "401") || strings.Contains(message, "authentication"):

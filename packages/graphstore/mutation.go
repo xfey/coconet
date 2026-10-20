@@ -16,7 +16,6 @@ func (s *Store) QueueLibrary(run Run, task Task, commit workgraph.Commit) error 
 		return errors.New("invalid Library publication")
 	}
 	run.Implementation = currentBuildProvenance()
-	run.ArchiveReserved = diagnosticFinalReserve
 	release := s.PinContent()
 	defer release()
 	return s.db.Update(func(tx *bolt.Tx) error {

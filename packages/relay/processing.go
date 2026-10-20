@@ -182,24 +182,15 @@ func (s *Store) ActProcessing(project, account, id string, action contracts.Proc
 		}
 		active := task.Status == "running" && atTime(task.ClaimedUntil).After(s.now())
 		switch action.Operation {
-		case "claim":
+		case "claim", "claim_result":
 			if active {
 				if writer == task.Claimant && action.Lease != "" && action.Lease == task.Lease {
 					return nil
 				}
 				return contracts.ErrProcessingBusy
 			}
-			if task.Status == "paused" || task.Attempts >= 3 {
+			if action.Operation == "claim" && (task.Status == "paused" || task.Attempts >= 3) {
 				return contracts.ErrProcessingPaused
-			}
-			attemptsByWriter := 0
-			for _, actor := range task.AttemptedBy {
-				if actor == writer {
-					attemptsByWriter++
-				}
-			}
-			if attemptsByWriter >= 2 {
-				return contracts.ErrProcessingYielded
 			}
 			if task.Claimant == writer && atTime(task.RetryAfter).After(s.now()) {
 				return contracts.ErrProcessingBusy
@@ -222,8 +213,10 @@ func (s *Store) ActProcessing(project, account, id string, action contracts.Proc
 			}
 			task.Lease = hex.EncodeToString(nonce[:])
 			task.Claimant = writer
-			task.Attempts++
-			task.AttemptedBy = append(task.AttemptedBy, writer)
+			if action.Operation == "claim" {
+				task.Attempts++
+				task.AttemptedBy = append(task.AttemptedBy, writer)
+			}
 			task.Status = "running"
 			task.Error = ""
 			task.RetryAfter = ""
@@ -263,7 +256,7 @@ func (s *Store) ActProcessing(project, account, id string, action contracts.Proc
 				task.Lease = ""
 			case "defer":
 				task.Status = "queued"
-				task.Attempts--
+				task.Attempts = max(0, task.Attempts-1)
 				if i := slices.Index(task.AttemptedBy, writer); i >= 0 {
 					task.AttemptedBy = append(task.AttemptedBy[:i], task.AttemptedBy[i+1:]...)
 				}

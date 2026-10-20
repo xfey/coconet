@@ -128,7 +128,7 @@ func TestCursorInferenceIsolationAndFailures(t *testing.T) {
 
 func TestCursorJSONCodeBlockBoundary(t *testing.T) {
 	for _, raw := range []string{"```json\n{\"ok\":true}\n```", "```json\n{\"ok\":true}```", " \r\n```\r\n{\"ok\":true}\r\n``` \r\n"} {
-		if got := unwrapCursorJSON(raw); got != `{"ok":true}` {
+		if got := unwrapJSON(raw); got != `{"ok":true}` {
 			t.Fatalf("complete JSON block not decoded: %q", got)
 		}
 	}
@@ -137,7 +137,7 @@ func TestCursorJSONCodeBlockBoundary(t *testing.T) {
 		"```json\n{}\n```\n```json\n{}\n```", "```json\n{} {}\n```", "```json\n{\n```",
 		"```json\n{}", "```javascript\n{}\n```", "```json{} ```",
 	} {
-		if got := unwrapCursorJSON(raw); got != raw {
+		if got := unwrapJSON(raw); got != raw {
 			t.Fatalf("rewrote bare, ambiguous or malformed output: %q -> %q", raw, got)
 		}
 	}

@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/xfey/coconet/packages/agentplugin"
 	"github.com/xfey/coconet/packages/contracts"
@@ -26,6 +25,7 @@ func TestAutomaticInferenceRoutesExactSourceProfile(t *testing.T) {
 			if err := os.WriteFile(command, []byte("#!/bin/sh\nexit 99\n"), 0700); err != nil {
 				t.Fatal(err)
 			}
+			command, _ = canonicalPath(command)
 			entry, err := newAgentIntegration(agentplugin.Host(agent), command, profile)
 			if err != nil {
 				t.Fatal(err)
@@ -45,7 +45,7 @@ func TestAutomaticInferenceRoutesExactSourceProfile(t *testing.T) {
 				t.Fatal(err)
 			}
 			config := runner.(inference.Local).Config
-			if config.Provider != agent || config.Command != command || config.ConfigRoot != profile || config.Model != "" || config.Timeout != 120*time.Second {
+			if config.Provider != agent || config.Command != command || config.ConfigRoot != profile || config.Model != "" || config.Timeout != 0 {
 				t.Fatal(config)
 			}
 			// The same profile may be reached through a symlink, but cannot be replaced.
@@ -75,6 +75,18 @@ func TestAutomaticInferenceRoutesExactSourceProfile(t *testing.T) {
 	session := workgraph.Session{ID: localdag.ObservationSessionID("project", engine.Actor, "cursor", "cursorsecond"), Agent: "cursor"}
 	if _, err := automaticInferenceResolver(root)("project", session); err == nil || !strings.Contains(err.Error(), "agent list") {
 		t.Fatal(err)
+	}
+	// Equivalent command/profile symlinks must not manufacture ambiguity.
+	alias := filepath.Join(t.TempDir(), "same-installation")
+	if err := os.Symlink(last.Command, alias); err != nil {
+		t.Fatal(err)
+	}
+	equivalent, _ := newAgentIntegration(last.Type, alias, last.ConfigRoot)
+	if err := saveAgentIntegrationState(paths, agentIntegrationState{Integrations: append(entries, equivalent)}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := automaticInferenceResolver(root)("project", session); err != nil {
+		t.Fatal("equivalent installation rejected", err)
 	}
 	// Multiple executables claiming one profile cannot be chosen arbitrarily.
 	duplicate, _ := newAgentIntegration(last.Type, os.Args[0], last.ConfigRoot)

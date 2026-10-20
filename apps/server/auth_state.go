@@ -79,7 +79,7 @@ func (a *authority) startDeviceAuthorization(input contracts.DeviceAuthorization
 		return contracts.DeviceAuthorization{}, invalid("invalid_device_authorization", "a device name, S256 challenge and optional loopback callback are required")
 	}
 	invalidProject := len(input.ExpectedAccountID) > 128 || len(input.SuggestedProjectID) > 128 ||
-		input.ProjectName != "" && (!input.ConnectProject || !validDisplayName(input.ProjectName)) ||
+		input.ProjectName != "" && (!input.ConnectProject || !validProjectName(input.ProjectName)) ||
 		input.SuggestedProjectID != "" && !input.ConnectProject
 	invalidDirectory := input.Directory != nil && (!input.ConnectProject || !validConnectionDirectory(*input.Directory) || input.Directory.Revision != 1)
 	if invalidProject || invalidDirectory {
@@ -95,7 +95,7 @@ func (a *authority) startDeviceAuthorization(input contracts.DeviceAuthorization
 	}
 	err = a.store.update(func(state *databaseState) error {
 		pruneAuthorizations(state, a.now())
-		if state.Authorizations.Len() >= 1000 {
+		if state.Authorizations.Len() >= maxPendingAuthorizations {
 			return rateLimitError()
 		}
 		for _, old := range state.Authorizations.All() {

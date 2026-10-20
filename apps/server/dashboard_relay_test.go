@@ -198,10 +198,14 @@ func TestPublishedGraphBrowserHarness(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, advance, publish := publishedGraphFixture(t, a, h, actor, project.ProjectID, key)
+	member, memberKey := issueTestIdentity(t, a, "Colleague", "colleague@coconet.test")
+	if _, err := a.joinProject(member, project.ProjectID, "browser-member"); err != nil {
+		t.Fatal(err)
+	}
 	server := httptest.NewTLSServer(h)
 	defer server.Close()
 	h.advertisedEndpoint = server.URL
-	data, _ := json.Marshal(map[string]string{"url": server.URL, "key": key, "project_id": project.ProjectID, "empty_project_id": empty.Project.ProjectID})
+	data, _ := json.Marshal(map[string]string{"url": server.URL, "key": key, "member_key": memberKey, "project_id": project.ProjectID, "empty_project_id": empty.Project.ProjectID})
 	if err := os.MkdirAll(filepath.Dir(file), 0700); err != nil {
 		t.Fatal(err)
 	}

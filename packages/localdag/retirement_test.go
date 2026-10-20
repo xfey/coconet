@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -145,14 +146,23 @@ func TestRetirementConflictRecomputesWithoutQueuingSemanticTask(t *testing.T) {
 	}
 }
 
-func TestArchiveQuotaStopsBeforeModelAndPreservesQueuedTask(t *testing.T) {
+func TestArchivePressureDoesNotBlockModelOrPublication(t *testing.T) {
 	e, store := fixture(t)
-	if err := store.SetDiagnosticPolicy(graphstore.DiagnosticPolicy{Days: 7, MaxBytes: 80 << 20}); err != nil {
+	if err := store.SetDiagnosticPolicy(graphstore.DiagnosticPolicy{Days: 7, MaxBytes: 32 << 20}); err != nil {
 		t.Fatal(err)
 	}
 	capture(t, e, "session", 1, "检查提示。")
-	for _, id := range []string{"reserved1", "reserved2", "reserved3"} {
+	for _, id := range []string{"pinned1", "pinned2"} {
 		if err := store.Begin(graphstore.Run{ID: id, TaskID: id, ProjectID: "project", Kind: "fixture", Status: "running", StartedAt: e.stamp(), Input: json.RawMessage(`{}`)}); err != nil {
+			t.Fatal(err)
+		}
+		if err := store.PinRun("project", id, true); err != nil {
+			t.Fatal(err)
+		}
+		if err := store.SaveResponse(id, strings.Repeat("\x00", 3<<20), nil); err != nil {
+			t.Fatal(err)
+		}
+		if err := store.Finish(id, "completed", "", e.stamp()); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -161,24 +171,11 @@ func TestArchiveQuotaStopsBeforeModelAndPreservesQueuedTask(t *testing.T) {
 		calls++
 		return inference.Response{Text: `{"action":"none","stage":null,"items":{"add":[],"revise":[],"complete":[],"withdraw":[]},"reason":"inspection only","evidence":[]}`}, nil
 	})
-	queued := task(t, e, "stage", "session")
-	if err := e.Process(context.Background(), queued); !errors.Is(err, graphstore.ErrDiagnosticQuota) {
+	if err := e.Process(context.Background(), task(t, e, "stage", "session")); err != nil {
 		t.Fatal(err)
 	}
-	if calls != 0 {
-		t.Fatal("provider called without guaranteed archive space")
-	}
-	tasks, _ := store.Tasks("project")
-	if len(tasks) != 1 || tasks[0].Attempts != 0 || tasks[0].Status != "queued" {
-		t.Fatal(tasks)
-	}
-	if err := store.Finish("reserved1", "interrupted", "test recovery", e.stamp()); err != nil {
-		t.Fatal(err)
-	}
-	if err := e.Process(context.Background(), queued); err != nil {
-		t.Fatal(err)
-	}
-	if calls != 1 {
-		t.Fatal("archive capacity did not resume processing")
+	state, err := store.State("project")
+	if err != nil || calls != 1 || state.Sessions["session"].ProcessedThrough != 1 {
+		t.Fatal("archive blocked model or publication", calls, state.Sessions, err)
 	}
 }

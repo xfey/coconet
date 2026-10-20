@@ -212,14 +212,20 @@ func TestInboxRetryPreservesPreparedCopyAndFailureEvidence(t *testing.T) {
 		t.Fatal("missing evidence succeeded")
 	}
 	paused, _ := readLocalDAGInbox(paths[0])
-	if !paused.Paused || paused.Attempts != 8 {
-		t.Fatal("failed event did not pause")
+	if paused.Paused || paused.Attempts != 8 || paused.NextAt == "" {
+		t.Fatal("missing object must retain automatic retry")
+	}
+	// Explicit retry also clears a content-change wait, without deleting its receipt.
+	paused.Paused = true
+	paused.FailedFiles, paused.FailedRevision = []string{"fixture"}, "old"
+	if err := atomicWriteJSON(paths[0], paused, 0600); err != nil {
+		t.Fatal(err)
 	}
 	if err := retryLocalDAGInbox(root, event.ID); err != nil {
 		t.Fatal(err)
 	}
 	queued, _ := readLocalDAGInbox(paths[0])
-	if queued.Paused || queued.Attempts != 0 || queued.Prepared != event.Prepared {
+	if queued.Paused || queued.Attempts != 0 || queued.Prepared != event.Prepared || queued.FailedRevision != "" || len(queued.FailedFiles) != 0 {
 		t.Fatal("retry lost prepared evidence")
 	}
 	runs, err := store.Runs("project")
@@ -235,6 +241,68 @@ func TestInboxRetryPreservesPreparedCopyAndFailureEvidence(t *testing.T) {
 	defer release()
 	if err := retryLocalDAGInbox(root, event.ID); err == nil {
 		t.Fatal("retry bypassed active processing lock")
+	}
+}
+
+func TestUnchangedBadCaptureWaitsWhileOtherSessionsProgress(t *testing.T) {
+	root := t.TempDir()
+	store, err := graphstore.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	engine := &localdag.Engine{Store: store, Actor: "device"}
+	file := filepath.Join(t.TempDir(), "native.jsonl")
+	if err := os.WriteFile(file, []byte("{"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, native := range []string{"bad", "healthy"} {
+		if err := enqueueLocalDAGObservation(root, localDAGObservationRequest{ProjectID: "project", Agent: "fixture", NativeID: native}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	paths, _ := localDAGInboxFiles(root)
+	bad, _ := readLocalDAGInbox(paths[0])
+	bad.Paused, bad.Attempts, bad.FailedFiles = true, 1, []string{file}
+	bad.FailedRevision = adapters.CaptureRevision(bad.FailedFiles)
+	if err := atomicWriteJSON(paths[0], bad, 0600); err != nil {
+		t.Fatal(err)
+	}
+	healthy, _ := readLocalDAGInbox(paths[1])
+	turn := contracts.NormalizedTurn{TurnID: "t", Ordinal: 0, Role: "user", Kind: "message", Text: "healthy", ContentHash: adapters.Digest("healthy")}
+	normalized, _ := adapters.ApplyCheckpoint([]contracts.NormalizedTurn{turn}, adapters.ObservationCheckpoint{})
+	observation := localdag.Observation{ProjectID: "project", Agent: "fixture", NativeID: "healthy", Normalized: normalized, Visible: &contracts.VisibleTextProjection{Version: 1, SourceCursor: normalized.ToCursor, Turns: []contracts.VisibleTextTurn{{TurnID: "t", ContentHash: turn.ContentHash, Ranges: []contracts.TextRange{{Start: 0, End: 7}}}}}}
+	data, _ := json.Marshal(observation)
+	healthy.Prepared, err = store.PutObject(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := atomicWriteJSON(paths[1], healthy, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := drainLocalDAGInbox(context.Background(), root, engine); err != nil {
+		t.Fatal(err)
+	}
+	bad, _ = readLocalDAGInbox(paths[0])
+	queue, _ := localDAGInbox(root)
+	if len(queue) != 1 || !bad.Paused || bad.Attempts != 1 || bad.NextAt == "" {
+		t.Fatal("bad capture blocked other session or retried unchanged bytes", queue)
+	}
+	if err := os.WriteFile(file, []byte("updated content"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	bad.NextAt = ""
+	if err := atomicWriteJSON(paths[0], bad, 0600); err != nil {
+		t.Fatal(err)
+	}
+	// The fixture has no native adapter. Its new attempt must be retryable,
+	// rather than retaining the old content wait or its stale file fingerprint.
+	if err := drainLocalDAGInbox(context.Background(), root, engine); err == nil {
+		t.Fatal("missing fixture adapter accepted")
+	}
+	bad, _ = readLocalDAGInbox(paths[0])
+	if bad.Paused || bad.Attempts != 1 || bad.FailedRevision != "" {
+		t.Fatal("changed file did not resume", bad)
 	}
 }
 

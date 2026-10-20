@@ -306,7 +306,7 @@ func TestRewindKeepsColleagueWorkAndExplicitLibrary(t *testing.T) {
 	if after.Nodes[peerID].Text != before.Nodes[peerID].Text || after.Nodes[peerID].Source != before.Nodes[peerID].Source || len(after.Nodes[peerID].Parents) != 0 {
 		t.Fatal("peer work changed or dangling edge retained")
 	}
-	if after.Nodes[c.ID].State != "withdrawn" {
+	if after.LibrarySources[c.ID].Source != c.Source {
 		t.Fatal("bookmark lost its evidence")
 	}
 	graph, _ := e.Graph("project")

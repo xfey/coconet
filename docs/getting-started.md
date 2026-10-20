@@ -54,8 +54,7 @@ a new local session and leaves the source unchanged. It does not restore files
 or synchronize code: use Git to keep the working tree in sync.
 
 Existing history is not imported in full automatically. Continuing an old session
-can include earlier content from that session. Use `coconet history preview --help`
-to inspect the explicit history import workflow.
+can include earlier content from that session. Use `coconet history start --agent codex|claude|cursor` to import this connected folder’s history. Preview and filtering are optional; batches advance automatically.
 
 Work graphs use the executing Agent’s existing login, provider and default model;
 background inference consumes that account’s quota. No extra model key or call
