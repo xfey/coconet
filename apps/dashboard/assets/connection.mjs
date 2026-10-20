@@ -34,9 +34,9 @@ export function mountProjectChoices({ content, error, projects = [], suggestedID
     choice.setAttribute('aria-label', t('project_entry_' + kind));
     choice.addEventListener('click', () => activate(kind)); choices[kind] = choice; nav.append(choice);
     const form = element('form', undefined, 'project-entry-form'); form.dataset.form = kind; form.hidden = true;
-    const label = element('label', t(kind === 'existing' ? 'choose_project' : kind === 'join' ? 'project_link_or_id' : 'project_name'), 'account-field');
+    const label = element('label', t(kind === 'existing' ? 'choose_project' : kind === 'join' ? 'shared_project_link' : 'project_name'), 'account-field');
     const input = element(kind === 'existing' ? 'select' : 'input'); input.required = true;
-    input.setAttribute('aria-label', t(kind === 'existing' ? 'choose_project' : kind === 'join' ? 'project_link_or_id' : 'project_name'));
+    input.setAttribute('aria-label', t(kind === 'existing' ? 'choose_project' : kind === 'join' ? 'shared_project_link' : 'project_name'));
     if (kind === 'existing') {
       const placeholder = element('option', t('select_project')); placeholder.value = ''; input.append(placeholder);
       for (const item of active) {
@@ -48,7 +48,7 @@ export function mountProjectChoices({ content, error, projects = [], suggestedID
     } else {
       input.maxLength = kind === 'join' ? 2048 : 120; input.autocomplete = 'off';
       input.value = kind === 'join' ? suggestedID : projectName;
-      if (kind === 'join') { input.spellcheck = false; input.placeholder = t('project_id_placeholder'); }
+      if (kind === 'join') { input.spellcheck = false; input.placeholder = t('project_link_placeholder'); }
     }
     const submit = createButton(t(kind === 'existing' ? 'connect_project' : kind === 'join' ? 'join_project' : 'create_project'), {
       glyph: glyphs[kind], className: 'primary', type: 'submit',

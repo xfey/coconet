@@ -25,6 +25,10 @@ the connection guide directly; creating one during a CLI folder connection still
 completes that connection. Closing a pending dialog prevents a late response from
 opening the guide.
 
+Both the sidebar and folder-connection join forms ask for a **Shared link**, with
+`https://coconet.space/...` as the placeholder. Invalid-link and missing-project
+messages guide users to check the shared link.
+
 Share offers one project link to copy. Connection instructions omit the separate
 project-name caption and show a single `coconet connect` command by default,
 including the selected project and the API address for self-hosted deployments.
