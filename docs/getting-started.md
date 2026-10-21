@@ -64,10 +64,12 @@ See [data sharing and retention](data-sharing.md) for the full scope.
 
 ## Share project notes
 
-Open **Project notes** at the top left of the work graph to edit the project's
-shared Markdown. Click **Save** to publish a version; all members can edit it.
-Click the entrance again to close the panel. Saved versions remain available in
-the history, and restoring one creates a new version when you save.
+Open **Project notes** at the top left of the work graph. Click **+ Post a note**
+to write a note; basic Markdown lists, bold, italic and inline code are supported.
+Clicking outside saves it automatically. Click your own
+published note to edit it, or use its small × button to delete it. Teammates'
+notes are read-only. Notes stay in publication order; editing does not reorder them.
+If a save fails, your draft is kept and the note shows a retry option.
 
 After a saved change syncs to a teammate's device, their Agent receives a short
 notice at session start or the next user turn. It can read the notes with

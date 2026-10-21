@@ -7,6 +7,7 @@ the licenses of dependencies downloaded during a build.
 |---|---|---|
 | ELK / elkjs | elkjs 0.12.0 | EPL-2.0. Unmodified JS, license and source links are retained in [vendor](apps/dashboard/assets/vendor/README.md). |
 | SHA-256 fallback | @noble/hashes 1.8.0 | MIT. Browser bundle, provenance and license are retained in [vendor](apps/dashboard/assets/vendor/README.md). |
+| Note Markdown lexer | marked 18.1.1 | MIT. Unmodified ESM bundle, provenance and license are retained in [vendor](apps/dashboard/assets/vendor/README.md). |
 | Outfit Brand subset | Outfit 1.100, modified subset | SIL OFL 1.1. Copyright, license, renamed subset details and hashes are in [fonts](apps/dashboard/assets/fonts/README.md). |
 | Agent marks in README illustrations | LobeHub Icons, pinned source revision | MIT. Upstream icon paths, source hashes and the license are retained in [agent marks](docs/assets/agent-marks/README.md). Marks identify supported clients; they do not imply endorsement. |
 | Node.js | Release build pins 24.22.0 | Node and bundled third-party terms. The release builder copies the upstream LICENSE with the runtime. |
@@ -16,7 +17,7 @@ the licenses of dependencies downloaded during a build.
 
 The release scripts collect linked Go module licenses and preserve the pinned Node
 and Claude SDK license files. The
-embedded server assets include the ELK, noble-hashes and font licenses. New third-party code or
+embedded server assets include the ELK, noble-hashes, Marked and font licenses. New third-party code or
 binary distributions require an updated notice inventory; an MIT source license
 does not imply that an upstream service or SDK is available under MIT.
 

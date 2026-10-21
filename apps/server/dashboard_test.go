@@ -214,7 +214,7 @@ func TestDashboardTLSAssets(t *testing.T) {
 	if response.Code != 400 || !strings.Contains(response.Body.String(), "dashboard_https_required") {
 		t.Fatal("untrusted proxy bypassed HTTPS requirement")
 	}
-	for _, path := range []string{"/", "/assets/app.mjs", "/assets/project-document.mjs", "/assets/login-ripple.mjs", "/assets/account.mjs", "/assets/connection.mjs", "/assets/installation.mjs", "/assets/dialog.mjs", "/assets/button.mjs", "/assets/button.css", "/assets/style.css", "/assets/graph.mjs", "/assets/canvas.mjs", "/assets/notifications.mjs", "/assets/icons.mjs", "/assets/catalog.mjs", "/assets/i18n.mjs", "/assets/layout-client.mjs", "/assets/vendor/elk-0.12.0.api.js", "/assets/vendor/README.md", "/assets/vendor/elk-LICENSE.md"} {
+	for _, path := range []string{"/", "/assets/app.mjs", "/assets/project-document.mjs", "/assets/project-notes-state.mjs", "/assets/note-markdown.mjs", "/assets/vendor/marked-18.1.1.mjs", "/assets/vendor/marked-LICENSE.txt", "/assets/login-ripple.mjs", "/assets/account.mjs", "/assets/connection.mjs", "/assets/installation.mjs", "/assets/dialog.mjs", "/assets/button.mjs", "/assets/button.css", "/assets/style.css", "/assets/graph.mjs", "/assets/canvas.mjs", "/assets/notifications.mjs", "/assets/icons.mjs", "/assets/catalog.mjs", "/assets/i18n.mjs", "/assets/layout-client.mjs", "/assets/vendor/elk-0.12.0.api.js", "/assets/vendor/README.md", "/assets/vendor/elk-LICENSE.md"} {
 		r := httptest.NewRecorder()
 		h.ServeHTTP(r, httptest.NewRequest("GET", path, nil))
 		if r.Code != 200 || r.Header().Get("Content-Security-Policy") == "" || r.Header().Get("Referrer-Policy") != "no-referrer" || strings.Contains(r.Body.String(), key) {

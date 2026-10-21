@@ -608,14 +608,15 @@ try {
     let cliOutput = '', cliError = '', cliExit;
     cli.stdout.on('data', chunk => { cliOutput += chunk; }); cli.stderr.on('data', chunk => { cliError += chunk; });
     const cliDone = new Promise(resolve => cli.on('exit', code => { cliExit = code; resolve(code); }));
-    let link;
+    let link, capturedLink;
     for (let i = 0; i < 200; i++) {
       link = cliOutput.match(/https?:\/\/[^\s]+\/#authorize=[A-Za-z0-9_-]{43}/);
-      if (link || cliExit !== undefined) break;
+      if (mode !== 'remote') { try { capturedLink = await readFile(capture, 'utf8'); } catch (error) { if (error.code !== 'ENOENT') throw error; } }
+      if (link && (mode === 'remote' || capturedLink === link[0] && (mode !== 'fallback' || cliOutput.includes('Could not open your browser'))) || cliExit !== undefined) break;
       await delay(100);
     }
     assert.ok(link, 'CLI did not offer browser authorization: ' + cliError);
-    if (mode !== 'remote') assert.equal(await readFile(capture, 'utf8'), link[0]);
+    if (mode !== 'remote') assert.equal(capturedLink, link[0]);
     else await assert.rejects(readFile(capture), { code: 'ENOENT' });
     if (mode === 'fallback') assert.match(cliOutput, /Could not open your browser/);
     assert.doesNotMatch(cliOutput, /Choose a project in your browser|Server:/);
@@ -838,70 +839,155 @@ try {
   await otherPage.locator('#modal-close').click();
   assert.equal(await otherPage.locator('.project-item').count(), 1);
 
-  // Two members edit the same persistent document. A later save preserves the
-  // other member's draft and requires an explicit merge, including across close.
+  // Ordered, author-owned plain-text notes. Focus loss publishes only that note.
   if (await page.locator('#session-modal').isVisible()) await page.locator('#modal-close').click();
-  await page.locator('#project-document').click();
-  await page.locator('.document-editor:enabled').waitFor();
-  await otherPage.locator('#project-document').click();
-  await otherPage.locator('.document-editor:enabled').waitFor();
-  await otherPage.locator('.document-editor').fill('# Teammate draft\nKeep my local edits');
-  const firstNote = '# Shared plan\n\n- Improve search\n- Keep handoff stable\n\n<img src=x onerror="window.documentInjected=true">';
-  await page.locator('.document-editor').fill(firstNote);
-  await page.locator('.project-document').getByRole('button', { name: 'Save', exact: true }).click();
-  await page.locator('.project-document [role="status"]').filter({ hasText: /v1 · / }).waitFor();
-  await otherPage.locator('.project-document').getByRole('button', { name: '刷新', exact: true }).click();
-  await otherPage.locator('.document-comparison:visible').waitFor();
-  assert.match(await otherPage.locator('.document-editor').inputValue(), /Keep my local edits/);
-  assert.equal(await otherPage.locator('.document-comparison pre').textContent(), firstNote);
-  assert.equal(await otherPage.evaluate(() => window.documentInjected), undefined);
-  await otherPage.keyboard.press('Escape');
-  await otherPage.locator('#project-document').click();
-  await otherPage.locator('.document-comparison:visible').waitFor();
-  assert.match(await otherPage.locator('.document-editor').inputValue(), /Keep my local edits/);
-  const merged = '# Shared plan\n\nImprove search and keep handoff stable.\nKeep my local edits';
-  await otherPage.locator('.document-editor').fill(merged);
-  await otherPage.getByRole('button', { name: '保存合并结果', exact: true }).click();
-  await otherPage.locator('.project-document [role="status"]').filter({ hasText: /v2 · Browser teammate/ }).waitFor();
-  for (const target of [page, otherPage]) {
-    for (const width of [1280, 390, 320]) {
-      await target.setViewportSize({ width, height: 844 });
-      assert.equal(await target.locator('#document-content').evaluate(node => node.scrollWidth > node.clientWidth + 1), false);
-      await screenshot(target, 'project-document-' + width + (target === page ? '-en' : '-zh'));
-    }
-  }
-  assert.equal(await otherPage.locator('.document-history summary').count(), 0);
-  await otherPage.locator('#project-document').click();
-  assert.equal(await otherPage.locator('#document-drawer').isVisible(), false);
-  await otherPage.locator('#project-document').click();
-  await otherPage.locator('.document-versions').getByRole('button', { name: /v1/ }).click();
-  await otherPage.getByRole('button', { name: '将 v1 放入草稿', exact: true }).click();
-  assert.equal(await otherPage.locator('.document-editor').inputValue(), firstNote);
-  await otherPage.getByRole('button', { name: '保存', exact: true }).click();
-  await otherPage.locator('.project-document [role="status"]').filter({ hasText: /v3 · Browser teammate/ }).waitFor();
-  assert.equal(await otherPage.locator('.document-versions button').count(), 3);
   const documentRoute = '**/v1/dashboard/projects/*/document';
-  const saveRequests = [];
-  let dropSaveResponse = true;
-  await otherPage.route(documentRoute, async route => {
-    if (route.request().method() !== 'PUT') return route.continue();
-    saveRequests.push(JSON.parse(route.request().postData()));
-    if (dropSaveResponse) { dropSaveResponse = false; await route.fetch(); return route.abort('failed'); }
+  const noteRoute = '**/v1/dashboard/projects/*/document/notes/*';
+  const documentRequests = [];
+  for (const target of [page, otherPage]) target.on('request', request => {
+    if (/\/document(?:\/|$)/.test(new URL(request.url()).pathname)) documentRequests.push({ page: target, url: request.url() });
+  });
+  let failDocumentRead = true;
+  await page.route(documentRoute, route => {
+    if (failDocumentRead) { failDocumentRead = false; return route.fulfill({ status:503, json:{code:'unavailable'} }); }
     return route.continue();
   });
-  await otherPage.locator('.document-editor').fill('# Acknowledgement retry');
-  await otherPage.getByRole('button', { name: '保存', exact: true }).click();
-  await otherPage.getByText('保存尚未确认。草稿已保留，请重试。', { exact: true }).waitFor();
-  await otherPage.getByRole('button', { name: /保存|保存合并结果/, exact: true }).click();
-  await otherPage.locator('.project-document [role="status"]').filter({ hasText: /v4 · Browser teammate/ }).waitFor();
-  assert.deepEqual(saveRequests[1], saveRequests[0], 'Lost acknowledgement must retry the same save intent');
-  assert.equal(await otherPage.locator('.document-versions button').count(), 4);
-  await otherPage.unroute(documentRoute);
-
-  await otherPage.keyboard.press('Escape');
+  await page.locator('#project-document').click();
+  await page.getByText('Could not load notes. Retrying automatically.', { exact:true }).waitFor();
+  assert.equal(await page.locator('.note-add').isDisabled(), true);
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  await page.locator('.note-add:enabled').waitFor();
+  await page.unroute(documentRoute);
+  await page.locator('.note-add').click();
+  await page.locator('.note-input:visible').fill('   ');
+  await page.locator('#document-drawer > .section-bar h2').click();
+  assert.equal(await page.locator('.note-bubble').count(),0);
+  assert.equal(await page.locator('.document-toolbar, .document-footer, .document-history').count(),0);
+  const emptyNotesHeight = (await page.locator('#document-drawer').boundingBox()).height;
+  await page.locator('.note-add').click();
+  assert.equal(await page.locator('.note-input:visible').evaluate(node=>node===document.activeElement),true);
+  const firstNote = '本轮优先完成 **搜索功能**，*暂不修改登录流程*。\n\n1. 完善搜索\n2. 再做接力\n   - 使用 `fixtures`\n\n<img src=x onerror="window.documentInjected=true">\n\n[链接](javascript:alert(1))';
+  await page.locator('.note-input:visible').fill(firstNote);
+  const firstID = await page.locator('.note-bubble').getAttribute('data-note-id');
+  const firstCard = page.locator('.note-bubble[data-note-id="'+firstID+'"]');
+  await page.locator('#document-drawer > .section-bar h2').click();
+  await firstCard.locator('.note-body').waitFor();
+  await page.locator('.note-bubble[data-state="saved"]').waitFor();
+  assert.equal(await firstCard.locator('strong').textContent(),'搜索功能');
+  assert.equal(await firstCard.locator('em').textContent(),'暂不修改登录流程');
+  assert.equal(await firstCard.locator('ol > li').count(),2);
+  assert.equal(await firstCard.locator('ul > li code').textContent(),'fixtures');
+  assert.equal(await firstCard.locator('img,a,script').count(),0);
+  assert.ok((await page.locator('#document-drawer').boundingBox()).height > emptyNotesHeight + 60);
+  await otherPage.locator('#project-document').click();
+  await otherPage.locator('.note-body').filter({hasText:'本轮优先'}).waitFor();
+  assert.equal(await otherPage.locator('.note-remove:visible').count(),0);
+  await otherPage.locator('.note-body').click();
+  assert.equal(await otherPage.locator('.note-input:visible').count(),0);
+  assert.equal(await otherPage.evaluate(()=>window.documentInjected),undefined);
+  await otherPage.locator('.note-add').click();
+  await otherPage.locator('.note-input:visible').fill('接口调整时，请同步更新开发文档。\n测试数据统一使用 fixtures 目录。');
+  await otherPage.locator('#document-drawer > .section-bar h2').click();
+  await otherPage.locator('.note-bubble[data-owned="true"][data-state="saved"]').waitFor();
+  await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+  await page.locator('.note-body').filter({hasText:'接口调整时'}).waitFor();
+  assert.equal(await page.locator('.note-bubble[data-owned="false"] .note-remove:visible').count(),0);
+  await firstCard.locator('.note-body').click();
+  assert.equal(await firstCard.locator('textarea').inputValue(),firstNote,'Editing must preserve the original Markdown');
+  await firstCard.locator('textarea').fill('本轮优先完成搜索功能。\n搜索验收通过后，再完善跨 Agent 接力。');
+  // Closing the drawer is also a save boundary.
   await page.keyboard.press('Escape');
-  await page.setViewportSize({ width: 1280, height: 844 });
-  await otherPage.setViewportSize({ width: 1280, height: 844 });
+  await page.locator('#document-drawer').waitFor({state:'hidden'});
+  await page.locator('#project-document').click();
+  await firstCard.locator('.note-body').filter({hasText:'搜索验收通过后'}).waitFor();
+  await firstCard.locator('.note-input').waitFor({state:'hidden'});
+  assert.equal(await page.locator('.note-bubble').first().getAttribute('data-note-id'),firstID);
+  await otherPage.evaluate(()=>window.dispatchEvent(new Event('focus')));
+  await otherPage.locator('.note-body').filter({hasText:'搜索验收通过后'}).waitFor();
+  for (const target of [page,otherPage]) for (const width of [1280,390,320]) {
+    await target.setViewportSize({width,height:844});
+    assert.equal(await target.locator('#document-content').evaluate(node=>node.scrollWidth>node.clientWidth+1),false);
+    assert.equal(await target.locator('.note-bubble .note-body').count(),2);
+    const alignment = await target.evaluate(()=>['#document-title','.note-hint','.note-bubble'].map(selector=>document.querySelector(selector).getBoundingClientRect().left));
+    assert.ok(Math.max(...alignment)-Math.min(...alignment)<1,'Note title, hint and bubbles must align');
+    await screenshot(target,'project-notes-'+width+(target===page?'-en':'-zh'));
+  }
+  await page.setViewportSize({width:1280,height:844});
+  await otherPage.setViewportSize({width:1280,height:844});
+  // Long editing content grows within the canvas; shortening it removes the
+  // extra height without leaving a fixed empty editor behind.
+  const shortNotesHeight = (await page.locator('#document-drawer').boundingBox()).height;
+  const shortNoteText = await firstCard.locator('.note-body').textContent();
+  await firstCard.locator('.note-body').click();
+  await firstCard.locator('textarea').fill(Array(50).fill('Long project note for layout validation.').join('\n'));
+  const tallNotes = await page.locator('#document-drawer').boundingBox();
+  assert.ok(tallNotes.height > shortNotesHeight);
+  assert.ok(tallNotes.y + tallNotes.height < 844);
+  assert.equal(await page.locator('#document-content').evaluate(node=>node.scrollHeight>node.clientHeight),true);
+  await firstCard.locator('textarea').fill(shortNoteText);
+  await page.locator('#document-drawer > .section-bar h2').click();
+  assert.ok(Math.abs((await page.locator('#document-drawer').boundingBox()).height-shortNotesHeight)<2);
+  // A read issued before a save cannot replace the newer view.
+  let releaseRead, readStarted=false, holdRead=true;
+  const readGate=new Promise(resolve=>{releaseRead=resolve;});
+  await page.route(documentRoute,async route=>{
+    if (!holdRead) return route.continue();
+    holdRead=false;const response=await route.fetch();readStarted=true;await readGate;await route.fulfill({response});
+  });
+  await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+  for(let i=0;i<100&&!readStarted;i++)await delay(20);
+  assert.equal(readStarted,true);
+  await firstCard.locator('.note-body').click();await firstCard.locator('textarea').fill('Late reads must not replace this update.');
+  await page.locator('#document-drawer > .section-bar h2').click();
+  await firstCard.locator('.note-body').filter({hasText:'Late reads'}).waitFor();
+  await page.locator('.note-bubble[data-state="saving"]').waitFor({state:'hidden'});
+  releaseRead();await page.unroute(documentRoute,{behavior:'wait'});
+  assert.equal(await firstCard.locator('.note-body').innerText(),'Late reads must not replace this update.');
+  // Lost acknowledgement retains one stable mutation for automatic retry.
+  const noteRequests=[];let dropResponse=true;
+  await page.route(noteRoute,async route=>{
+    noteRequests.push(JSON.parse(route.request().postData()));
+    if(dropResponse){dropResponse=false;await route.fetch();return route.abort('failed');}
+    return route.continue();
+  });
+  await firstCard.locator('.note-body').click();await firstCard.locator('textarea').fill('Lost acknowledgement retry.');
+  await page.locator('#document-drawer > .section-bar h2').click();
+  await firstCard.getByText('Save not confirmed. Your draft is kept.',{exact:true}).waitFor();
+  await page.evaluate(()=>window.dispatchEvent(new Event('online')));
+  await page.locator('.note-bubble[data-state="error"]').waitFor({state:'hidden'});
+  assert.deepEqual(noteRequests[1],noteRequests[0]);
+  await page.unroute(noteRoute);
+  // Another tab of the same account may update this note while a draft is open.
+  const notesURL=fixture.url+'/v1/dashboard/projects/'+new URL(page.url()).pathname.split('/').at(-1)+'/document';
+  const current=await(await context.request.get(notesURL)).json();
+  const own=current.notes.find(note=>note.id===firstID);
+  await firstCard.locator('.note-body').click();await firstCard.locator('textarea').fill('My conflict draft.');
+  const remote=await context.request.put(notesURL+'/notes/'+firstID,{headers:{Origin:fixture.url},data:{schema_version:1,request_id:'other-tab-edit-note',base_revision:own.revision,text:'Updated in another tab.'}});
+  assert.equal(remote.status(),200);
+  await page.locator('#document-drawer > .section-bar h2').click();
+  await firstCard.getByText('This note changed on another device. Compare the latest content and choose what to keep.',{exact:true}).waitFor();
+  assert.equal(await firstCard.locator('.note-body').textContent(),'My conflict draft.');
+  assert.equal(await firstCard.locator('.note-latest').textContent(),'Updated in another tab.');
+  await firstCard.getByRole('button',{name:'Keep my changes',exact:true}).click();
+  await page.locator('.note-bubble[data-state="error"]').waitFor({state:'hidden'});
+  // The small delete control removes one owned bubble; the teammate's remains.
+  const compactBubble = await firstCard.boundingBox();
+  assert.ok(compactBubble.width < (await page.locator('#document-content').boundingBox()).width / 2);
+  assert.ok(compactBubble.height < 55,'A one-line note should not reserve empty rows');
+  const beforeDeleteHeight = (await page.locator('#document-drawer').boundingBox()).height;
+  await firstCard.hover();await firstCard.getByRole('button',{name:'Delete note',exact:true}).click();
+  await firstCard.waitFor({state:'detached'});
+  assert.equal(await page.locator('.note-bubble').count(),1);
+  assert.ok((await page.locator('#document-drawer').boundingBox()).height < beforeDeleteHeight-40);
+  await otherPage.evaluate(()=>window.dispatchEvent(new Event('focus')));
+  await otherPage.waitForFunction(()=>document.querySelectorAll('.note-bubble').length===1);
+  assert.equal(documentRequests.some(({url})=>/\/document\/(history|versions)/.test(url)),false);
+  await otherPage.keyboard.press('Escape');
+  const closedRequests=()=>documentRequests.filter(request=>request.page===otherPage).length;
+  const beforeHiddenRefresh=closedRequests();
+  await otherPage.evaluate(()=>{window.dispatchEvent(new Event('focus'));window.dispatchEvent(new Event('online'));});await delay(100);
+  assert.equal(closedRequests(),beforeHiddenRefresh);
+  await page.keyboard.press('Escape');
 
   // Leaving is scoped to the selected project's settings and requires an
   // explicit confirmation. A failed request remains retryable in the dialog.

@@ -126,12 +126,15 @@ try {
   await page.waitForFunction(() => document.querySelector('#session-action-2')?.getAttribute('aria-busy') === 'false');
   assert.equal(await page.locator('#session-action-2').getAttribute('aria-pressed'), 'false');
   await peer.locator('.library-entry').waitFor({ state: 'detached' });
+  assert.equal(await peer.locator('.node-saved').count(), 0);
   assert.equal(await page.locator('#session-modal').isVisible(), false);
   assert.equal(await page.evaluate(() => window.copiedInstruction), clipboardBeforeSave);
   await screenshot(page, 'published-remove-desktop-zh');
   await page.locator('#session-action-2').click();
   await page.waitForFunction(() => document.querySelector('#session-action-2')?.getAttribute('aria-pressed') === 'true' && !document.querySelector('#session-action-2').disabled);
-  await peer.locator('.library-entry').waitFor(); await peer.close();
+  await peer.locator('.library-entry').waitFor();
+  assert.equal(await peer.locator('.node-saved').count(), 1);
+  await peer.close();
   assert.equal(await page.locator('#session-modal').isVisible(), false);
   await screenshot(page, 'published-desktop-zh');
   // Intermediate commits do not trigger a redundant graph download. An explicit
@@ -238,7 +241,7 @@ try {
   assert.equal(new URL(page.url()).pathname, new URL(fixture.url).pathname.replace(/\/$/, '') + '/' + fixture.project_id);
   assert.equal(await page.locator('#install-open').count(), 0);
   await page.locator('#project-share').click();
-  await page.getByRole('button', { name: '连接项目目录', exact: true }).click();
+  await page.locator('#modal-content').getByRole('button', { name: '连接项目目录', exact: true }).click();
   await page.locator('[data-disclosure="sharing-scope"] summary').click();
   assert.doesNotMatch(await page.locator('#modal-content').innerText(), /加密|模型额度|模型用量|默认模型|支持 macOS/);
   assert.match(await page.locator('#modal-content').innerText(), /已有历史不会自动导入|工具调用/);
@@ -314,7 +317,7 @@ try {
     await p.keyboard.press('Escape');
     assert.equal(await p.locator('#install-open').count(), 0);
     await p.locator('#project-share').click();
-    await p.getByRole('button', { name: locale === 'en-US' ? 'Connect a project folder' : '连接项目目录', exact: true }).click();
+    await p.locator('#modal-content').getByRole('button', { name: locale === 'en-US' ? 'Connect a project folder' : '连接项目目录', exact: true }).click();
     assert.equal(await p.locator('#modal-title').innerText(), locale === 'en-US' ? 'Connect a project folder' : '连接项目目录');
     const scope = p.locator('[data-disclosure="sharing-scope"]');
     assert.equal(await scope.evaluate(el => el.open), false);

@@ -1,5 +1,22 @@
 # Dashboard third-party code
 
+## Basic note formatting
+
+Project notes use the Marked lexer for CommonMark lists, emphasis and inline
+code. `note-markdown.mjs` builds an allowlisted DOM from the tokens; source HTML,
+images and links are displayed literally. The original text is saved unchanged.
+
+- Package: `marked` 18.1.1, https://github.com/markedjs/marked/tree/v18.1.1
+- Unmodified `lib/marked.esm.js` copied as `marked-18.1.1.mjs` (47,076 bytes).
+- License: MIT, upstream `LICENSE` retained in [marked-LICENSE.txt](marked-LICENSE.txt).
+- npm: https://registry.npmjs.org/marked/-/marked-18.1.1.tgz
+- npm integrity: `sha512-zEGgrtUG8crk+TrMacJSVABU4DYDDkS8uqgU3ohrn/2fW9C2AEfUrO3m6IhpIpQpl7YcVpiXXC9cSMWDANT3dg==`
+- ESM SHA-256: `930457e5d55439f90465015cc507d3323366e80df5f7a701b61189d4e1046bda`.
+
+The bundle is embedded and served by the Server, with no CDN or runtime install.
+
+## Graph layout
+
 ELK Layered runs in a same-origin classic Worker. No package install or CDN is
 required when running the Server. Coconet's integration is in the adjacent
 `graph.mjs` and `layout-client.mjs` files.

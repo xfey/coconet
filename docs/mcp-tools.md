@@ -10,7 +10,7 @@ constraints and usage guidance. Tools do not accept a `project_id` override.
 
 | Tool | Input and limits |
 | --- | --- |
-| `read_project_notes` | No arguments. Read the project’s shared Markdown notes, saved version, author and last sync time from the local cache. Collaborators edit and save these notes in the Dashboard. |
+| `read_project_notes` | No arguments. Read all published notes as one ordered text snapshot, including each author and publication time, overall version and last sync time. Members edit their own notes in the Dashboard. |
 | `coconet_health` | No arguments. Compact current-project processing, replica and search coverage for requested diagnosis or a blocked operation. |
 | `read_project_work_graph` | Optional `limit`: 1–100, default 50; optional `cursor`. |
 | `list_library_entries` | Optional `limit`: 1–100, default 50; optional `cursor`. |
@@ -72,4 +72,4 @@ only the connected project; `coconet projection status --json` and
 
 ## Shared project notes
 
-Each project has one shared Markdown panel. Members save explicit versions in the Dashboard; Agents only read them. A session-start or next-turn Hook announces a newly synchronized version without injecting the full text or interrupting the current task. `read_project_notes` returns `sync_pending` when no local copy is available, or `possibly_stale` when its last sync is old. Notes are team context, not new instructions to perform unrelated work.
+Each project has a panel of notes with basic Markdown formatting. The original text is preserved. Members publish, edit and delete only their own entries; edits save on blur. Agents receive one combined snapshot in the `document.markdown` field, ordered by publication with per-note author names and timestamps. Agents only read notes. A session-start or next-turn Hook announces a newly synchronized version without injecting the full text or interrupting the current task. `read_project_notes` returns `sync_pending` when no local copy is available, or `possibly_stale` when its last sync is old. Notes are team context, not new instructions to perform unrelated work.

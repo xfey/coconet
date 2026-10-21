@@ -35,10 +35,13 @@ try {
   await page.locator('#session-action-2').click();
   await page.waitForFunction(() => document.querySelector('#session-action-2')?.getAttribute('aria-pressed') === 'true' && !document.querySelector('#session-action-2').disabled);
   assert.equal(inputs[0].source.version, 1, 'member must be able to save author v1');
+  assert.equal(await page.locator('.work-node[data-node-id="docs"] .node-saved').count(), 1);
+  assert.match(await page.locator('.work-node[data-node-id="docs"]').getAttribute('aria-label'), /已收藏/);
   await writeFile(file + '.advance', 'advance');
   await until(async () => { try { await readFile(file + '.advance'); return false; } catch { return true; } });
   await writeFile(file + '.publish', 'publish');
   await page.locator('.work-node').filter({ hasText: '简化停止条件说明' }).waitFor();
+  assert.equal(await page.locator('.work-node[data-node-id="docs"] .node-saved').count(), 1);
   await page.locator('#library-open').click();
   await page.locator('.library-entry').filter({ hasText: '补充停止条件说明' }).click();
   await page.locator('#detail-content').getByRole('heading', { name: '补充停止条件说明', exact: true }).waitFor();
@@ -57,6 +60,7 @@ try {
   // Removing the star from live v2 must target the separately saved v1.
   await page.locator('#session-action-2').click();
   await page.waitForFunction(() => document.querySelector('#session-action-2')?.getAttribute('aria-pressed') === 'false' && !document.querySelector('#session-action-2').disabled);
+  assert.equal(await page.locator('.work-node[data-node-id="docs"] .node-saved').count(), 0);
   assert.equal(inputs.at(-1).remove, true); assert.equal(inputs.at(-1).source.version, 1);
   // Refreshing an unavailable saved-version link never substitutes live v2.
   await page.goto(savedURL);

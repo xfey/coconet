@@ -414,11 +414,15 @@ function renderGraph() {
     const node = byID.get(id), position = layout.positions.get(id);
     const card = button('', () => selectNode(id), 'work-node ' + node.state + (id === state.selected ? ' selected' : ''));
     card.dataset.nodeId = id; card.setAttribute('aria-pressed', String(id === state.selected));
-    card.setAttribute('aria-label', `${node.objective}，${t(node.state)}，${shortIdentity(node.author)}`);
+    card.setAttribute('aria-label', `${node.objective}，${t(node.state)}，${shortIdentity(node.author)}` + (node.library ? `，${t('library_saved')}` : ''));
     card.style.left = position.x + 'px'; card.style.top = position.y + 'px';
     card.addEventListener('focus', () => canvas.reveal({ ...position, width: nodeWidth, height: nodeHeight }));
     const meta = element('span', undefined, 'node-meta');
     meta.append(element('span', node.author.display_name, 'node-author'), element('span', formatTime(node.work_time.end, true), 'node-date'));
+    if (node.library) {
+      const star = element('span', undefined, 'node-saved'); star.title = t('library_saved');
+      star.setAttribute('aria-hidden', 'true'); star.append(icon('star')); meta.append(star);
+    }
     card.append(element('strong', node.objective), meta);
     $('graph-nodes').append(card);
     if (activeID === id) card.focus({ preventScroll: true });
@@ -524,6 +528,7 @@ function toggleDocumentDrawer(open, restoreFocus = false) {
     } else documentPanel.ui.refresh();
     $('document-close').focus({ preventScroll: true });
   } else {
+    documentPanel?.ui.flush();
     $('document-drawer').hidden = true;
     if (restoreFocus) $('project-document').focus({ preventScroll: true });
   }

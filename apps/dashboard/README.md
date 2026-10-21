@@ -41,3 +41,11 @@ Open the guide from Share or the membership confirmation after signing in.
 Hosted and self-hosted sign-in pages omit folder-connection guidance, and there
 is no separate sidebar installation entry. Interface copy uses **project**
 for the shared collaboration space and **project folder** for a device path.
+
+Project notes appear as ordered, content-sized bubbles with basic Markdown lists,
+bold, italic and inline code. Editing preserves the original text. Click **+ Post a note** to
+write; leaving the input saves it. Members can read all notes and edit or delete
+only their own, enforced by the server. Notes expand the panel naturally up to
+the available canvas height. Drafts survive failed saves; conflicting changes
+to the same note require explicit resolution. Agent reads combine published
+notes into one ordered text snapshot with authors and publication timestamps.

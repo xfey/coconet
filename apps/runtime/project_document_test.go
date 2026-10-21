@@ -62,6 +62,18 @@ func TestProjectDocumentOfflineCacheAndNotificationScope(t *testing.T) {
 	if err != nil || read["document"].(contracts.ProjectDocument).Markdown != remote.doc.Markdown {
 		t.Fatal(read, err)
 	}
+	// Clearing all notes (or dropping pre-release text during upgrade) advances
+	// the version, so the previous offline copy is actually replaced.
+	remote.err = nil
+	remote.doc.Version = 3
+	remote.doc.Markdown = ""
+	if err := syncProjectDocument(context.Background(), root, "project", remote); err != nil {
+		t.Fatal(err)
+	}
+	read, err = readProjectDocument(root, "project")
+	if err != nil || read["document"].(contracts.ProjectDocument).Markdown != "" || read["document"].(contracts.ProjectDocument).Version != 3 {
+		t.Fatal("deleted notes remained in the cache", read, err)
+	}
 	remote.err = &replication.RequestError{Status: 403, Code: "forbidden"}
 	_ = syncProjectDocument(context.Background(), root, "project", remote)
 	read, err = readProjectDocument(root, "project")

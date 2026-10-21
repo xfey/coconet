@@ -23,7 +23,7 @@ import (
 	bolt "go.etcd.io/bbolt"
 )
 
-const databaseSchemaVersion = 26
+const databaseSchemaVersion = 27
 
 var (
 	metaBucket         = []byte("meta")
@@ -161,12 +161,11 @@ type semanticProjectionJob struct {
 }
 
 type databaseState struct {
-	ProjectDocuments        *recordCollection[contracts.ProjectDocument] `json:"project_documents"`
-	ProjectDocumentHeads    *recordCollection[int64]                     `json:"project_document_heads"`
-	ProjectDocumentReceipts *recordCollection[projectDocumentReceipt]    `json:"project_document_receipts"`
-	SnapshotCandidates      *recordCollection[string]                    `json:"snapshot_candidates"`
-	SnapshotLeases          *recordCollection[snapshotLease]             `json:"snapshot_leases"`
-	WorkStates              *recordCollection[sessionWorkRecord]         `json:"session_work_states"`
+	ProjectNotes            *recordCollection[contracts.ProjectNotes] `json:"project_notes"`
+	ProjectNoteReceipts     *recordCollection[projectNoteReceipt]     `json:"project_note_receipts"`
+	SnapshotCandidates      *recordCollection[string]                 `json:"snapshot_candidates"`
+	SnapshotLeases          *recordCollection[snapshotLease]          `json:"snapshot_leases"`
+	WorkStates              *recordCollection[sessionWorkRecord]      `json:"session_work_states"`
 	contents                artifactStore
 	ContentObjects          *recordCollection[contentObjectRecord] `json:"content_objects"`
 	recordContext           *recordTransaction
@@ -215,9 +214,8 @@ type databaseState struct {
 
 func newDatabaseState() databaseState {
 	return databaseState{
-		ProjectDocuments:        newRecordCollectionWith(make(map[string]contracts.ProjectDocument)),
-		ProjectDocumentHeads:    newRecordCollectionWith(make(map[string]int64)),
-		ProjectDocumentReceipts: newRecordCollectionWith(make(map[string]projectDocumentReceipt)), SnapshotCandidates: newRecordCollectionWith(make(map[string]string)),
+		ProjectNotes:        newRecordCollectionWith(make(map[string]contracts.ProjectNotes)),
+		ProjectNoteReceipts: newRecordCollectionWith(make(map[string]projectNoteReceipt)), SnapshotCandidates: newRecordCollectionWith(make(map[string]string)),
 		SnapshotLeases:        newRecordCollectionWith(make(map[string]snapshotLease)),
 		WorkStates:            newRecordCollectionWith(make(map[string]sessionWorkRecord)),
 		ContentObjects:        newRecordCollectionWith(make(map[string]contentObjectRecord)),
@@ -851,8 +849,9 @@ func decodeStateJSON(content []byte) (databaseState, error) {
 	}
 
 	var legacy struct {
-		Indexes  map[string]normalizedVersionRecord `json:"session_indexes"`
-		Versions map[string]contracts.Snapshot      `json:"session_versions"`
+		DocumentHeads map[string]int64                   `json:"project_document_heads"`
+		Indexes       map[string]normalizedVersionRecord `json:"session_indexes"`
+		Versions      map[string]contracts.Snapshot      `json:"session_versions"`
 	}
 	if err := json.Unmarshal(content, &legacy); err != nil {
 		return databaseState{}, err
@@ -862,6 +861,13 @@ func decodeStateJSON(content []byte) (databaseState, error) {
 		state.Snapshots = newRecordCollectionWith(legacy.Versions)
 	}
 	normalizeDatabaseState(&state)
+	// Pre-release shared documents are intentionally discarded. Advance the
+	// project version so already installed Runtimes replace their old cache.
+	for project, head := range legacy.DocumentHeads {
+		if !state.ProjectNotes.Has(project) {
+			state.ProjectNotes.Set(project, contracts.ProjectNotes{SchemaVersion: 1, ProjectID: project, Version: head + 1, Notes: []contracts.ProjectNote{}})
+		}
+	}
 	if err := migrateWorkRecords(&state, content); err != nil {
 		return databaseState{}, err
 	}
@@ -869,14 +875,11 @@ func decodeStateJSON(content []byte) (databaseState, error) {
 }
 
 func normalizeDatabaseState(state *databaseState) {
-	if state.ProjectDocuments == nil {
-		state.ProjectDocuments = newRecordCollectionWith(make(map[string]contracts.ProjectDocument))
+	if state.ProjectNotes == nil {
+		state.ProjectNotes = newRecordCollectionWith(make(map[string]contracts.ProjectNotes))
 	}
-	if state.ProjectDocumentHeads == nil {
-		state.ProjectDocumentHeads = newRecordCollectionWith(make(map[string]int64))
-	}
-	if state.ProjectDocumentReceipts == nil {
-		state.ProjectDocumentReceipts = newRecordCollectionWith(make(map[string]projectDocumentReceipt))
+	if state.ProjectNoteReceipts == nil {
+		state.ProjectNoteReceipts = newRecordCollectionWith(make(map[string]projectNoteReceipt))
 	}
 	if state.SnapshotCandidates == nil {
 		state.SnapshotCandidates = newRecordCollectionWith(make(map[string]string))

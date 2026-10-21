@@ -49,6 +49,6 @@ an unlimited graph size or guarantee model judgments on every conversation.
 
 ## Project notes and manual updates
 
-Project notes are a single shared Markdown document with saved versions and optimistic concurrency control. The server retains saved versions; the Runtime synchronizes an account/project-scoped local cache. Native session-start and user-turn Hooks announce changes, and the read-only `read_project_notes` tool reads that cache. Unsaved browser drafts are never published.
+Project notes are ordered plain-text entries. The server enforces author-only edits and deletions, per-note optimistic concurrency and idempotent retries. Each change advances the project version; the Runtime synchronizes one combined text snapshot with author names and publication timestamps into an account/project-scoped local cache. Native session-start and user-turn Hooks announce changes, and the read-only `read_project_notes` tool reads that cache. Unsaved browser drafts are never published.
 
 `coconet update` selects a stable client release, updates its npm launcher and verifies the Runtime archive before activation. Activation waits for in-flight work, including native continuation receipts. npm and Runtime versions are independent. Plugin content fingerprints avoid reconfiguring unchanged integrations and preserve disabled or removed plugins. New-version notices do not install anything automatically.

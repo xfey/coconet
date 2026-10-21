@@ -1,7 +1,7 @@
 package contracts
 
-// ProjectDocument is a user-edited project note, independent of the work graph.
-// Version zero denotes a document that has never been saved.
+// ProjectDocument is the single text snapshot read by Agents. Markdown is kept
+// as the wire field so existing Runtime installations can read plain notes too.
 const MaxProjectDocumentBytes = 256 << 10
 
 type ProjectDocument struct {
@@ -13,22 +13,25 @@ type ProjectDocument struct {
 	Author        SessionAuthor `json:"author"`
 }
 
-type SaveProjectDocumentRequest struct {
+type ProjectNote struct {
+	ID        string        `json:"id"`
+	Revision  int64         `json:"revision"`
+	Text      string        `json:"text"`
+	CreatedAt string        `json:"created_at"`
+	Author    SessionAuthor `json:"author"`
+}
+
+type ProjectNotes struct {
+	SchemaVersion int           `json:"schema_version"`
+	ProjectID     string        `json:"project_id"`
+	Version       int64         `json:"version"`
+	SavedAt       string        `json:"saved_at,omitempty"`
+	Notes         []ProjectNote `json:"notes"`
+}
+
+type SaveProjectNoteRequest struct {
 	SchemaVersion int    `json:"schema_version"`
 	RequestID     string `json:"request_id"`
-	BaseVersion   int64  `json:"base_version"`
-	Markdown      string `json:"markdown"`
-}
-
-type ProjectDocumentVersion struct {
-	Version int64         `json:"version"`
-	SavedAt string        `json:"saved_at"`
-	Author  SessionAuthor `json:"author"`
-}
-
-type ProjectDocumentHistory struct {
-	SchemaVersion int                      `json:"schema_version"`
-	ProjectID     string                   `json:"project_id"`
-	Versions      []ProjectDocumentVersion `json:"versions"`
-	NextBefore    int64                    `json:"next_before,omitempty"`
+	BaseRevision  int64  `json:"base_revision"`
+	Text          string `json:"text"`
 }

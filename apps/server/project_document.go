@@ -2,109 +2,130 @@ package main
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/xfey/coconet/packages/contracts"
 )
 
-type projectDocumentReceipt struct {
-	ProjectID string `json:"project_id"`
-	Digest    string `json:"digest"`
-	Version   int64  `json:"version"`
+type projectNoteReceipt struct {
+	Digest string `json:"digest"`
 }
 
-func documentVersionKey(project string, version int64) string {
-	return project + ":" + strconv.FormatInt(version, 10)
-}
-
-func documentAt(state *databaseState, project string, version int64) contracts.ProjectDocument {
-	if version == 0 {
-		return contracts.ProjectDocument{SchemaVersion: 1, ProjectID: project}
+func notesAt(state *databaseState, project string) contracts.ProjectNotes {
+	notes, ok := state.ProjectNotes.Lookup(project)
+	if !ok {
+		return contracts.ProjectNotes{SchemaVersion: 1, ProjectID: project, Notes: []contracts.ProjectNote{}}
 	}
-	return state.ProjectDocuments.Get(documentVersionKey(project, version))
+	return notes
 }
 
-func (a *authority) projectDocument(actor contracts.Account, project string, version int64) (contracts.ProjectDocument, error) {
-	var result contracts.ProjectDocument
+// One ordered text snapshot for the existing read-only Runtime transport.
+// User content remains plain text; author identity and publication time are
+// supplied by the server, never accepted from a browser mutation.
+func notesDocument(notes contracts.ProjectNotes) contracts.ProjectDocument {
+	var text strings.Builder
+	for i, note := range notes.Notes {
+		if i > 0 {
+			text.WriteString("\n\n---\n\n")
+		}
+		name := strings.Join(strings.Fields(note.Author.DisplayName), " ")
+		if name == "" {
+			name = note.Author.AccountID
+		}
+		fmt.Fprintf(&text, "[%d] %s · %s\n%s", i+1, name, note.CreatedAt, note.Text)
+	}
+	return contracts.ProjectDocument{SchemaVersion: 1, ProjectID: notes.ProjectID, Version: notes.Version, Markdown: text.String(), SavedAt: notes.SavedAt}
+}
+
+func (a *authority) projectNotes(actor contracts.Account, project string) (contracts.ProjectNotes, error) {
+	var result contracts.ProjectNotes
 	err := a.store.view(func(state databaseState) error {
 		if _, _, err := requireReadableMember(&state, actor.AccountID, project); err != nil {
 			return err
 		}
-		head := state.ProjectDocumentHeads.Get(project)
-		if version < 0 {
-			version = head
-		}
-		if version > head {
-			return notFound("document_version_missing", "This document version does not exist; refresh the version history.")
-		}
-		result = documentAt(&state, project, version)
+		result = notesAt(&state, project)
 		return nil
 	})
 	return result, err
 }
 
-func (a *authority) saveProjectDocument(actor contracts.Account, project string, input contracts.SaveProjectDocumentRequest) (contracts.ProjectDocument, error) {
-	var result contracts.ProjectDocument
-	if input.SchemaVersion != 1 || input.BaseVersion < 0 {
-		return result, invalid("invalid_document_version", "schema_version must be 1 and base_version must be the nonnegative version read before editing.")
+func (a *authority) saveProjectNote(actor contracts.Account, project, id string, input contracts.SaveProjectNoteRequest, remove bool) (contracts.ProjectNotes, error) {
+	var result contracts.ProjectNotes
+	if input.SchemaVersion != 1 || input.BaseRevision < 0 {
+		return result, invalid("invalid_note_revision", "schema_version must be 1; base_revision is 0 for a new note, or the revision read before editing or deleting it.")
+	}
+	if err := validateRequestID(id); err != nil {
+		return result, invalid("invalid_note_id", "Use a stable note ID when creating a note and keep it for retries.")
 	}
 	if err := validateRequestID(input.RequestID); err != nil {
 		return result, err
 	}
-	if len(input.Markdown) > contracts.MaxProjectDocumentBytes || !utf8.ValidString(input.Markdown) {
-		return result, invalid("invalid_document_content", "markdown must be valid UTF-8 and no larger than 256 KiB.")
+	if !utf8.ValidString(input.Text) || len(input.Text) > contracts.MaxProjectDocumentBytes || !remove && strings.TrimSpace(input.Text) == "" {
+		return result, invalid("invalid_note_content", "text must be nonempty UTF-8, no larger than 256 KiB. Delete the note to remove its content.")
 	}
-	digest := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%d:", input.BaseVersion)+input.Markdown)))
-	key := operationKey(actor.AccountID, "document:"+project, input.RequestID)
+	payload, _ := json.Marshal([]any{id, input.BaseRevision, input.Text, remove})
+	digest := fmt.Sprintf("%x", sha256.Sum256(payload))
+	key := operationKey(actor.AccountID, "notes:"+project, input.RequestID)
 	err := a.store.update(func(state *databaseState) error {
 		if _, _, err := requireActiveMember(state, actor.AccountID, project); err != nil {
 			return err
 		}
-		if receipt, ok := state.ProjectDocumentReceipts.Lookup(key); ok {
+		result = notesAt(state, project)
+		if receipt, ok := state.ProjectNoteReceipts.Lookup(key); ok {
 			if receipt.Digest != digest {
-				return conflict("document_request_reused", "This save request was already used for different content; start a new save request.")
+				return conflict("note_request_reused", "This request was used for a different change. Use a new request ID.")
 			}
-			result = documentAt(state, project, receipt.Version)
+			// Return the current view, not an old snapshot that could resurrect
+			// a note deleted after a successful but unacknowledged save.
 			return nil
 		}
-		head := state.ProjectDocumentHeads.Get(project)
-		if head != input.BaseVersion {
-			return conflict("document_conflict", "Someone saved a newer version. Keep your draft, read the latest document, then merge and save again.")
+		index := -1
+		for i, note := range result.Notes {
+			if note.ID == id {
+				index = i
+				break
+			}
 		}
-		result = documentAt(state, project, head)
-		if result.Markdown != input.Markdown {
-			result = contracts.ProjectDocument{SchemaVersion: 1, ProjectID: project, Version: head + 1, Markdown: input.Markdown, SavedAt: a.timestamp(), Author: contracts.SessionAuthor{AccountID: actor.AccountID, DisplayName: actor.DisplayName}}
-			state.ProjectDocuments.Set(documentVersionKey(project, result.Version), result)
-			state.ProjectDocumentHeads.Set(project, result.Version)
-			markDashboardChanged(state, project)
+		if index >= 0 {
+			note := result.Notes[index]
+			if note.Author.AccountID != actor.AccountID {
+				return forbidden("note_not_owned", "Only the person who published this note can edit or delete it.")
+			}
+			if note.Revision != input.BaseRevision {
+				return conflict("note_conflict", "This note changed on another device. Keep your draft and compare it with the latest note before retrying.")
+			}
+			if !remove && note.Text == input.Text {
+				state.ProjectNoteReceipts.Set(key, projectNoteReceipt{Digest: digest})
+				return nil
+			}
+		} else if remove || input.BaseRevision != 0 {
+			return notFound("note_missing", "This note was deleted. Keep your draft and publish it as a new note if needed.")
 		}
-		state.ProjectDocumentReceipts.Set(key, projectDocumentReceipt{ProjectID: project, Digest: digest, Version: result.Version})
-		return nil
-	})
-	return result, err
-}
-
-func (a *authority) projectDocumentHistory(actor contracts.Account, project string, before int64) (contracts.ProjectDocumentHistory, error) {
-	result := contracts.ProjectDocumentHistory{SchemaVersion: 1, ProjectID: project, Versions: []contracts.ProjectDocumentVersion{}}
-	err := a.store.view(func(state databaseState) error {
-		if _, _, err := requireReadableMember(&state, actor.AccountID, project); err != nil {
-			return err
+		// Copy before changing the slice: a rejected oversized mutation must
+		// not affect the stored view, including an in-memory transaction.
+		result.Notes = append([]contracts.ProjectNote{}, result.Notes...)
+		now := a.timestamp()
+		switch {
+		case remove:
+			result.Notes = append(result.Notes[:index], result.Notes[index+1:]...)
+		case index >= 0:
+			result.Notes[index].Text = input.Text
+			result.Notes[index].Revision++
+		case index < 0:
+			result.Notes = append(result.Notes, contracts.ProjectNote{ID: id, Revision: 1, Text: input.Text, CreatedAt: now, Author: contracts.SessionAuthor{AccountID: actor.AccountID, DisplayName: actor.DisplayName}})
 		}
-		head := state.ProjectDocumentHeads.Get(project)
-		start := head
-		if before > 0 {
-			start = min(start, before-1)
+		if len(notesDocument(result).Markdown) > contracts.MaxProjectDocumentBytes {
+			return invalid("notes_too_large", "The combined project notes exceed 256 KiB. Shorten or delete some of your notes before saving.")
 		}
-		for v := start; v > 0 && len(result.Versions) < 50; v-- {
-			doc := documentAt(&state, project, v)
-			result.Versions = append(result.Versions, contracts.ProjectDocumentVersion{Version: v, SavedAt: doc.SavedAt, Author: doc.Author})
-		}
-		if len(result.Versions) > 0 && result.Versions[len(result.Versions)-1].Version > 1 {
-			result.NextBefore = result.Versions[len(result.Versions)-1].Version
-		}
+		result.Version++
+		result.SavedAt = now
+		state.ProjectNotes.Set(project, result)
+		state.ProjectNoteReceipts.Set(key, projectNoteReceipt{Digest: digest})
+		markDashboardChanged(state, project)
 		return nil
 	})
 	return result, err
@@ -113,41 +134,21 @@ func (a *authority) projectDocumentHistory(actor contracts.Account, project stri
 func (h *serverHandler) handleProjectDocument(w http.ResponseWriter, r *http.Request, requestID string, actor contracts.Account, project string, parts []string, browser bool) {
 	w.Header().Set("Cache-Control", "no-store")
 	if len(parts) == 0 && r.Method == http.MethodGet {
-		result, err := h.authority.projectDocument(actor, project, -1)
-		h.writeResult(w, requestID, 200, result, err)
+		result, err := h.authority.projectNotes(actor, project)
+		if browser {
+			h.writeResult(w, requestID, 200, result, err)
+		} else {
+			h.writeResult(w, requestID, 200, notesDocument(result), err)
+		}
 		return
 	}
-	if browser && len(parts) == 0 && r.Method == http.MethodPut {
-		var input contracts.SaveProjectDocumentRequest
+	if browser && len(parts) == 2 && parts[0] == "notes" && (r.Method == http.MethodPut || r.Method == http.MethodDelete) {
+		var input contracts.SaveProjectNoteRequest
 		if err := decodeJSONLimit(r, &input, 6*contracts.MaxProjectDocumentBytes+4096); err != nil {
-			h.writeError(w, requestID, invalid("invalid_document_json", "Send a JSON save request with schema_version, request_id, base_version and markdown (up to 256 KiB)."))
+			h.writeError(w, requestID, invalid("invalid_note_json", "Send schema_version, request_id, base_revision and text for this note; do not send author information."))
 			return
 		}
-		result, err := h.authority.saveProjectDocument(actor, project, input)
-		h.writeResult(w, requestID, 200, result, err)
-		return
-	}
-	if browser && r.Method == http.MethodGet && len(parts) == 1 && parts[0] == "history" {
-		before := int64(0)
-		var err error
-		if value := r.URL.Query().Get("before"); value != "" {
-			before, err = strconv.ParseInt(value, 10, 64)
-		}
-		if err != nil || before < 0 {
-			h.writeError(w, requestID, invalid("invalid_document_cursor", "before must be a nonnegative version number from the previous history page."))
-			return
-		}
-		result, err := h.authority.projectDocumentHistory(actor, project, before)
-		h.writeResult(w, requestID, 200, result, err)
-		return
-	}
-	if browser && r.Method == http.MethodGet && len(parts) == 2 && parts[0] == "versions" {
-		version, err := strconv.ParseInt(parts[1], 10, 64)
-		if err != nil || version < 1 {
-			h.writeError(w, requestID, invalid("invalid_document_version", "The requested document version must be a positive integer."))
-			return
-		}
-		result, err := h.authority.projectDocument(actor, project, version)
+		result, err := h.authority.saveProjectNote(actor, project, parts[1], input, r.Method == http.MethodDelete)
 		h.writeResult(w, requestID, 200, result, err)
 		return
 	}
