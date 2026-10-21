@@ -1,6 +1,6 @@
 # Development
 
-Use Go 1.26.9 or newer, Node.js 24.22 or newer, npm, Python 3 and Git. Network access is
+Use Go 1.26.10 or newer, Node.js 24.22 or newer, npm, Python 3 and Git. Network access is
 needed to download pinned Go / npm dependencies. No production credentials or
 Agent login are needed for `make check`.
 
