@@ -80,8 +80,8 @@ func runHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			if root, rootErr := managedLocalDAGRoot(); rootErr == nil {
 				_ = atomicWriteJSON(filepath.Join(root, "capture-error.json"), map[string]string{"error": err.Error(), "at": time.Now().UTC().Format(time.RFC3339Nano)}, 0600)
 			}
-		} else if strings.EqualFold(eventName, "SessionStart") {
-			writeManagedSessionStartContext(contracts.AgentType(*agent), *skillPath, stdout)
+		} else if strings.EqualFold(eventName, "SessionStart") || strings.EqualFold(eventName, "UserPromptSubmit") {
+			writeManagedHookContext(contracts.AgentType(*agent), *skillPath, event, stdout)
 		}
 		return 0
 	}

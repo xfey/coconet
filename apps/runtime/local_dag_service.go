@@ -246,7 +246,7 @@ func startManagedLocalDAG(root string) error {
 	if err != nil || !allowed {
 		return err
 	}
-	executable, err := os.Executable()
+	executable, err := currentRuntimeExecutable()
 	if err != nil {
 		return err
 	}
@@ -265,6 +265,22 @@ func runManagedLocalDAG(ctx context.Context, args []string, stdout, stderr io.Wr
 		return 2
 	}
 	root := args[1]
+	ctx, releaseStartup, err := holdRuntimeStartup(ctx, root)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	defer func() { releaseStartup() }()
+	if executable, err := currentRuntimeExecutable(); err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	} else if own, _ := os.Executable(); executable != own {
+		releaseStartup()
+		if err := syscall.Exec(executable, append([]string{executable, "_local-daemon"}, args...), os.Environ()); err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+	}
 	if stale, err := localDAGOlderProcess(root); err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
@@ -302,6 +318,25 @@ func runManagedLocalDAG(ctx context.Context, args []string, stdout, stderr io.Wr
 			code := serveConnectedLocalDAG(ctx, root, config, stdout, stderr)
 			if code != localDAGReloadExit {
 				return code
+			}
+			// Configuration reloads are launches too. The updater may have
+			// activated a newer executable while this process had no endpoint.
+			ctx, releaseStartup, err = holdRuntimeStartup(ctx, root)
+			if err != nil {
+				fmt.Fprintln(stderr, err)
+				return 1
+			}
+			if executable, e := currentRuntimeExecutable(); e != nil {
+				fmt.Fprintln(stderr, e)
+				return 1
+			} else if own, _ := os.Executable(); executable != own {
+				releaseStartup()
+				_ = release()
+				_ = log.Close()
+				if err := syscall.Exec(executable, append([]string{executable, "_local-daemon"}, args...), os.Environ()); err != nil {
+					fmt.Fprintln(stderr, err)
+					return 1
+				}
 			}
 			config, err = loadLocalDAGService(root)
 			if err != nil {

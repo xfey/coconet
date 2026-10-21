@@ -126,8 +126,8 @@ test("the launcher delegates matching Runtime arguments without running setup", 
   }
 });
 
-test("the launcher installs missing and upgrades mismatched Runtimes before delegation", async () => {
-  for (const initialVersion of ["", "0.1.0"]) {
+test("the launcher installs only a missing Runtime before delegation", async () => {
+  for (const initialVersion of [""]) {
     const temporaryRoot = await mkdtemp(join(tmpdir(), "coconet-launcher-setup-"));
     try {
       const fixture = await createLauncherFixture(temporaryRoot);
@@ -145,6 +145,21 @@ test("the launcher installs missing and upgrades mismatched Runtimes before dele
     } finally {
       await rm(temporaryRoot, { recursive: true, force: true });
     }
+  }
+});
+
+test("npm and Runtime versions are independent and daily commands never activate another version", async () => {
+  for (const version of ["0.1.0", "99.0.0"]) {
+    const root = await mkdtemp(join(tmpdir(), "coconet-independent-version-"));
+    try {
+      const fixture = await createLauncherFixture(root);
+      const data = join(root, "data"), trace = join(root, "trace");
+      await seedRuntime(data, version);
+      const result = await run(fixture.launcher, ["mcp"], {env:launcherEnvironment(data,trace,"fail")});
+      assert.equal(result.code,0,result.stderr);assert.equal(result.stderr,"");
+      assert.equal(result.stdout,"runtime <mcp>\n");
+      await assert.rejects(readFile(trace),{code:"ENOENT"});
+    } finally { await rm(root,{recursive:true,force:true}); }
   }
 });
 

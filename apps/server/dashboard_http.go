@@ -41,6 +41,7 @@ func (h *serverHandler) serveDashboard(w http.ResponseWriter, r *http.Request, r
 		"/assets/connection.mjs":                  {"connection.mjs", "text/javascript; charset=utf-8"},
 		"/assets/account.mjs":                     {"account.mjs", "text/javascript; charset=utf-8"},
 		"/assets/library.mjs":                     {"library.mjs", "text/javascript; charset=utf-8"},
+		"/assets/project-document.mjs":            {"project-document.mjs", "text/javascript; charset=utf-8"},
 		"/assets/app.mjs":                         {"app.mjs", "text/javascript; charset=utf-8"},
 		"/assets/endpoint.mjs":                    {"endpoint.mjs", "text/javascript; charset=utf-8"},
 		"/assets/platform.mjs":                    {"platform.mjs", "text/javascript; charset=utf-8"},

@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/xfey/coconet/packages/distribution"
 	"github.com/xfey/coconet/packages/graphstore"
 	"github.com/xfey/coconet/packages/inference"
 	"github.com/xfey/coconet/packages/localdag"
@@ -28,9 +29,10 @@ import (
 )
 
 type localDAGEndpoint struct {
-	Version string `json:"version,omitempty"`
-	URL     string `json:"url"`
-	Token   string `json:"token"`
+	UpdateProtocol int    `json:"update_protocol,omitempty"`
+	Version        string `json:"version,omitempty"`
+	URL            string `json:"url"`
+	Token          string `json:"token"`
 }
 type limitedInference struct {
 	Runner inference.Runner
@@ -89,12 +91,13 @@ func serveLocalDAG(ctx context.Context, root string, engine *localdag.Engine, bu
 	if _, err := rand.Read(secret[:]); err != nil {
 		return err
 	}
-	endpoint := localDAGEndpoint{Version: version, URL: "http://" + listener.Addr().String(), Token: hex.EncodeToString(secret[:])}
+	endpoint := localDAGEndpoint{UpdateProtocol: 1, Version: version, URL: "http://" + listener.Addr().String(), Token: hex.EncodeToString(secret[:])}
 	control := filepath.Join(root, "control.json")
 	if err := atomicWriteJSON(control, endpoint, 0600); err != nil {
 		return err
 	}
 	defer os.Remove(control)
+	releaseRuntimeStartup(ctx)
 	processingEnabled := engine.Runner != nil || engine.ResolveRunner != nil
 	runner := &limitedInference{Runner: engine.Runner, Store: engine.Store, Limit: budget}
 	if _, err := runner.budget(); err != nil {
@@ -138,6 +141,15 @@ func serveLocalDAG(ctx context.Context, root string, engine *localdag.Engine, bu
 		default:
 		}
 	}
+	activity := func(work func()) bool {
+		release, err := beginRuntimeActivity(ctx, root)
+		if err != nil {
+			return false
+		}
+		defer release()
+		work()
+		return true
+	}
 	workerDone := make(chan struct{})
 	syncDone := make(chan struct{})
 	inboxDone := make(chan struct{})
@@ -147,23 +159,27 @@ func serveLocalDAG(ctx context.Context, root string, engine *localdag.Engine, bu
 		timer := time.NewTicker(time.Minute)
 		defer timer.Stop()
 		for {
-			report("diagnostic-retention", engine.Store.PruneDiagnostics(time.Now()))
-			report("transfer-retention", engine.Store.PruneTransfers(time.Now()))
-			_, cacheErr := maintainLocalDAGCache(ctx, root, engine)
-			report("local-content-retention", cacheErr)
-			projects, err := localDAGActiveProjects(root, engine.Store)
-			if err != nil {
-				report("retention", err)
-				return
-			}
-			for _, project := range projects {
-				if ctx.Err() != nil {
+			if !activity(func() {
+				report("diagnostic-retention", engine.Store.PruneDiagnostics(time.Now()))
+				report("transfer-retention", engine.Store.PruneTransfers(time.Now()))
+				_, cacheErr := maintainLocalDAGCache(ctx, root, engine)
+				report("local-content-retention", cacheErr)
+				projects, err := localDAGActiveProjects(root, engine.Store)
+				if err != nil {
+					report("retention", err)
 					return
 				}
-				attempt, stop := context.WithTimeout(ctx, 45*time.Second)
-				err := maintainLocalDAG(attempt, engine, project)
-				stop()
-				report("retention/"+project, err)
+				for _, project := range projects {
+					if ctx.Err() != nil {
+						return
+					}
+					attempt, stop := context.WithTimeout(ctx, 45*time.Second)
+					err := maintainLocalDAG(attempt, engine, project)
+					stop()
+					report("retention/"+project, err)
+				}
+			}) {
+				return
 			}
 			select {
 			case <-ctx.Done():
@@ -182,43 +198,47 @@ func serveLocalDAG(ctx context.Context, root string, engine *localdag.Engine, bu
 		defer timer.Stop()
 		polls := map[string]*projectPoll{}
 		for {
-			projects, err := localDAGActiveProjects(root, engine.Store)
-			if err != nil {
-				report("content", err)
-				return
-			}
-			for _, project := range projects {
-				before, err := engine.Store.AcceptedRevision(project)
+			if !activity(func() {
+				projects, err := localDAGActiveProjects(root, engine.Store)
 				if err != nil {
-					report("content/"+project, err)
-					continue
+					report("content", err)
+					return
 				}
-				poll := polls[project]
-				if poll == nil {
-					poll = &projectPoll{}
-					polls[project] = poll
-				}
-				if !poll.due(time.Now(), before) {
-					continue
-				}
-				attempt, stop := context.WithTimeout(ctx, 45*time.Second)
-				if canSync {
-					if background, ok := engine.Publisher.(interface {
-						SyncContentsBackground(context.Context, string) error
-					}); ok {
-						err = background.SyncContentsBackground(attempt, project)
-					} else {
-						err = remote.SyncContents(attempt, project)
+				for _, project := range projects {
+					before, err := engine.Store.AcceptedRevision(project)
+					if err != nil {
+						report("content/"+project, err)
+						continue
 					}
+					poll := polls[project]
+					if poll == nil {
+						poll = &projectPoll{}
+						polls[project] = poll
+					}
+					if !poll.due(time.Now(), before) {
+						continue
+					}
+					attempt, stop := context.WithTimeout(ctx, 45*time.Second)
+					if canSync {
+						if background, ok := engine.Publisher.(interface {
+							SyncContentsBackground(context.Context, string) error
+						}); ok {
+							err = background.SyncContentsBackground(attempt, project)
+						} else {
+							err = remote.SyncContents(attempt, project)
+						}
+					}
+					stop()
+					report("content/"+project, err)
+					index, indexErr := engine.Store.IndexProject(ctx, project, 16)
+					report("indexing/"+project, indexErr)
+					coverage, coverageErr := engine.Store.ReplicaCoverage(project, engine.Actor)
+					report("replica-state/"+project, coverageErr)
+					pending := canSync && (coverage.NativeReady < coverage.Expected || coverage.TextReady < coverage.Expected || coverage.PendingUploads > 0) || !index.Complete
+					poll.complete(time.Now(), before, coverage.Revision, pending, err)
 				}
-				stop()
-				report("content/"+project, err)
-				index, indexErr := engine.Store.IndexProject(ctx, project, 16)
-				report("indexing/"+project, indexErr)
-				coverage, coverageErr := engine.Store.ReplicaCoverage(project, engine.Actor)
-				report("replica-state/"+project, coverageErr)
-				pending := canSync && (coverage.NativeReady < coverage.Expected || coverage.TextReady < coverage.Expected || coverage.PendingUploads > 0) || !index.Complete
-				poll.complete(time.Now(), before, coverage.Revision, pending, err)
+			}) {
+				return
 			}
 			select {
 			case <-ctx.Done():
@@ -232,8 +252,12 @@ func serveLocalDAG(ctx context.Context, root string, engine *localdag.Engine, bu
 		timer := time.NewTicker(time.Second)
 		defer timer.Stop()
 		for {
-			report("history", tickLocalHistory(ctx, root, engine))
-			report("capture", drainLocalDAGInbox(ctx, root, engine))
+			if !activity(func() {
+				report("history", tickLocalHistory(ctx, root, engine))
+				report("capture", drainLocalDAGInbox(ctx, root, engine))
+			}) {
+				return
+			}
 			select {
 			case <-ctx.Done():
 				return
@@ -250,41 +274,50 @@ func serveLocalDAG(ctx context.Context, root string, engine *localdag.Engine, bu
 		defer timer.Stop()
 		polls := map[string]*projectPoll{}
 		for {
-			projects, err := localDAGActiveProjects(root, engine.Store)
-			if err != nil {
-				report("replication", err)
-				return
-			}
-			for _, project := range projects {
-				if ctx.Err() != nil {
+			if !activity(func() {
+				projects, err := localDAGActiveProjects(root, engine.Store)
+				if err != nil {
+					report("replication", err)
 					return
 				}
-				before, readErr := engine.Store.AcceptedRevision(project)
-				if readErr != nil {
-					report("replication/"+project, readErr)
-					continue
+				for _, project := range projects {
+					if ctx.Err() != nil {
+						return
+					}
+					before, readErr := engine.Store.AcceptedRevision(project)
+					if readErr != nil {
+						report("replication/"+project, readErr)
+						continue
+					}
+					poll := polls[project]
+					if poll == nil {
+						poll = &projectPoll{}
+						polls[project] = poll
+					}
+					if !poll.due(time.Now(), before) {
+						continue
+					}
+					err := syncLocalDAGBackground(ctx, engine, project)
+					report("replication/"+project, err)
+					discoverySync.report(project, err)
+					if remote, ok := engine.Publisher.(projectDocumentReader); ok {
+						attempt, stop := context.WithTimeout(ctx, 15*time.Second)
+						report("project-document/"+project, syncProjectDocument(attempt, root, project, remote))
+						stop()
+					}
+					after, readErr := engine.Store.AcceptedRevision(project)
+					if readErr != nil {
+						report("replication/"+project, readErr)
+						continue
+					}
+					published, _ := engine.Store.PublishedCheckpoint(project)
+					poll.complete(time.Now(), before, after, published < after, err)
+					if err == nil && after != before {
+						notify()
+					}
 				}
-				poll := polls[project]
-				if poll == nil {
-					poll = &projectPoll{}
-					polls[project] = poll
-				}
-				if !poll.due(time.Now(), before) {
-					continue
-				}
-				err := syncLocalDAGBackground(ctx, engine, project)
-				report("replication/"+project, err)
-				discoverySync.report(project, err)
-				after, readErr := engine.Store.AcceptedRevision(project)
-				if readErr != nil {
-					report("replication/"+project, readErr)
-					continue
-				}
-				published, _ := engine.Store.PublishedCheckpoint(project)
-				poll.complete(time.Now(), before, after, published < after, err)
-				if err == nil && after != before {
-					notify()
-				}
+			}) {
+				return
 			}
 			select {
 			case <-ctx.Done():
@@ -298,26 +331,30 @@ func serveLocalDAG(ctx context.Context, root string, engine *localdag.Engine, bu
 		timer := time.NewTicker(time.Second)
 		defer timer.Stop()
 		for {
-			projects, err := localDAGActiveProjects(root, engine.Store)
-			if err != nil {
-				report("processing", err)
+			if !activity(func() {
+				projects, err := localDAGActiveProjects(root, engine.Store)
+				if err != nil {
+					report("processing", err)
+					return
+				}
+				for _, project := range projects {
+					if ctx.Err() != nil {
+						return
+					}
+					report("publication/"+project, engine.Flush(ctx, project))
+				}
+				// Deterministic lifecycle-only work needs no model quota. The runner
+				// reserves actual calls atomically; exhausted tasks wait with NextAt.
+				for _, project := range projects {
+					if ctx.Err() != nil {
+						return
+					}
+					if processingEnabled {
+						report("processing/"+project, engine.Drain(ctx, project, 1))
+					}
+				}
+			}) {
 				return
-			}
-			for _, project := range projects {
-				if ctx.Err() != nil {
-					return
-				}
-				report("publication/"+project, engine.Flush(ctx, project))
-			}
-			// Deterministic lifecycle-only work needs no model quota. The runner
-			// reserves actual calls atomically; exhausted tasks wait with NextAt.
-			for _, project := range projects {
-				if ctx.Err() != nil {
-					return
-				}
-				if processingEnabled {
-					report("processing/"+project, engine.Drain(ctx, project, 1))
-				}
 			}
 			select {
 			case <-ctx.Done():
@@ -346,6 +383,14 @@ func serveLocalDAG(ctx context.Context, root string, engine *localdag.Engine, bu
 			http.Error(w, "browser origin is not enabled for this endpoint", 403)
 			return
 		}
+		if r.URL.Path != "/status" && r.URL.Path != "/stop" {
+			release, err := beginRuntimeActivity(r.Context(), root)
+			if err != nil {
+				http.Error(w, "Runtime update is waiting; retry this operation.", 503)
+				return
+			}
+			defer release()
+		}
 		project := r.URL.Query().Get("project")
 		if project != "" {
 			projects, err := localDAGActiveProjects(root, engine.Store)
@@ -357,6 +402,8 @@ func serveLocalDAG(ctx context.Context, root string, engine *localdag.Engine, bu
 		var value any
 		var failure error
 		switch {
+		case r.Method == "GET" && r.URL.Path == "/document":
+			value, failure = readProjectDocument(root, project)
 		case r.Method == "GET" && r.URL.Path == "/status":
 			statusMu.RLock()
 			activeErrors := map[string]string{}
@@ -391,6 +438,12 @@ func serveLocalDAG(ctx context.Context, root string, engine *localdag.Engine, bu
 				value.(map[string]any)["project"] = operations
 			}
 		case r.Method == "POST" && r.URL.Path == "/stop":
+			caller := r.Header.Get("X-Coconet-Version")
+			order, known := distribution.CompareVersions(caller, version)
+			if caller != version && (!known || order < 0) {
+				http.Error(w, "A newer Runtime is running. Reopen the Agent session before managing it.", http.StatusConflict)
+				return
+			}
 			value = map[string]bool{"stopping": true}
 			defer cancel()
 		case r.Method == "GET" && r.URL.Path == "/inbox":
@@ -669,6 +722,7 @@ func localDAGClient(ctx context.Context, root, action string, options localDAGCl
 		return true, 1
 	}
 	probe.Header.Set("Authorization", "Bearer "+endpoint.Token)
+	probe.Header.Set("X-Coconet-Version", version)
 	response, err := client.Do(probe)
 	if err != nil {
 		var network *net.OpError
@@ -690,7 +744,7 @@ func localDAGClient(ctx context.Context, root, action string, options localDAGCl
 	method := "GET"
 	var body io.Reader
 	switch action {
-	case "state", "graph", "search", "library", "logs", "tasks", "replay", "status", "proposals", "transfers", "inbox", "diagnostics-status", "diagnostics-list", "diagnostics-export", "storage-status":
+	case "document", "state", "graph", "search", "library", "logs", "tasks", "replay", "status", "proposals", "transfers", "inbox", "diagnostics-status", "diagnostics-list", "diagnostics-export", "storage-status":
 	case "history-preview", "history-list", "history-status", "history-start", "history-pause", "history-resume", "history-retry", "history-forget", "collect", "uncollect", "fork":
 		method = "POST"
 		var payload any = options.Library
@@ -763,6 +817,7 @@ func localDAGClient(ctx context.Context, root, action string, options localDAGCl
 		return true, 1
 	}
 	request.Header.Set("Authorization", "Bearer "+endpoint.Token)
+	request.Header.Set("X-Coconet-Version", version)
 	response, err = client.Do(request)
 	if err != nil {
 		fmt.Fprintln(stderr, err)

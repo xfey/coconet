@@ -2,6 +2,7 @@ package contract_test
 
 import (
 	"encoding/json"
+	"github.com/xfey/coconet/packages/distribution"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -49,8 +50,8 @@ func TestPluginIdentityAndMCPStayAligned(t *testing.T) {
 		t.Fatalf("plugin identities diverged: codex=%#v claude=%#v", codexManifest, claudeManifest)
 	}
 	setupManifest := decodeJSON[pluginManifest](t, filepath.Join(root, "installers", "npm", "package.json"))
-	if setupManifest.Name != "coconet" || setupManifest.Version != codexManifest.Version {
-		t.Fatalf("npm setup and Plugin versions diverged: setup=%#v plugin=%#v", setupManifest, codexManifest)
+	if _, valid := distribution.CompareVersions(codexManifest.Version, codexManifest.Version); setupManifest.Name != "coconet" || !valid {
+		t.Fatal("invalid independent plugin/package identity", setupManifest, codexManifest)
 	}
 
 	for pluginRoot, agent := range map[string]string{codexRoot: "codex", claudeRoot: "claude", cursorRoot: "cursor"} {
@@ -153,7 +154,7 @@ func TestPluginHooksRemainFailOpenRuntimeEntrypoints(t *testing.T) {
 		{
 			path:          filepath.Join(root, "plugins", "codex", "coconet", "hooks", "hooks.json"),
 			agent:         "codex",
-			requiredEvent: []string{"Stop", "SessionEnd", "SessionStart"},
+			requiredEvent: []string{"Stop", "SessionEnd", "SessionStart", "UserPromptSubmit"},
 		},
 		{
 			path:          filepath.Join(root, "plugins", "claude", "coconet", "hooks", "hooks.json"),
@@ -179,8 +180,8 @@ func TestPluginHooksRemainFailOpenRuntimeEntrypoints(t *testing.T) {
 					if !strings.Contains(hook.Command, "scripts/hook.sh") || len(hook.Args) != 0 {
 						t.Fatalf("unexpected hook command %q", hook.Command)
 					}
-					if strings.Contains(hook.Command, " --context") != (event == "SessionStart") {
-						t.Fatalf("only SessionStart may forward context: %s", event)
+					if strings.Contains(hook.Command, " --context") != (event == "SessionStart" || event == "UserPromptSubmit") {
+						t.Fatalf("only SessionStart/UserPromptSubmit may forward context: %s", event)
 					}
 					if hook.Timeout != expectedTimeout[event] {
 						t.Fatalf("%s must preserve the %d-second %s budget: %d", current.path, expectedTimeout[event], event, hook.Timeout)
@@ -191,8 +192,8 @@ func TestPluginHooksRemainFailOpenRuntimeEntrypoints(t *testing.T) {
 				}
 			}
 		}
-		for _, removed := range []string{"UserPromptSubmit", "PreToolUse"} {
-			if len(config.Hooks[removed]) != 0 && !(current.agent == "claude" && removed == "UserPromptSubmit") {
+		for _, removed := range []string{"PreToolUse"} {
+			if len(config.Hooks[removed]) != 0 {
 				t.Fatalf("%s retained automatic recall Hook %s", current.path, removed)
 			}
 		}

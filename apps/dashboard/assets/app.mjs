@@ -1,3 +1,4 @@
+import { mountProjectDocument } from './project-document.mjs';
 import { endpointPath } from './endpoint.mjs';
 import { copyToClipboard } from './platform.mjs';
 import { createPublishedGraphReader, publishedGraphStatus, publishedSessionActions, renderPublishedStatus } from "./published-graph.mjs";
@@ -22,7 +23,7 @@ for (const control of document.querySelectorAll('[data-icon]')) control.replaceC
 for (const control of document.querySelectorAll('[data-button-icon]')) styleButton(control, { glyph: control.dataset.buttonIcon });
 const state = { projects: [], project: '', nodes: [], selected: '', graphEpoch: 0, zoom: 1, session: null };
 Object.assign(state, { layout: emptyLayout(), navigationEpoch: 0, selection: null, selectionEpoch: 0 });
-let modal = null, modalEpoch = 0, copyEpoch = 0;
+let modal = null, modalEpoch = 0, copyEpoch = 0, documentPanel = null;
 const graphLayout = createLayoutClient();
 let savedLanguage;
 try { savedLanguage = localStorage.getItem(languageStorageKey); } catch { /* restricted storage still permits in-memory selection */ }
@@ -34,7 +35,7 @@ const libraryActions = createLibraryActions({
   changed: () => renderDetails(),
 });
 const projectEvents = createProjectEvents({ refresh: () => refreshWorkspace({ preserveViewport: true }), revoked: () => openWorkspace(state.session) });
-const notifications = createNotifications({ region: $('notifications'), viewport: $('graph-viewport'), details: $('details'), library: $('library-open'), translate: t });
+const notifications = createNotifications({ region: $('notifications'), viewport: $('graph-viewport'), details: $('details'), library: $('canvas-panels'), translate: t });
 function applyStaticLanguage() {
   document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
   for (const node of document.querySelectorAll('[data-i18n]')) {
@@ -49,7 +50,7 @@ function applyStaticLanguage() {
 function changeLanguage(next) {
   language = detectLanguage(next);
   try { localStorage.setItem(languageStorageKey, language); } catch { /* no persistent storage available */ }
-  applyStaticLanguage(); notifications.refreshLanguage(); accountUI.refreshLanguage(); renderProjects(); renderGraph(); renderLibrary(); renderDetails();
+  applyStaticLanguage(); documentPanel?.ui.render(); notifications.refreshLanguage(); accountUI.refreshLanguage(); renderProjects(); renderGraph(); renderLibrary(); renderDetails();
   if (modal?.kind === 'action') renderAction();
   else if (modal?.kind === 'installation') renderInstall();
   else if (modal?.kind === 'projection') { $('modal-title').textContent = t('sync_status'); modal.ui.render(); }
@@ -129,7 +130,7 @@ function closeModal(restoreFocus = true) {
   modal = null; modalEpoch++;
   $('session-modal').close(); $('modal-content').replaceChildren();
   notifications.clearToast();
-  notifications.modal(false);
+  notifications.modal(!$('document-drawer').hidden);
   if (restoreFocus) {
     const target = trigger === 'notice' ? $('notice').querySelector('button') || $('canvas-settings') : $(trigger);
     target?.focus({ preventScroll: true });
@@ -164,19 +165,27 @@ function renderAction() {
 }
 function openInstallation({ project, trigger = 'project-manage' } = {}) {
   openModal('installation', t('connect_my_folder'), trigger);
+  modal.ui = mountInstallation($('modal-content'), project);
+}
+function mountInstallation(content, project) {
   const current = modal;
   current.abort = new AbortController();
-  current.installation = { project }; renderInstall();
+  let folderExample = '', ui;
+  const render = () => {
+    ui = renderInstallation({ content, project, folderExample, apiOrigin: document.querySelector('meta[name="coconet-api-origin"]').content, t, element, copyText });
+  };
+  render();
   const signal = AbortSignal.any([current.abort.signal, AbortSignal.timeout(15000)]);
   loadProjectFolderExample(project?.project_id, api, signal).then(folder => {
     if (modal !== current) return;
-    current.installation.folderExample = folder;
-    current.ui.updateExample(folder);
+    folderExample = folder;
+    ui.updateExample(folder);
   }).catch(() => { /* Optional guidance: keep the generic instruction on failure. */ });
+  return { render };
 }
 function renderInstall() {
   $('modal-title').textContent = t('connect_my_folder');
-  modal.ui = renderInstallation({ content: $('modal-content'), ...modal.installation, apiOrigin: document.querySelector('meta[name="coconet-api-origin"]').content, t, element, copyText });
+  modal.ui.render();
 }
 function openSettings() { openModal('settings', t('settings'), 'canvas-settings'); renderSettings(); }
 function renderSettings() {
@@ -251,6 +260,7 @@ async function refreshGraph({ preserveViewport = false } = {}) {
     if (state.selection?.graph && !selected) { state.selection = null; state.selected = ''; updateLocation(); }
     notice(graph.warning);
     if (modal?.kind === 'projection') modal.ui.render();
+    documentPanel?.ui.refresh();
     renderGraph(); renderLibrary(); renderDetails();
     if ((!preserveViewport && addedNodes) || state.needsFit && state.nodes.length) { canvas.fit(); state.needsFit = false; }
     else if (!preserveViewport && layoutChanged) revealSelection();
@@ -272,7 +282,8 @@ function resetProject() {
   state.graphReadError = '';
   publishedGraphReader.reset();
   projectEvents.stop(); state.revision = 0; state.published = null;
-  closeProjectModal(); toggleLibraryDrawer(false);
+  closeProjectModal(); toggleLibraryDrawer(false); toggleDocumentDrawer(false);
+  documentPanel?.abort.abort(); documentPanel = null; $('document-content').replaceChildren();
   state.navigationEpoch++;
   setGraphRefreshing(false);
   state.graphEpoch++; state.selectionEpoch++;
@@ -298,6 +309,8 @@ function renderProjects() {
   if (modal?.kind === 'settings') renderSettings();
   const project = state.projects.find(item => item.project_id === state.project);
   $('project-share').disabled = !project;
+  $('project-connect').disabled = !project || project.status !== 'active';
+  $('project-document').hidden = !project;
   $('library-open').hidden = !project;
   $('project-list').classList.toggle('projects-empty', !state.projects.length);
   if (!state.projects.length) {
@@ -338,7 +351,8 @@ function selectNode(id, replaceLocation = false) {
   selectRecord({ node, source: node.source, graph: true }, replaceLocation);
 }
 function selectRecord(selection, replaceLocation = false) {
-  closeProjectModal(); toggleLibraryDrawer(false);
+  closeProjectModal(); toggleLibraryDrawer(false); toggleDocumentDrawer(false);
+  documentPanel?.abort.abort(); documentPanel = null; $('document-content').replaceChildren();
   state.selectionEpoch++;
   state.selection = selection; state.selected = selection.node?.id || '';
   state.navigationEpoch++; updateLocation(replaceLocation); renderGraph(); renderLibrary(); renderDetails();
@@ -411,6 +425,7 @@ function renderGraph() {
   }
 }
 function toggleLibraryDrawer(open, restoreFocus = false) {
+  if (open) toggleDocumentDrawer(false);
   $('library-drawer').hidden = !open;
   $('library-open').setAttribute('aria-expanded', String(open));
   if (open) $('library-close').focus({ preventScroll: true });
@@ -496,7 +511,28 @@ function renderDetails() {
   content.scrollTop = scrollTop;
   if (focused) document.getElementById(focused)?.focus({ preventScroll: true });
 }
-const accountUI = createAccountUI({state, api, t, element, statusMessage, openModal, closeModal, setModalDismiss, openWorkspace, clearWorkspace, toast, openInstallation});
+const accountUI = createAccountUI({state, api, t, element, statusMessage, openModal, closeModal, setModalDismiss, openWorkspace, clearWorkspace, toast, openInstallation, mountInstallation});
+function toggleDocumentDrawer(open, restoreFocus = false) {
+  if (open && !state.project || open === !$('document-drawer').hidden) return;
+  if (open) {
+    toggleLibraryDrawer(false);
+    closeSelection(false);
+    $('document-drawer').hidden = false;
+    if (!documentPanel) {
+      const abort = new AbortController();
+      documentPanel = { abort, ui: mountProjectDocument({ content: $('document-content'), project: state.project, account: state.session.account.account_id, request: api, element, t, signal: abort.signal }) };
+    } else documentPanel.ui.refresh();
+    $('document-close').focus({ preventScroll: true });
+  } else {
+    $('document-drawer').hidden = true;
+    if (restoreFocus) $('project-document').focus({ preventScroll: true });
+  }
+  $('project-document').setAttribute('aria-expanded', String(open));
+  notifications.modal(!!modal || open);
+}
+$('project-document').addEventListener('click', () => toggleDocumentDrawer($('document-drawer').hidden, true));
+$('document-close').addEventListener('click', () => toggleDocumentDrawer(false, true));
+$('project-connect').addEventListener('click', () => openInstallation({ project: state.projects.find(project => project.project_id === state.project), trigger: 'project-connect' }));
 
 $('login-form').addEventListener('submit', async event => {
   event.preventDefault(); $('login-button').disabled = true; statusMessage('login-error', '');
@@ -550,7 +586,8 @@ document.addEventListener('change', event => {
 
 document.addEventListener('keydown', event => {
   if (event.key !== 'Escape' || $('session-modal').open) return;
-  if (!$('library-drawer').hidden) toggleLibraryDrawer(false, true);
+  if (!$('document-drawer').hidden) toggleDocumentDrawer(false, true);
+  else if (!$('library-drawer').hidden) toggleLibraryDrawer(false, true);
   else if (selectedSource()) closeSelection(true);
 });
 $('zoom-in').addEventListener('click', () => canvas.step(.1));

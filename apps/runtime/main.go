@@ -18,7 +18,7 @@ func main() {
 	ctx := context.Background()
 	cancel := func() {}
 	args := os.Args[1:]
-	if len(args) > 0 && (args[0] == "agent" || args[0] == "_agent-setup" || args[0] == "_agent-sync" || args[0] == "_local-daemon" || args[0] == "local-dag" || args[0] == "inference" || shouldAutoSyncAgentIntegrations(args)) {
+	if len(args) > 0 && (args[0] == "update" || args[0] == "_install-guard" || args[0] == "agent" || args[0] == "_agent-setup" || args[0] == "_agent-sync" || args[0] == "_local-daemon" || args[0] == "local-dag" || args[0] == "inference" || shouldAutoSyncAgentIntegrations(args)) {
 		ctx, cancel = signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	}
 	code := run(ctx, args, os.Stdin, os.Stdout, os.Stderr)
@@ -34,6 +34,7 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 	if handled, code := clihelp.Handle(clihelp.Runtime(), args, stdout, stderr); handled {
 		return code
 	}
+	defer maybeNotifyUpdate(args, stderr)
 	if shouldAutoSyncAgentIntegrations(args) {
 		autoSyncRegisteredAgentIntegrations(ctx, stderr)
 		if ctx.Err() != nil {
@@ -42,6 +43,12 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 		}
 	}
 	switch args[0] {
+	case "_update-check":
+		return runUpdateCheck(ctx)
+	case "update":
+		return runUpdate(ctx, args[1:], stdout, stderr)
+	case "_install-guard":
+		return runInstallGuard(ctx, args[1:], stdin, stdout, stderr)
 	case "server":
 		return runServerCommand(args[1:], stdout, stderr)
 	case "version", "--version", "-v":

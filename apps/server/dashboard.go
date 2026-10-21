@@ -275,6 +275,10 @@ func (h *serverHandler) handleDashboardAPI(w http.ResponseWriter, r *http.Reques
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(parts) >= 5 && parts[0] == "v1" && parts[1] == "dashboard" && parts[2] == "projects" {
 		projectID := parts[3]
+		if parts[4] == "document" {
+			h.handleProjectDocument(w, r, requestID, actor, projectID, parts[5:], true)
+			return
+		}
 		switch {
 		case len(parts) == 5 && parts[4] == "preview" && r.Method == http.MethodGet:
 			if err := h.limiter.check("project.preview.account", actor.AccountID); err != nil {

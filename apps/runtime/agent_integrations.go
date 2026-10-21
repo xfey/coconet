@@ -24,12 +24,23 @@ import (
 const agentIntegrationSchemaVersion = 1
 
 var (
-	agentIntegrationIDPattern = regexp.MustCompile(`^agt_[0-9a-f]{12}$`)
-	agentIntegrationNow       = time.Now
-	resolveAgentMarketplace   = installedAgentMarketplace
-	configureAgentIntegration = func(ctx context.Context, integration agentIntegration, marketplaceRoot string) agentplugin.InstallResult {
+	agentIntegrationIDPattern   = regexp.MustCompile(`^agt_[0-9a-f]{12}$`)
+	agentIntegrationNow         = time.Now
+	resolveAgentMarketplace     = installedAgentMarketplace
+	fingerprintAgentMarketplace = agentplugin.Fingerprint
+	configureAgentIntegration   = func(ctx context.Context, integration agentIntegration, marketplaceRoot string) agentplugin.InstallResult {
 		manager := agentplugin.NewManager().WithConfigRoot(integration.Type, integration.ConfigRoot)
 		detection := manager.Detect(ctx, integration.Type, integration.Command)
+		paths, err := resolveRuntimePaths()
+		if err == nil {
+			marketplaceRoot, err = agentplugin.StableMarketplace(marketplaceRoot, filepath.Join(paths.root, "plugin-marketplaces", string(integration.Type)), integration.Type)
+		}
+		if err != nil {
+			return agentplugin.InstallResult{Host: integration.Type, Command: integration.Command, Status: agentplugin.StatusFailed, Error: err.Error()}
+		}
+		if integration.PreserveChoice {
+			return manager.Update(ctx, detection, marketplaceRoot)
+		}
 		return manager.Install(ctx, detection, marketplaceRoot)
 	}
 	removeAgentIntegration = func(ctx context.Context, integration agentIntegration) agentplugin.UninstallResult {
@@ -42,6 +53,7 @@ var (
 type agentIntegrationStatus string
 
 const (
+	agentIntegrationDisabled    agentIntegrationStatus = "disabled"
 	agentIntegrationPending     agentIntegrationStatus = "pending"
 	agentIntegrationConfigured  agentIntegrationStatus = "configured"
 	agentIntegrationNotDetected agentIntegrationStatus = "not_detected"
@@ -49,17 +61,20 @@ const (
 )
 
 type agentIntegration struct {
-	ID             string                 `json:"id"`
-	Type           agentplugin.Host       `json:"type"`
-	Command        string                 `json:"command"`
-	ConfigRoot     string                 `json:"config_root"`
-	Status         agentIntegrationStatus `json:"status"`
-	RuntimeVersion string                 `json:"runtime_version,omitempty"`
-	AgentVersion   string                 `json:"agent_version,omitempty"`
-	LastError      string                 `json:"last_error,omitempty"`
-	LastWarning    string                 `json:"last_warning,omitempty"`
-	CreatedAt      time.Time              `json:"created_at"`
-	UpdatedAt      time.Time              `json:"updated_at"`
+	PluginFingerprint    string                 `json:"plugin_fingerprint,omitempty"`
+	AttemptedFingerprint string                 `json:"attempted_fingerprint,omitempty"`
+	PreserveChoice       bool                   `json:"-"`
+	ID                   string                 `json:"id"`
+	Type                 agentplugin.Host       `json:"type"`
+	Command              string                 `json:"command"`
+	ConfigRoot           string                 `json:"config_root"`
+	Status               agentIntegrationStatus `json:"status"`
+	RuntimeVersion       string                 `json:"runtime_version,omitempty"`
+	AgentVersion         string                 `json:"agent_version,omitempty"`
+	LastError            string                 `json:"last_error,omitempty"`
+	LastWarning          string                 `json:"last_warning,omitempty"`
+	CreatedAt            time.Time              `json:"created_at"`
+	UpdatedAt            time.Time              `json:"updated_at"`
 }
 
 type agentIntegrationState struct {
@@ -432,7 +447,7 @@ func validateAgentIntegrationState(state agentIntegrationState) error {
 }
 
 func validAgentIntegrationStatus(status agentIntegrationStatus) bool {
-	return status == agentIntegrationPending || status == agentIntegrationConfigured || status == agentIntegrationNotDetected || status == agentIntegrationFailed
+	return status == agentIntegrationDisabled || status == agentIntegrationPending || status == agentIntegrationConfigured || status == agentIntegrationNotDetected || status == agentIntegrationFailed
 }
 
 func putAgentIntegration(state agentIntegrationState, integration agentIntegration) agentIntegrationState {
@@ -476,6 +491,13 @@ func syncOneAgentIntegration(ctx context.Context, integration agentIntegration) 
 		integration.LastError = err.Error()
 		return integration
 	}
+	fingerprint, err := fingerprintAgentMarketplace(marketplaceRoot)
+	if err != nil {
+		integration.Status = agentIntegrationFailed
+		integration.LastError = err.Error()
+		return integration
+	}
+	integration.AttemptedFingerprint = fingerprint
 	result := configureAgentIntegration(ctx, integration, marketplaceRoot)
 	integration.AgentVersion = result.Version
 	integration.LastWarning = result.Warning
@@ -483,6 +505,9 @@ func syncOneAgentIntegration(ctx context.Context, integration agentIntegration) 
 	switch result.Status {
 	case agentplugin.StatusConfigured:
 		integration.Status = agentIntegrationConfigured
+		integration.PluginFingerprint = fingerprint
+	case agentplugin.StatusDisabled:
+		integration.Status = agentIntegrationDisabled
 	case agentplugin.StatusSkipped:
 		integration.Status = agentIntegrationNotDetected
 	default:
@@ -496,14 +521,26 @@ func syncRegisteredAgentIntegrations(ctx context.Context, paths runtimePaths, on
 }
 
 func syncAgentIntegrationsWithProgress(ctx context.Context, paths runtimePaths, onlyOutdated bool, progress io.Writer) error {
+	release, err := acquireLocalFileLock(ctx, filepath.Join(paths.root, "agent-setup.lock"))
+	if err != nil {
+		return err
+	}
+	defer release()
 	state, exists, err := loadAgentIntegrationState(paths)
 	if err != nil || !exists {
 		return err
 	}
 	for index, integration := range state.Integrations {
-		if onlyOutdated && integration.RuntimeVersion == version {
+		source, sourceErr := resolveAgentMarketplace(integration.Type)
+		fingerprint, fingerprintErr := "", sourceErr
+		if sourceErr == nil {
+			fingerprint, fingerprintErr = fingerprintAgentMarketplace(source)
+		}
+		if onlyOutdated && sourceErr == nil && fingerprintErr == nil && integration.AttemptedFingerprint == fingerprint {
 			continue
 		}
+		integration.PreserveChoice = integration.Status == agentIntegrationConfigured || integration.Status == agentIntegrationDisabled || integration.PluginFingerprint != ""
+
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -511,6 +548,9 @@ func syncAgentIntegrationsWithProgress(ctx context.Context, paths runtimePaths, 
 		// interrupted, the following connect must not silently start it again.
 		attempt := integration
 		attempt.RuntimeVersion, attempt.Status = version, agentIntegrationFailed
+		if sourceErr == nil && fingerprintErr == nil {
+			attempt.AttemptedFingerprint = fingerprint
+		}
 		attempt.LastError = "Agent setup did not finish. Inspect `coconet agent list --verbose` and retry this Agent."
 		attempt.UpdatedAt = agentIntegrationNow().UTC()
 		state.Integrations[index] = attempt

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/xfey/coconet/packages/agentplugin"
 	"github.com/xfey/coconet/packages/distribution"
@@ -87,6 +88,26 @@ func TestBootstrapAutomaticallyConfiguresDefaultAgents(t *testing.T) {
 			}
 			var first []byte
 			for attempt := 0; attempt < 2; attempt++ {
+				var previousToken string
+				if scenario == "both" && attempt == 1 {
+					dag := filepath.Join(state, "local-dag")
+					config, _ := json.Marshal(map[string]any{"schema": 1, "actor": "fixture", "provider": "codex", "command": "/usr/bin/false", "profile": codexRoot, "model": "gpt-5.6-sol", "max_calls": 1, "timeout_seconds": 120, "workspaces": []any{}})
+					if err := os.WriteFile(filepath.Join(dag, "runtime.json"), config, 0600); err != nil {
+						t.Fatal(err)
+					}
+					daemon := exec.Command(filepath.Join(installRoot, "current/bin/coconet"), "_local-daemon", "--root", dag)
+					daemon.Env = env
+					if err := daemon.Start(); err != nil {
+						t.Fatal(err)
+					}
+					t.Cleanup(func() { _ = daemon.Process.Kill(); _ = daemon.Wait() })
+					previousToken = waitInstalledDaemon(t, dag, "")
+					t.Cleanup(func() {
+						stop := exec.Command(filepath.Join(installRoot, "current/bin/coconet"), "local-dag", "stop", "--root", dag)
+						stop.Env = env
+						_ = stop.Run()
+					})
+				}
 				command := exec.Command(bootstrap, args...)
 				command.Env = env
 				var progress bytes.Buffer
@@ -94,6 +115,9 @@ func TestBootstrapAutomaticallyConfiguresDefaultAgents(t *testing.T) {
 				output, err := command.Output()
 				if err != nil {
 					t.Fatalf("Bootstrap failed: %v %s %s", err, output, progress.String())
+				}
+				if previousToken != "" {
+					waitInstalledDaemon(t, filepath.Join(state, "local-dag"), previousToken)
 				}
 				var result struct {
 					Status        string                  `json:"status"`
@@ -110,13 +134,13 @@ func TestBootstrapAutomaticallyConfiguresDefaultAgents(t *testing.T) {
 					if result.Agents.Status != "skipped" || len(result.Agents.Results) != 0 {
 						t.Fatalf("skip installed Agents: %s", output)
 					}
-					if _, err := os.Stat(state); !errors.Is(err, os.ErrNotExist) {
+					if _, err := os.Stat(filepath.Join(state, "agent-integrations.json")); !errors.Is(err, os.ErrNotExist) {
 						t.Fatalf("skip created Agent state: %v", err)
 					}
 					continue
 				}
-				if !bytes.Contains(progress.Bytes(), []byte("Configuring Coconet plugin for")) {
-					t.Fatal("missing live Agent setup progress on stderr")
+				if bytes.Contains(progress.Bytes(), []byte("Configuring Coconet plugin for")) != (attempt == 0) {
+					t.Fatal("configuration must occur on first install only; unchanged plugins must remain untouched", progress.String())
 				}
 				wantClaude := agentplugin.StatusConfigured
 				if scenario == "missing-claude" {
@@ -192,4 +216,22 @@ case "$1 $2" in
   *) exit 91 ;;
 esac
 `
+}
+
+func waitInstalledDaemon(t *testing.T, root, previousToken string) string {
+	t.Helper()
+	deadline := time.Now().Add(8 * time.Second)
+	for time.Now().Before(deadline) {
+		data, err := os.ReadFile(filepath.Join(root, "control.json"))
+		var endpoint struct {
+			Token    string `json:"token"`
+			Protocol int    `json:"update_protocol"`
+		}
+		if err == nil && json.Unmarshal(data, &endpoint) == nil && endpoint.Token != "" && endpoint.Token != previousToken && endpoint.Protocol == 1 {
+			return endpoint.Token
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatal("installed Runtime did not resume with a new endpoint")
+	return ""
 }

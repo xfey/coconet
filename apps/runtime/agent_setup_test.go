@@ -186,3 +186,50 @@ func TestDefaultAgentSetupRejectsCorruptPolicyWithoutChangingRegistry(t *testing
 		t.Fatal("corrupt setup changed registry")
 	}
 }
+
+func TestRepeatedSetupSkipsUnchangedPluginsAcrossRuntimeVersions(t *testing.T) {
+	paths := defaultSetupFixture(t)
+	first := setupReport(t, 0)
+	for _, result := range first.Results {
+		if !result.Changed {
+			t.Fatal("initial install must report changed", result)
+		}
+	}
+	state, _, err := loadAgentIntegrationState(paths)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range state.Integrations {
+		state.Integrations[i].RuntimeVersion = "0.1.0"
+	}
+	if err := saveAgentIntegrationState(paths, state); err != nil {
+		t.Fatal(err)
+	}
+	configureAgentIntegration = func(context.Context, agentIntegration, string) agentplugin.InstallResult {
+		t.Fatal("unchanged plugin was configured again")
+		return agentplugin.InstallResult{}
+	}
+	for _, result := range setupReport(t, 0).Results {
+		if result.Changed {
+			t.Fatal("unchanged plugin asks for restart")
+		}
+	}
+	fingerprintAgentMarketplace = func(string) (string, error) { return "new-content", nil }
+	calls := 0
+	configureAgentIntegration = func(_ context.Context, entry agentIntegration, _ string) agentplugin.InstallResult {
+		calls++
+		if !entry.PreserveChoice {
+			t.Fatal("automatic update lost user choice")
+		}
+		return agentplugin.InstallResult{Host: entry.Type, Command: entry.Command, Status: agentplugin.StatusDisabled}
+	}
+	report := setupReport(t, 0)
+	if calls != 3 || report.Status != "ok" {
+		t.Fatal(report, calls)
+	}
+	for _, result := range report.Results {
+		if result.Changed || result.Status != agentplugin.StatusDisabled {
+			t.Fatal(result)
+		}
+	}
+}

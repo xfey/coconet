@@ -319,3 +319,15 @@ func TestBundleRequiresDependencyNotices(t *testing.T) {
 		t.Fatal("bundle accepted empty license inventory")
 	}
 }
+
+func TestPluginVersionCanDifferFromRuntimeRelease(t *testing.T) {
+	options := bundleInputsFixture(t, filepath.Join(t.TempDir(), "bundle"), "0.3.0", "0.3.0")
+	for _, plugin := range []struct{ root, host string }{{options.CodexPluginRoot, "codex"}, {options.ClaudePluginRoot, "claude"}, {options.CursorPluginRoot, "cursor"}} {
+		if err := os.WriteFile(filepath.Join(plugin.root, "."+plugin.host+"-plugin", "plugin.json"), []byte(`{"name":"coconet","version":"0.2.0"}`), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := AssembleBundle(options); err != nil {
+		t.Fatal(err)
+	}
+}

@@ -248,7 +248,7 @@ func editCursorHooks(root string, install bool) (string, int, error) {
 	}
 	if install {
 		for _, event := range []string{"sessionStart", "beforeSubmitPrompt", "stop", "sessionEnd"} {
-			entry, _ := json.Marshal(map[string]any{"command": cursorHookCommand(root, event == "sessionStart"), "timeout": 10})
+			entry, _ := json.Marshal(map[string]any{"command": cursorHookCommand(root, event == "sessionStart" || event == "beforeSubmitPrompt"), "timeout": 10})
 			hooks[event] = append(hooks[event], entry)
 		}
 	} else if count == 0 {

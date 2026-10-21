@@ -4,7 +4,7 @@
 
 Use `coconet --help`, `coconet help connect` or `coconet history preview --help`. All commands accept `--help` or `-h`; `coconet help` shows the overview. The server supports the same help forms. Runtime help needs no login or connected folder, writes to stdout, exits successfully and does not run the selected operation. Unknown topics exit with status 2.
 
-README 保留快速上手说明；本页列出公开命令、参数、默认值、适用条件和示例。Runtime 帮助无需登录或连接项目，不调用 Agent、不访问服务器，也不修改本地状态。命令行说明使用英文。首次通过 npm 启动或切换版本时，启动器仍需先完成 Runtime 的下载安装。
+README 保留快速上手说明；本页列出公开命令、参数、默认值、适用条件和示例。Runtime 帮助无需登录或连接项目，不调用 Agent、不访问服务器，也不修改本地状态。命令行说明使用英文。首次通过 npm 启动且本机尚无 Runtime 时，启动器会完成下载安装。已有 Runtime 时直接使用，不要求与 npm 版本一致；显式更新请运行 `coconet update`。
 
 Put flags after the command/subcommand. Required positional arguments such as `agent add claude` precede flags. Most commands accept `--flag VALUE` or `--flag=VALUE`; boolean flags may use `--flag=false`. The small `health` and `mcp` entry points accept only the exact option forms shown in their usage. `--` ends option parsing. Paths containing spaces must be quoted. Replace example IDs and paths with your own. Group option tables state which subcommands use each parameter; a parameter is not global.
 
@@ -32,6 +32,7 @@ Put flags after the command/subcommand. Required positional arguments such as `a
 | [fork](#coconet-fork) | Create an independent native session from a selected source |
 | [account](#coconet-account) | Inspect or replace your account key |
 | [health](#coconet-health) | Show machine-readable Runtime and Agent health |
+| [update](#coconet-update) | Update npm and Runtime to the latest stable client |
 | [version](#coconet-version) | Show the installed version (aliases: --version, -v) |
 | [uninstall](#coconet-uninstall) | Remove Coconet and its Agent integrations |
 | [init](#coconet-init) | Alias for connect |
@@ -717,6 +718,16 @@ coconet health [--json]
 | `--json` | false | Write machine-readable JSON |
 
 Output is JSON with or without --json.
+
+### `coconet update`
+
+Update npm and Runtime to the latest stable client
+
+```sh
+coconet update
+```
+
+Waits for active processing and handoffs before activating the verified Runtime. No automatic installation or sudo. Agent plugins are reconfigured only when their content changes. A running legacy Runtime without safe draining must first finish its work and be stopped explicitly.
 
 ### `coconet version`
 

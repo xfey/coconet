@@ -64,6 +64,10 @@ func relayRootForDatabase(database string) (string, error) {
 func (s *store) dashboardRelayStore() (*relay.Store, error) { return s.relayStore() }
 
 func (h *serverHandler) handleRelay(w http.ResponseWriter, r *http.Request, requestID string, actor contracts.Account, project string, parts []string) {
+	if len(parts) > 0 && parts[0] == "document" {
+		h.handleProjectDocument(w, r, requestID, actor, project, parts[1:], false)
+		return
+	}
 	err := h.authority.store.view(func(state databaseState) error {
 		if r.Method == http.MethodGet || len(parts) > 0 && parts[0] == "leases" || len(parts) == 2 && parts[0] == "repairs" && parts[1] == "request" || len(parts) == 2 && parts[0] == "transfers" && parts[1] == "download" {
 			_, _, err := requireReadableMember(&state, actor.AccountID, project)

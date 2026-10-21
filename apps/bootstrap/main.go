@@ -30,6 +30,7 @@ var (
 	verifyBundle       = distribution.VerifyBundle
 	installBundle      = distribution.Install
 	setupAgents        = setupInstalledAgents
+	guardInstallation  = startInstallationGuard
 )
 
 type installOutput struct {
@@ -82,15 +83,38 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return 1
 	}
-	result, err := installBundle(distribution.InstallOptions{
+	options := distribution.InstallOptions{
 		BundleRoot: *bundleRoot, InstallRoot: *installRoot, BinDirectory: *binDirectory,
 		SkipBinLink: *noBinLink,
-		CurrentOS:   runtime.GOOS, CurrentArch: runtime.GOARCH,
-	})
+		CurrentOS:   runtime.GOOS, CurrentArch: runtime.GOARCH, StageOnly: true,
+	}
+	result, err := installBundle(options)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
 	}
+	// Stage and verify all bytes before pausing any running work. The guard
+	// remains alive until activation succeeds or fails; EOF always resumes it.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	finish, err := guardInstallation(ctx, filepath.Join(result.ReleasePath, "bin", "coconet"), *installRoot, stderr)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	options.StageOnly = false
+	activated, installErr := installBundle(options)
+	resumeErr := finish()
+	if installErr != nil {
+		fmt.Fprintln(stderr, installErr)
+		return 1
+	}
+	if resumeErr != nil {
+		fmt.Fprintln(stderr, resumeErr)
+		return 1
+	}
+	activated.AlreadyExists = result.AlreadyExists
+	result = activated
 	output := installOutput{
 		Status: "ok", Version: result.Version, ReleasePath: result.ReleasePath, Executable: result.Executable,
 		AlreadyExists: result.AlreadyExists,
@@ -114,7 +138,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 		for _, result := range output.Agents.Results {
 			switch result.Status {
 			case agentplugin.StatusConfigured:
-				configured = append(configured, result.Command)
+				if result.Changed {
+					configured = append(configured, result.Command)
+				}
+			case agentplugin.StatusDisabled:
+				cliui.Note(stdout, result.Command+" plugin remains disabled or removed.")
 			case agentplugin.StatusSkipped:
 				cliui.Note(stdout, result.Command+" was not found; plugin setup skipped.")
 			default:

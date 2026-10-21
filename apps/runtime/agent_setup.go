@@ -30,8 +30,18 @@ func runAgentSetup(ctx context.Context, args []string, stdout, stderr io.Writer)
 	if err == nil {
 		report.Results, err = seedDefaultAgentIntegrations(paths)
 	}
+	before := map[string]string{}
 	if err == nil {
-		err = syncAgentIntegrationsWithProgress(ctx, paths, false, stderr)
+		state, _, loadErr := loadAgentIntegrationState(paths)
+		if loadErr != nil {
+			err = loadErr
+		}
+		for _, entry := range state.Integrations {
+			before[entry.ID] = entry.PluginFingerprint
+		}
+	}
+	if err == nil {
+		err = syncAgentIntegrationsWithProgress(ctx, paths, true, stderr)
 	}
 	if err == nil {
 		var state agentIntegrationState
@@ -39,7 +49,8 @@ func runAgentSetup(ctx context.Context, args []string, stdout, stderr io.Writer)
 		for _, integration := range state.Integrations {
 			report.Results = append(report.Results, agentplugin.InstallResult{
 				Host: integration.Type, Command: integration.Command, Version: integration.AgentVersion,
-				Status: agentplugin.Status(integration.Status), Error: integration.LastError, Warning: integration.LastWarning,
+				Changed: integration.Status == agentIntegrationConfigured && integration.PluginFingerprint != before[integration.ID],
+				Status:  agentplugin.Status(integration.Status), Error: integration.LastError, Warning: integration.LastWarning,
 			})
 		}
 	}
@@ -48,7 +59,7 @@ func runAgentSetup(ctx context.Context, args []string, stdout, stderr io.Writer)
 		report.Error = err.Error()
 	}
 	for _, result := range report.Results {
-		if result.Status != agentplugin.StatusConfigured && result.Status != agentplugin.StatusSkipped {
+		if result.Status != agentplugin.StatusConfigured && result.Status != agentplugin.StatusSkipped && result.Status != agentplugin.StatusDisabled {
 			report.Status = "partial"
 		}
 	}

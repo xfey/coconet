@@ -15,6 +15,12 @@ checkpoints and transfer metadata. Shared inference task inputs and transferred
 content have bounded retention. With external object storage, session bodies are
 temporary objects, while graph and source metadata remain available.
 
+Project notes are separate from session transfers. The server retains the shared
+Markdown and its explicitly saved versions without automatic expiry; member
+devices cache the latest synced version for their Agents. Unsaved browser drafts
+are not shared. All current members can read and edit the saved notes, while
+Agent tools are read-only.
+
 Local inference means invoking the Agent on a member device; its configured model
 provider receives the inference input and charges according to that account's plan. A failed task may be processed by another
 authorized member device using its provider.

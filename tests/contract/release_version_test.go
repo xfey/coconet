@@ -38,7 +38,7 @@ func TestInternalCandidateVersionsStayUniqueAndAligned(t *testing.T) {
 	codex := decodeJSON[pluginManifest](t, root+"/plugins/codex/coconet/.codex-plugin/plugin.json")
 	claude := decodeJSON[pluginManifest](t, root+"/plugins/claude/coconet/.claude-plugin/plugin.json")
 	checksums := decodeJSON[releaseChecksumManifest](t, root+"/installers/npm/release-manifest.json")
-	if setup.Name != "coconet" || setup.Version != policy.ClientVersion || codex.Version != policy.ClientVersion || claude.Version != policy.ClientVersion || checksums.Version != policy.ClientVersion {
+	if setup.Name != "coconet" || setup.Version != policy.ClientVersion || codex.Version != claude.Version || checksums.Version != policy.ClientVersion {
 		t.Fatalf("internal client versions diverged: policy=%#v setup=%#v codex=%#v claude=%#v checksums=%#v", policy, setup, codex, claude, checksums)
 	}
 	if !setup.Private {

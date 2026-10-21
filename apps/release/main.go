@@ -49,7 +49,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 	flags := flag.NewFlagSet("bundle", flag.ContinueOnError)
 	flags.SetOutput(stderr)
-	releaseVersion := flags.String("version", "", "release and Plugin version")
+	releaseVersion := flags.String("version", "", "client or server bundle version")
 	targetOS := flags.String("os", "", "target operating system")
 	architecture := flags.String("arch", "", "target architecture")
 	runtimeBinary := flags.String("runtime", "", "target coconet Runtime binary")

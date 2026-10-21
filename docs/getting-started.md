@@ -62,6 +62,36 @@ limit configuration is needed. Clients retain session replicas and search text
 locally; the server coordinates sharing and temporarily relays session content.
 See [data sharing and retention](data-sharing.md) for the full scope.
 
+## Share project notes
+
+Open **Project notes** at the top left of the work graph to edit the project's
+shared Markdown. Click **Save** to publish a version; all members can edit it.
+Click the entrance again to close the panel. Saved versions remain available in
+the history, and restoring one creates a new version when you save.
+
+After a saved change syncs to a teammate's device, their Agent receives a short
+notice at session start or the next user turn. It can read the notes with
+`read_project_notes`; Agents cannot edit them. Offline reads use the last synced
+copy and include its sync status.
+
+## Update the client
+
+Coconet may show a new-version notice in the terminal. To update explicitly:
+
+```sh
+coconet update
+```
+
+This updates the global npm package and the Runtime, waiting for active work to
+finish before switching. It does not install automatically or use sudo. npm and
+Runtime versions may differ without triggering another installation. Unchanged
+plugins are left in place; disabled or removed integrations stay that way.
+
+When upgrading from a Runtime that cannot wait for active work, the command
+leaves it running and prints instructions to finish processing, stop that Runtime
+and retry. Follow those instructions only after ongoing processing and session
+handoffs have finished.
+
 ## Help and maintenance
 
 ```sh

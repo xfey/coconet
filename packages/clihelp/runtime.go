@@ -123,6 +123,7 @@ func Runtime() Command {
 		leaf("disconnect", "Disconnect this folder; preserve native history and local session copies", ""),
 		login, logout, whoami, servers, agent, inference, history, projection, diagnostics, storage, session, library, fork, account,
 		{Name: "health", Summary: "Show machine-readable Runtime and Agent health", Usage: "[--json]", Options: []Option{json}, Notes: []string{"Output is JSON with or without --json."}},
+		{Name: "update", Summary: "Update npm and Runtime to the latest stable client", Notes: []string{"Waits for active processing and handoffs before activating the verified Runtime. No automatic installation or sudo. Agent plugins are reconfigured only when their content changes. A running legacy Runtime without safe draining must first finish its work and be stopped explicitly."}},
 		leaf("version", "Show the installed version (aliases: --version, -v)", ""), uninstall, init,
 		localDAGHelp(),
 		{Name: "mcp", Summary: "Run the stdio MCP server for an Agent integration", Usage: "[--agent codex|claude|cursor]", Options: []Option{option("agent", "codex|claude|cursor", "", "Target Agent for native continuation tools; optional")}, Advanced: true},

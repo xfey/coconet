@@ -302,9 +302,6 @@ func writeMarketplaces(root, bundleVersion string) error {
 	if codexVersion != claudeVersion || codexVersion != cursorVersion {
 		return errors.New("Codex, Claude and Cursor Plugin versions must match in one bundle")
 	}
-	if codexVersion != bundleVersion {
-		return errors.New("Plugin and bundle versions must match")
-	}
 	codex := map[string]any{
 		"name": "coconet", "interface": map[string]string{"displayName": "Coconet"},
 		"plugins": []any{map[string]any{

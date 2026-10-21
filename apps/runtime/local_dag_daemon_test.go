@@ -79,6 +79,7 @@ func TestLocalDaemonCapturesAndServesReadersDuringModelExecution(t *testing.T) {
 		r, _ := http.NewRequest(method, endpoint.URL+path, bytes.NewReader(body))
 		if token != "" {
 			r.Header.Set("Authorization", "Bearer "+token)
+			r.Header.Set("X-Coconet-Version", version)
 		}
 		response, err := client.Do(r)
 		if err != nil {

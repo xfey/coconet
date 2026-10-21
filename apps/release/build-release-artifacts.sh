@@ -137,9 +137,9 @@ npm_version="$(json_version "${npm_package_json}")"
 codex_plugin_version="$(json_version "${codex_plugin_root}/.codex-plugin/plugin.json")"
 claude_plugin_version="$(json_version "${claude_plugin_root}/.claude-plugin/plugin.json")"
 cursor_plugin_version="$(json_version "${cursor_plugin_root}/.cursor-plugin/plugin.json")"
-for component_version in "${npm_version}" "${codex_plugin_version}" "${claude_plugin_version}" "${cursor_plugin_version}"; do
+for component_version in "${npm_version}"; do
   if [[ "${component_version}" != "${client_version}" ]]; then
-    printf 'Client, npm, and Plugin versions must all equal %s.\n' "${client_version}" >&2
+    printf 'Client and npm versions must equal %s.\n' "${client_version}" >&2
     exit 1
   fi
 done

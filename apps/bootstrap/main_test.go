@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -80,6 +81,10 @@ func restoreBootstrapStubs(t *testing.T) {
 	originalVerify := verifyBundle
 	originalInstall := installBundle
 	originalSetup := setupAgents
+	originalGuard := guardInstallation
+	guardInstallation = func(context.Context, string, string, io.Writer) (func() error, error) {
+		return func() error { return nil }, nil
+	}
 	t.Setenv("COCONET_SKIP_AGENT_SETUP", "")
 	setupAgents = func(string, io.Writer) agentplugin.SetupReport {
 		return agentplugin.SetupReport{Status: "skipped", Results: []agentplugin.InstallResult{}}
@@ -90,6 +95,7 @@ func restoreBootstrapStubs(t *testing.T) {
 		verifyBundle = originalVerify
 		installBundle = originalInstall
 		setupAgents = originalSetup
+		guardInstallation = originalGuard
 	})
 }
 
@@ -107,7 +113,7 @@ func TestInstallConfiguresAgentsAfterRuntimeCommitAndReportsPartialFailure(t *te
 		}
 		return agentplugin.SetupReport{Status: "partial", Results: []agentplugin.InstallResult{
 			{Host: agentplugin.HostCodex, Command: "codex", Status: agentplugin.StatusFailed, Error: "fixture failure"},
-			{Host: agentplugin.HostClaude, Command: "claude", Status: agentplugin.StatusConfigured},
+			{Host: agentplugin.HostClaude, Command: "claude", Status: agentplugin.StatusConfigured, Changed: true},
 		}}
 	}
 	for _, jsonMode := range []bool{false, true} {
@@ -153,5 +159,47 @@ func TestInstallCanSkipAgentSetup(t *testing.T) {
 				t.Fatalf("skip failed: %s %s", stdout.String(), stderr.String())
 			}
 		})
+	}
+}
+
+func TestGuardRefusalNeverActivatesStagedRelease(t *testing.T) {
+	restoreBootstrapStubs(t)
+	loadBundleManifest = func(string) (distribution.Manifest, error) { return distribution.Manifest{}, nil }
+	staged := false
+	installBundle = func(o distribution.InstallOptions) (distribution.InstallResult, error) {
+		if !o.StageOnly {
+			t.Fatal("activated before drain")
+		}
+		staged = true
+		return distribution.InstallResult{ReleasePath: "/staged"}, nil
+	}
+	guardInstallation = func(context.Context, string, string, io.Writer) (func() error, error) {
+		return nil, errors.New("legacy active work")
+	}
+	var out bytes.Buffer
+	if run([]string{"install", "--root", t.TempDir(), "--no-bin-link"}, &out, &out) != 1 || !staged || !strings.Contains(out.String(), "legacy active work") {
+		t.Fatal(staged, out.String())
+	}
+}
+func TestActivationFailureReleasesGuardAndSkipsPlugins(t *testing.T) {
+	restoreBootstrapStubs(t)
+	loadBundleManifest = func(string) (distribution.Manifest, error) { return distribution.Manifest{}, nil }
+	installBundle = func(o distribution.InstallOptions) (distribution.InstallResult, error) {
+		if !o.StageOnly {
+			return distribution.InstallResult{}, errors.New("activation failed")
+		}
+		return distribution.InstallResult{ReleasePath: "/staged"}, nil
+	}
+	released := false
+	guardInstallation = func(context.Context, string, string, io.Writer) (func() error, error) {
+		return func() error { released = true; return nil }, nil
+	}
+	setupAgents = func(string, io.Writer) agentplugin.SetupReport {
+		t.Fatal("configured plugins after failed activation")
+		return agentplugin.SetupReport{}
+	}
+	var out bytes.Buffer
+	if run([]string{"install", "--root", t.TempDir(), "--no-bin-link"}, &out, &out) != 1 || !released {
+		t.Fatal(released, out.String())
 	}
 }

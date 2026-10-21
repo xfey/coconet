@@ -1,6 +1,6 @@
 # Documentation
 
-- [Getting started](getting-started.md): connect folders, invite teammates and continue shared sessions.
+- [Getting started](getting-started.md): connect folders, share notes, continue sessions and update the client.
 - [Command reference](cli.md): client/server arguments, defaults and examples.
 - [Integration commands](cli-internal.md): advanced worker and plugin entry points.
 - [MCP tools](mcp-tools.md): parameters, pagination, exact sources and error recovery.

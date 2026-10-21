@@ -5,7 +5,7 @@ import { createButton, setButtonLabel } from "./button.mjs";
 import { parseWorkspaceLocation, workspaceLocation } from './catalog.mjs';
 // Account and project setup use the same server authority as the canvas.
 // Provider credentials and device tokens never enter browser application state.
-export function createAccountUI({ state, api, t, element, statusMessage, openModal, closeModal, setModalDismiss, openWorkspace, clearWorkspace, toast, openInstallation }) {
+export function createAccountUI({ state, api, t, element, statusMessage, openModal, closeModal, setModalDismiss, openWorkspace, clearWorkspace, toast, openInstallation, mountInstallation }) {
   const $ = id => document.getElementById(id);
   let provider = null;
   let activeCode = '';
@@ -14,7 +14,7 @@ export function createAccountUI({ state, api, t, element, statusMessage, openMod
   const request = (path, method, data) => api(path, { method, ...(data === undefined ? {} : { body: JSON.stringify(data) }) });
   const failure = node => error => { if (node.isConnected) node.textContent = t(connectionErrorKey(error)); };
   function action(label, run, className = '') {
-    const glyph = { save_profile: 'check', revoke_device: 'close', retry: 'refresh', load_more: 'chevronDown', logout: 'logout', leave_project: 'logout', confirm_leave_project: 'logout', authorize_approve: 'check', authorize_decline: 'close', cancel: 'close', join_project: 'login', connect_my_folder: 'folder', project_joined_ok: 'check', project_connection_help: 'folder' }[label];
+    const glyph = { save_profile: 'check', revoke_device: 'close', retry: 'refresh', load_more: 'chevronDown', logout: 'logout', leave_project: 'logout', confirm_leave_project: 'logout', authorize_approve: 'check', authorize_decline: 'close', cancel: 'close', join_project: 'login', connect_my_folder: 'folder', project_joined_ok: 'check' }[label];
     const button = createButton(t(label), { glyph, className });
     button.type = 'button';
     button.addEventListener('click', async () => {
@@ -126,8 +126,12 @@ export function createAccountUI({ state, api, t, element, statusMessage, openMod
   function projectJoined(content, error, project) {
     const description = element('p', '', 'dialog-description');
     const ok = action('project_joined_ok', closeModal, 'primary');
-    const help = action('project_connection_help', () => connectionHelp(project));
-    content.replaceChildren(description, actions(ok, help));
+    const section = element('section', undefined, 'dialog-section joined-connection');
+    const heading = element('h3');
+    const guide = element('div');
+    section.append(heading, guide);
+    content.replaceChildren(description, section, actions(ok));
+    const installation = mountInstallation(guide, project);
     error.textContent = '';
     setModalDismiss(closeModal);
     refreshProjectNotice = () => {
@@ -135,7 +139,8 @@ export function createAccountUI({ state, api, t, element, statusMessage, openMod
       $('modal-title').textContent = t('project_joined', { name: project.name });
       description.textContent = t('project_joined_description');
       setButtonLabel(ok, t('project_joined_ok'));
-      setButtonLabel(help, t('project_connection_help'));
+      heading.textContent = t('connect_my_folder');
+      installation.render();
     };
     refreshProjectNotice();
     ok.focus({ preventScroll: true });

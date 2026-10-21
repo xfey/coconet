@@ -21,3 +21,5 @@ publishing. Signing and publishing credentials must stay outside the checkout.
 Tests validate package metadata, manifest integrity, archive determinism, input
 validation and license inclusion. `make check` includes these checks without
 publishing or signing anything.
+
+Plugin versions are independent of the Runtime release. Bump the shared Plugin version when its content changes; a Runtime-only release preserves it.

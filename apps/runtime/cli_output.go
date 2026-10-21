@@ -53,6 +53,8 @@ func displayAgentType(host agentplugin.Host) string {
 
 func displayAgentStatus(status agentIntegrationStatus) string {
 	switch status {
+	case agentIntegrationDisabled:
+		return "Plugin disabled or removed in Agent"
 	case agentIntegrationConfigured:
 		return "Plugin installed"
 	case agentIntegrationPending:

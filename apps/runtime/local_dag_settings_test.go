@@ -398,6 +398,9 @@ func waitManagedControl(t *testing.T, root, previous string) localDAGEndpoint {
 }
 
 func TestManagedLifecycleReloadsConfigurationAndHandsOffAfterUpgrade(t *testing.T) {
+	previousVersion := version
+	version = "0.31.0"
+	t.Cleanup(func() { version = previousVersion })
 	paths, target, remote := relayConfigurationFixture(t)
 	if err := persistBinding(paths, currentDirectory(), target, remote.account.AccountID, remote.project.ProjectID, ""); err != nil {
 		t.Fatal(err)
@@ -422,7 +425,7 @@ func TestManagedLifecycleReloadsConfigurationAndHandsOffAfterUpgrade(t *testing.
 	}
 	// Mark the running endpoint as a previous binary; a newly launched binary
 	// must request graceful shutdown before it opens the same store.
-	second.Version = "previous-version"
+	second.Version = "0.30.0"
 	if err := atomicWriteJSON(filepath.Join(root, "control.json"), second, 0600); err != nil {
 		t.Fatal(err)
 	}

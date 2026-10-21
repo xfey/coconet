@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/xfey/coconet/packages/distribution"
 	"io"
 	"os"
 	"path/filepath"
@@ -169,7 +170,8 @@ func localDAGOlderProcess(root string) (bool, error) {
 	if err := decodeStrict(data, &endpoint); err != nil {
 		return false, err
 	}
-	return endpoint.Version != version, nil
+	order, known := distribution.CompareVersions(endpoint.Version, version)
+	return known && order < 0, nil
 }
 func probeManagedLocalDAG(ctx context.Context, root string) (bool, int) {
 	handled, code := localDAGClient(ctx, root, "status", localDAGClientOptions{}, io.Discard, io.Discard)

@@ -54,6 +54,23 @@ func runLocalDAG(ctx context.Context, args []string, stdout, stderr io.Writer) i
 		}
 		return 0
 	}
+	if args[0] != "serve" {
+		release, err := beginRuntimeActivity(ctx, *root)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		defer release()
+	} else if ctx.Value(runtimeStartupKey{}) == nil {
+		var release func()
+		var err error
+		ctx, release, err = holdRuntimeStartup(ctx, *root)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		defer release()
+	}
 	store, err := graphstore.Open(*root)
 	if err != nil {
 		fmt.Fprintln(stderr, err)

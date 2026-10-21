@@ -128,7 +128,7 @@ func TestAgentAddRetainsFailureForInspectionAndRetry(t *testing.T) {
 	}
 }
 
-func TestAutomaticAgentSyncOnlyUpdatesOlderRuntimeEntries(t *testing.T) {
+func TestAutomaticAgentSyncOnlyUpdatesChangedPluginEntries(t *testing.T) {
 	restoreAgentIntegrationStubs(t)
 	setRuntimeTestHome(t, filepath.Join(t.TempDir(), "coconet"))
 	resolveAgentMarketplace = func(agentplugin.Host) (string, error) { return "/marketplace", nil }
@@ -138,6 +138,7 @@ func TestAutomaticAgentSyncOnlyUpdatesOlderRuntimeEntries(t *testing.T) {
 	current, _ := newAgentIntegration(agentplugin.HostClaude, "tclaude", filepath.Join(t.TempDir(), "tclaude"))
 	old.Status, old.RuntimeVersion = agentIntegrationConfigured, "0.5.0"
 	current.Status, current.RuntimeVersion = agentIntegrationConfigured, version
+	current.PluginFingerprint, current.AttemptedFingerprint = "fixture-content", "fixture-content"
 	paths, _ := resolveRuntimePaths()
 	if err := saveAgentIntegrationState(paths, agentIntegrationState{SchemaVersion: agentIntegrationSchemaVersion, Integrations: []agentIntegration{old, current}}); err != nil {
 		t.Fatal(err)
@@ -295,11 +296,14 @@ func restoreAgentIntegrationStubs(t *testing.T) {
 	t.Helper()
 	originalNow := agentIntegrationNow
 	originalResolve := resolveAgentMarketplace
+	originalFingerprint := fingerprintAgentMarketplace
+	fingerprintAgentMarketplace = func(string) (string, error) { return "fixture-content", nil }
 	originalConfigure := configureAgentIntegration
 	originalRemove := removeAgentIntegration
 	t.Cleanup(func() {
 		agentIntegrationNow = originalNow
 		resolveAgentMarketplace = originalResolve
+		fingerprintAgentMarketplace = originalFingerprint
 		configureAgentIntegration = originalConfigure
 		removeAgentIntegration = originalRemove
 	})

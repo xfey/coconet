@@ -33,6 +33,17 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -x \"$PLUGIN_ROOT/scripts/hook.sh\" ]; then \"$PLUGIN_ROOT/scripts/hook.sh\" --context 2>/dev/null || :; fi",
+            "timeout": 3
+          }
+        ]
+      }
     ]
   }
 }

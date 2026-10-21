@@ -137,7 +137,7 @@ if (
   lock.name !== expectedName || lock.version !== sourceVersion ||
   lock.packages?.[""]?.name !== expectedName || lock.packages?.[""]?.version !== sourceVersion ||
   codex.name !== "coconet" || claude.name !== "coconet" || cursor.name !== "coconet" ||
-  codex.version !== sourceVersion || claude.version !== sourceVersion || cursor.version !== sourceVersion
+  typeof codex.version !== "string" || !codex.version || codex.version !== claude.version || codex.version !== cursor.version
 ) {
   process.stderr.write("npm and Plugin source metadata is inconsistent\n");
   process.exit(1);
@@ -149,9 +149,6 @@ packageJSON.homepage = `https://github.com/${repository}#readme`;
 packageJSON.bugs = { url: `https://github.com/${repository}/issues` };
 lock.version = version;
 lock.packages[""].version = version;
-codex.version = version;
-claude.version = version;
-cursor.version = version;
 for (const [path, value] of [
   [packagePath, packageJSON], [lockPath, lock], [codexPath, codex], [claudePath, claude], [cursorPath, cursor],
 ]) {

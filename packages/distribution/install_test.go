@@ -109,3 +109,33 @@ func TestInstallCanLeaveTheCommandNameToAPackageManager(t *testing.T) {
 		t.Fatalf("skip-bin-link unexpectedly created a command directory: %v", err)
 	}
 }
+
+func TestStageOnlyPreservesActiveRuntime(t *testing.T) {
+	root := t.TempDir()
+	options := InstallOptions{BundleRoot: fixtureBundle(t, "1.0.0", "old"), InstallRoot: root, SkipBinLink: true, CurrentOS: "testos", CurrentArch: "testarch"}
+	old, err := Install(options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	options.BundleRoot = fixtureBundle(t, "1.1.0", "new")
+	options.StageOnly = true
+	staged, err := Install(options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(old.Executable)
+	if err != nil || string(data) != "old" {
+		t.Fatal("staging changed the active Runtime", err)
+	}
+	if _, err := os.Stat(filepath.Join(staged.ReleasePath, "bin", "coconet")); err != nil {
+		t.Fatal(err)
+	}
+	options.StageOnly = false
+	if _, err := Install(options); err != nil {
+		t.Fatal(err)
+	}
+	data, err = os.ReadFile(old.Executable)
+	if err != nil || string(data) != "new" {
+		t.Fatal("activation failed", err)
+	}
+}

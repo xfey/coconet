@@ -50,7 +50,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -x \"${CLAUDE_PLUGIN_ROOT}/scripts/hook.sh\" ]; then \"${CLAUDE_PLUGIN_ROOT}/scripts/hook.sh\" 2>/dev/null || :; fi",
+            "command": "if [ -x \"${CLAUDE_PLUGIN_ROOT}/scripts/hook.sh\" ]; then \"${CLAUDE_PLUGIN_ROOT}/scripts/hook.sh\" --context 2>/dev/null || :; fi",
             "timeout": 3
           }
         ]

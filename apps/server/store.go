@@ -23,7 +23,7 @@ import (
 	bolt "go.etcd.io/bbolt"
 )
 
-const databaseSchemaVersion = 25
+const databaseSchemaVersion = 26
 
 var (
 	metaBucket         = []byte("meta")
@@ -161,9 +161,12 @@ type semanticProjectionJob struct {
 }
 
 type databaseState struct {
-	SnapshotCandidates      *recordCollection[string]            `json:"snapshot_candidates"`
-	SnapshotLeases          *recordCollection[snapshotLease]     `json:"snapshot_leases"`
-	WorkStates              *recordCollection[sessionWorkRecord] `json:"session_work_states"`
+	ProjectDocuments        *recordCollection[contracts.ProjectDocument] `json:"project_documents"`
+	ProjectDocumentHeads    *recordCollection[int64]                     `json:"project_document_heads"`
+	ProjectDocumentReceipts *recordCollection[projectDocumentReceipt]    `json:"project_document_receipts"`
+	SnapshotCandidates      *recordCollection[string]                    `json:"snapshot_candidates"`
+	SnapshotLeases          *recordCollection[snapshotLease]             `json:"snapshot_leases"`
+	WorkStates              *recordCollection[sessionWorkRecord]         `json:"session_work_states"`
 	contents                artifactStore
 	ContentObjects          *recordCollection[contentObjectRecord] `json:"content_objects"`
 	recordContext           *recordTransaction
@@ -212,7 +215,9 @@ type databaseState struct {
 
 func newDatabaseState() databaseState {
 	return databaseState{
-		SnapshotCandidates:    newRecordCollectionWith(make(map[string]string)),
+		ProjectDocuments:        newRecordCollectionWith(make(map[string]contracts.ProjectDocument)),
+		ProjectDocumentHeads:    newRecordCollectionWith(make(map[string]int64)),
+		ProjectDocumentReceipts: newRecordCollectionWith(make(map[string]projectDocumentReceipt)), SnapshotCandidates: newRecordCollectionWith(make(map[string]string)),
 		SnapshotLeases:        newRecordCollectionWith(make(map[string]snapshotLease)),
 		WorkStates:            newRecordCollectionWith(make(map[string]sessionWorkRecord)),
 		ContentObjects:        newRecordCollectionWith(make(map[string]contentObjectRecord)),
@@ -864,6 +869,15 @@ func decodeStateJSON(content []byte) (databaseState, error) {
 }
 
 func normalizeDatabaseState(state *databaseState) {
+	if state.ProjectDocuments == nil {
+		state.ProjectDocuments = newRecordCollectionWith(make(map[string]contracts.ProjectDocument))
+	}
+	if state.ProjectDocumentHeads == nil {
+		state.ProjectDocumentHeads = newRecordCollectionWith(make(map[string]int64))
+	}
+	if state.ProjectDocumentReceipts == nil {
+		state.ProjectDocumentReceipts = newRecordCollectionWith(make(map[string]projectDocumentReceipt))
+	}
 	if state.SnapshotCandidates == nil {
 		state.SnapshotCandidates = newRecordCollectionWith(make(map[string]string))
 	}

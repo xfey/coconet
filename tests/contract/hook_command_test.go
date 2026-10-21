@@ -64,14 +64,14 @@ func testCachedHookCommand(t *testing.T, agent, event, command string, wrapper [
 		}
 	}
 	want := ""
-	if event == "SessionStart" {
+	if event == "SessionStart" || event == "UserPromptSubmit" {
 		want = context
 	}
 	for _, exit := range []string{"0", "127"} {
 		run(want, "COCONET_TEST_EXIT="+exit)
 		forwarded, err := os.ReadFile(trace)
 		args := "hook\n--agent\n" + agent + "\n"
-		if agent == "codex" && event == "SessionStart" {
+		if agent == "codex" && (event == "SessionStart" || event == "UserPromptSubmit") {
 			canonical, err := filepath.EvalSymlinks(pluginRoot)
 			if err != nil {
 				t.Fatal(err)

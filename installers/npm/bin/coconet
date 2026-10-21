@@ -3,6 +3,7 @@
 # Keep the npm command stable while the native Runtime remains versioned under
 # the user's Coconet data root. Node is used only when setup or an upgrade is
 # required; successful daily commands replace this process with the Runtime.
+# Package upgrades never implicitly replace a running Runtime.
 
 launcher=$0
 link_depth=0
@@ -66,15 +67,19 @@ runtime_version() {
 }
 
 installed_version=$(runtime_version 2>/dev/null || true)
-if [ -x "$runtime" ] && [ "$installed_version" = "$package_version" ]; then
+COCONET_NPM_PACKAGE_ROOT=$package_root
+export COCONET_NPM_PACKAGE_ROOT
+if [ -x "$runtime" ] && [ -n "$installed_version" ]; then
+  # An explicit update may be the first command after upgrading an old npm
+  # launcher. Older Runtimes have no update command; use this package's verified
+  # Bootstrap once, which checks for legacy live work before changing anything.
+  if [ "$#" -eq 1 ] && [ "$1" = "update" ] && ! "$runtime" update --help >/dev/null 2>&1; then
+    "$setup_command" >&2 || exit "$?"
+  fi
   exec "$runtime" "$@"
 fi
 
-if [ -n "$installed_version" ] && [ "$installed_version" != "$package_version" ]; then
-  printf 'coconet: Updating Coconet %s -> %s before running your command...\n' "$installed_version" "$package_version" >&2
-else
-  printf 'coconet: Installing Coconet %s before running your command...\n' "$package_version" >&2
-fi
+printf 'coconet: Installing Coconet %s before running your command...\n' "$package_version" >&2
 
 # Setup is incidental to the requested command, including JSON and MCP
 # commands. Its human-readable result must not enter that command's stdout.

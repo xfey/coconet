@@ -41,6 +41,7 @@ type Detection struct {
 }
 
 type InstallResult struct {
+	Changed bool   `json:"changed,omitempty"`
 	Host    Host   `json:"host"`
 	Command string `json:"command"`
 	Version string `json:"version,omitempty"`

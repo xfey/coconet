@@ -92,7 +92,8 @@ try {
     const title = joined ? (language === 'zh' ? '已加入「' + name + '」' : 'Joined ' + name)
       : language === 'zh' ? '你受邀加入一个协作项目' : "You're invited to join a collaborative project";
     await target.getByRole('heading', { name: title, exact: true }).waitFor();
-    assert.equal(await target.locator('.project-entry,.installation-guide').count(), 0);
+    assert.equal(await target.locator('.project-entry').count(), 0);
+    assert.equal(await target.locator('.installation-guide').count(), joined ? 1 : 0);
     assert.equal(await target.locator('#modal-content input').count(), 0);
     if (!joined) {
       await target.locator('.project-invitation strong').waitFor();
@@ -102,18 +103,18 @@ try {
         : 'Join to view the project’s work graph and explore your teammates’ progress and shared sessions.');
     }
     assert.deepEqual(await target.locator('#modal-content button:visible').allTextContents(), joined
-      ? language === 'zh' ? ['好的', '如何连接项目目录'] : ['OK', 'How to connect a project folder']
+      ? language === 'zh' ? ['复制命令', '确认'] : ['Copy command', 'OK']
       : [language === 'zh' ? '加入项目' : 'Join project']);
-    if (joined) assert.equal(await target.locator('#modal-content .dialog-description').textContent(), language === 'zh'
-      ? '如需同步自己的工作进展，可以连接项目目录。'
-      : 'To sync your own work progress, connect a project folder.');
+    if (joined) assert.equal(await target.locator('#modal-content .dialog-description').first().textContent(), language === 'zh'
+      ? '现在可以查看同事的工作进展。连接项目目录，即可同步自己的进展。'
+      : 'You can now view your teammates’ progress. Connect a project folder to sync your own work.');
     for (const width of [1280, 390, 320]) {
       await target.setViewportSize({ width, height: 844 });
       assert.equal(await target.locator('#modal-content').evaluate(node => node.scrollWidth > node.clientWidth + 1), false);
       assert.equal(await target.locator('#session-modal').evaluate(node => {
         const bounds = node.getBoundingClientRect(), close = node.querySelector('#modal-close').getBoundingClientRect();
         return bounds.left >= 0 && bounds.right <= innerWidth && close.right <= bounds.right
-          && [...node.querySelectorAll('.ui-button:not([hidden])')].every(button => {
+          && [...node.querySelectorAll('.ui-button:not([hidden])')].filter(button => button.getClientRects().length).every(button => {
             const b = button.getBoundingClientRect(); return b.left >= bounds.left && b.right <= bounds.right && b.height >= 40;
           });
       }), true, 'Invitation and success actions must fit the viewport, including long names');
@@ -241,7 +242,7 @@ try {
       assert.equal(await trial.locator('.account-error').textContent(), '');
       assert.equal(await trial.getByRole('button', { name: 'OK', exact: true }).evaluate(node => node === document.activeElement), true);
       await trial.keyboard.press('Tab');
-      assert.equal(await trial.getByRole('button', { name: 'How to connect a project folder', exact: true }).evaluate(node => node === document.activeElement), true);
+      assert.equal(await trial.locator('#modal-close').evaluate(node => node === document.activeElement), true);
       await trial.keyboard.press('Shift+Tab');
       await trial.keyboard.press('Enter');
       await trial.locator('#session-modal').waitFor({ state: 'hidden' });
@@ -406,12 +407,12 @@ try {
   await page.setViewportSize({ width: 1280, height: 844 });
   await page.locator('#project-manage').click();
   assert.equal(await page.getByRole('button', { name: 'Leave project', exact: true }).count(), 0);
-  assert.equal(await page.getByRole('button', { name: 'Connect a project folder', exact: true }).count(), 0);
+  assert.equal(await page.locator('#modal-content').getByRole('button', { name: 'Connect a project folder', exact: true }).count(), 0);
   await page.locator('#modal-close').click();
   await page.locator('#canvas-settings').click();
   assert.equal(await page.locator('#modal-content').getByRole('button', { name: 'View sync status', exact: true }).count(), 0);
   assert.equal(await page.locator('#canvas-help,#project-folders').count(), 0);
-  assert.deepEqual(await page.locator('.canvas-dock button').evaluateAll(nodes => nodes.map(node => node.id)), ['refresh', 'project-share', 'canvas-settings', 'zoom-out', 'zoom-in', 'zoom-fit']);
+  assert.deepEqual(await page.locator('.canvas-dock button').evaluateAll(nodes => nodes.map(node => node.id)), ['project-connect', 'refresh', 'project-share', 'canvas-settings', 'zoom-out', 'zoom-in', 'zoom-fit']);
   assert.equal(await page.locator('.project-settings h3,.project-settings > strong').count(), 0);
   assert.equal(await page.getByRole('button', { name: 'Create project', exact: true }).count(), 0);
   assert.equal(await page.getByRole('button', { name: 'Invite a teammate', exact: true }).count(), 0);
@@ -421,7 +422,7 @@ try {
   await page.locator('#modal-close').click();
   await page.locator('#project-share').click();
   await page.getByText('No folders connected yet.', { exact: true }).waitFor();
-  await page.getByRole('button', { name: 'Connect a project folder', exact: true }).click();
+  await page.locator('#modal-content').getByRole('button', { name: 'Connect a project folder', exact: true }).click();
   assert.ok((await page.locator('.installation-guide pre').filter({ hasText: 'coconet connect' }).textContent()).includes(projects.projects[0].project_id));
   await screenshot(page, 'connection-instructions');
   await page.locator('#modal-close').click();
@@ -698,7 +699,7 @@ try {
   await page.route(workspaces, exampleRoute);
   const openGuide = async () => {
     await page.locator('#project-share').click();
-    await page.getByRole('button', { name: 'Connect a project folder', exact: true }).click();
+    await page.locator('#modal-content').getByRole('button', { name: 'Connect a project folder', exact: true }).click();
     await page.locator('.installation-guide').waitFor();
   };
   exampleGate = new Promise(resolve => { releaseExample = resolve; });
@@ -825,15 +826,82 @@ try {
   await otherPage.getByRole('button', { name: '加入项目', exact: true }).click();
   await checkProjectNotice(otherPage, 'zh', true, projects.projects[0].name);
   assert.equal((await (await second.request.get(fixture.url + '/v1/dashboard/projects')).json()).projects.length, 1);
-  await otherPage.getByRole('button', { name: '如何连接项目目录', exact: true }).click();
   await otherPage.locator('.command-block').filter({ hasText: 'coconet connect' }).getByRole('button', { name: '复制命令', exact: true }).waitFor();
   const joinCommand = await otherPage.locator('.installation-guide pre').filter({ hasText: 'coconet connect' }).textContent();
   assert.match(joinCommand, /^coconet connect 'coco_/);
   assert.ok(joinCommand.includes(" --server '" + fixture.cli_url + "'"), 'Copied commands must target the API origin');
+  await otherPage.getByRole('button', { name: '确认', exact: true }).click();
+  await otherPage.locator('#project-connect').click();
+  assert.equal(await otherPage.locator('.installation-guide pre').filter({ hasText: 'coconet connect' }).textContent(), joinCommand);
   assert.equal(invitationJoins, 1, 'Opening instructions must not join the project again');
   assert.equal(invitationDirectoryRequests, 0, 'Viewing instructions must not authorize a device');
   await otherPage.locator('#modal-close').click();
   assert.equal(await otherPage.locator('.project-item').count(), 1);
+
+  // Two members edit the same persistent document. A later save preserves the
+  // other member's draft and requires an explicit merge, including across close.
+  if (await page.locator('#session-modal').isVisible()) await page.locator('#modal-close').click();
+  await page.locator('#project-document').click();
+  await page.locator('.document-editor:enabled').waitFor();
+  await otherPage.locator('#project-document').click();
+  await otherPage.locator('.document-editor:enabled').waitFor();
+  await otherPage.locator('.document-editor').fill('# Teammate draft\nKeep my local edits');
+  const firstNote = '# Shared plan\n\n- Improve search\n- Keep handoff stable\n\n<img src=x onerror="window.documentInjected=true">';
+  await page.locator('.document-editor').fill(firstNote);
+  await page.locator('.project-document').getByRole('button', { name: 'Save', exact: true }).click();
+  await page.locator('.project-document [role="status"]').filter({ hasText: /v1 · / }).waitFor();
+  await otherPage.locator('.project-document').getByRole('button', { name: '刷新', exact: true }).click();
+  await otherPage.locator('.document-comparison:visible').waitFor();
+  assert.match(await otherPage.locator('.document-editor').inputValue(), /Keep my local edits/);
+  assert.equal(await otherPage.locator('.document-comparison pre').textContent(), firstNote);
+  assert.equal(await otherPage.evaluate(() => window.documentInjected), undefined);
+  await otherPage.keyboard.press('Escape');
+  await otherPage.locator('#project-document').click();
+  await otherPage.locator('.document-comparison:visible').waitFor();
+  assert.match(await otherPage.locator('.document-editor').inputValue(), /Keep my local edits/);
+  const merged = '# Shared plan\n\nImprove search and keep handoff stable.\nKeep my local edits';
+  await otherPage.locator('.document-editor').fill(merged);
+  await otherPage.getByRole('button', { name: '保存合并结果', exact: true }).click();
+  await otherPage.locator('.project-document [role="status"]').filter({ hasText: /v2 · Browser teammate/ }).waitFor();
+  for (const target of [page, otherPage]) {
+    for (const width of [1280, 390, 320]) {
+      await target.setViewportSize({ width, height: 844 });
+      assert.equal(await target.locator('#document-content').evaluate(node => node.scrollWidth > node.clientWidth + 1), false);
+      await screenshot(target, 'project-document-' + width + (target === page ? '-en' : '-zh'));
+    }
+  }
+  assert.equal(await otherPage.locator('.document-history summary').count(), 0);
+  await otherPage.locator('#project-document').click();
+  assert.equal(await otherPage.locator('#document-drawer').isVisible(), false);
+  await otherPage.locator('#project-document').click();
+  await otherPage.locator('.document-versions').getByRole('button', { name: /v1/ }).click();
+  await otherPage.getByRole('button', { name: '将 v1 放入草稿', exact: true }).click();
+  assert.equal(await otherPage.locator('.document-editor').inputValue(), firstNote);
+  await otherPage.getByRole('button', { name: '保存', exact: true }).click();
+  await otherPage.locator('.project-document [role="status"]').filter({ hasText: /v3 · Browser teammate/ }).waitFor();
+  assert.equal(await otherPage.locator('.document-versions button').count(), 3);
+  const documentRoute = '**/v1/dashboard/projects/*/document';
+  const saveRequests = [];
+  let dropSaveResponse = true;
+  await otherPage.route(documentRoute, async route => {
+    if (route.request().method() !== 'PUT') return route.continue();
+    saveRequests.push(JSON.parse(route.request().postData()));
+    if (dropSaveResponse) { dropSaveResponse = false; await route.fetch(); return route.abort('failed'); }
+    return route.continue();
+  });
+  await otherPage.locator('.document-editor').fill('# Acknowledgement retry');
+  await otherPage.getByRole('button', { name: '保存', exact: true }).click();
+  await otherPage.getByText('保存尚未确认。草稿已保留，请重试。', { exact: true }).waitFor();
+  await otherPage.getByRole('button', { name: /保存|保存合并结果/, exact: true }).click();
+  await otherPage.locator('.project-document [role="status"]').filter({ hasText: /v4 · Browser teammate/ }).waitFor();
+  assert.deepEqual(saveRequests[1], saveRequests[0], 'Lost acknowledgement must retry the same save intent');
+  assert.equal(await otherPage.locator('.document-versions button').count(), 4);
+  await otherPage.unroute(documentRoute);
+
+  await otherPage.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await page.setViewportSize({ width: 1280, height: 844 });
+  await otherPage.setViewportSize({ width: 1280, height: 844 });
 
   // Leaving is scoped to the selected project's settings and requires an
   // explicit confirmation. A failed request remains retryable in the dialog.
@@ -875,7 +943,7 @@ try {
   await otherPage.getByRole('textbox', { name: '通过分享链接加入', exact: true }).fill(invitation.replace(fixture.url, fixture.cli_url));
   await otherPage.getByRole('textbox', { name: '通过分享链接加入', exact: true }).press('Enter');
   await otherPage.getByRole('heading', { name: '已加入「' + projects.projects[0].name + '」', exact: true }).waitFor();
-  assert.equal(await otherPage.locator('.installation-guide').count(), 0);
+  assert.equal(await otherPage.locator('.installation-guide').count(), 1);
   await otherPage.keyboard.press('Escape');
   await otherPage.locator('#session-modal').waitFor({ state: 'hidden' });
   await otherPage.locator('.project-item').waitFor();

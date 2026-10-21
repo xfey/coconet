@@ -1,6 +1,6 @@
 {
   "name": "coconet",
-  "version": "0.30.1-internal.1",
+  "version": "0.31.0",
   "description": "Discover Coconet work through DAG nodes and Library metadata, Pull selected conversations for local search, and Fork native Sessions.",
   "author": {
     "name": "Coconet"

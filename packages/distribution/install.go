@@ -9,6 +9,7 @@ import (
 )
 
 type InstallOptions struct {
+	StageOnly    bool
 	BundleRoot   string
 	InstallRoot  string
 	BinDirectory string
@@ -88,6 +89,9 @@ func Install(options InstallOptions) (InstallResult, error) {
 		return InstallResult{}, err
 	}
 
+	if options.StageOnly {
+		return InstallResult{Version: manifest.Version, ReleasePath: releasePath, Executable: executable, AlreadyExists: alreadyExists}, nil
+	}
 	previousCurrent, hadCurrent, err := readSymlink(currentPath)
 	if err != nil {
 		return InstallResult{}, err

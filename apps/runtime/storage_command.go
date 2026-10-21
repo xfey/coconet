@@ -71,6 +71,12 @@ func runStorage(ctx context.Context, args []string, stdout, stderr io.Writer) in
 		fmt.Fprintln(stderr, "No local processing store is available yet.")
 		return 1
 	}
+	release, err := beginRuntimeActivity(ctx, *root)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	defer release()
 	store, err := graphstore.Open(*root)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
