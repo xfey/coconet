@@ -91,10 +91,10 @@ func runUpdate(ctx context.Context, args []string, stdout, stderr io.Writer) int
 		return 1
 	}
 	fmt.Fprintln(stdout, "Preparing the Runtime; activation waits for ongoing processing and handoffs.")
-	command = exec.Command(node, filepath.Join(packageRoot, "cli.mjs"), "--root", installRoot)
+	command = exec.Command(node, filepath.Join(packageRoot, "cli.mjs"), "--root", installRoot, "--if-newer")
 	command.Stdout, command.Stderr = stdout, stderr
 	if err := subprocess.Run(ctx, command); err != nil {
-		fmt.Fprintln(stderr, "npm was updated, but Runtime activation did not finish. The existing Runtime remains usable; run coconet update to retry.")
+		fmt.Fprintln(stderr, "npm was updated, but Runtime activation did not finish. The next coconet command will retry; the existing Runtime remains usable.")
 		return 1
 	}
 	return 0

@@ -126,8 +126,8 @@ test("the launcher delegates matching Runtime arguments without running setup", 
   }
 });
 
-test("the launcher installs only a missing Runtime before delegation", async () => {
-  for (const initialVersion of [""]) {
+test("the launcher installs a missing or older Runtime before delegation", async () => {
+  for (const initialVersion of ["", "0.1.0"]) {
     const temporaryRoot = await mkdtemp(join(tmpdir(), "coconet-launcher-setup-"));
     try {
       const fixture = await createLauncherFixture(temporaryRoot);
@@ -148,8 +148,8 @@ test("the launcher installs only a missing Runtime before delegation", async () 
   }
 });
 
-test("npm and Runtime versions are independent and daily commands never activate another version", async () => {
-  for (const version of ["0.1.0", "99.0.0"]) {
+test("the launcher never downgrades or replaces unknown development versions", async () => {
+  for (const version of ["99.0.0", "dev", "7.8.9+build.2"]) {
     const root = await mkdtemp(join(tmpdir(), "coconet-independent-version-"));
     try {
       const fixture = await createLauncherFixture(root);
@@ -275,6 +275,78 @@ test("cancelling setup clears feedback, stops the child, and never runs the requ
   }
 });
 
+test("an offline upgrade keeps the original command usable and retries next launch", async () => {
+  const root = await mkdtemp(join(tmpdir(), "coconet-upgrade-retry-"));
+  try {
+    const fixture = await createLauncherFixture(root);
+    const data = join(root, "data"), trace = join(root, "trace");
+    await seedRuntime(data, "0.30.1");
+    let result = await run(fixture.launcher, ["status", "--json"], {env:launcherEnvironment(data, trace, "fail")});
+    assert.equal(result.code, 0, result.stderr);
+    assert.equal(result.stdout, "runtime <status> <--json>\n");
+    assert.match(result.stderr, /next launch will retry/u);
+    assert.equal(JSON.parse(await readFile(join(data, "coconet/current/manifest.json"))).version, "0.30.1");
+    result = await run(fixture.launcher, ["version"], {env:launcherEnvironment(data, trace, "install")});
+    assert.equal(result.code, 0, result.stderr);
+    assert.equal(JSON.parse(await readFile(join(data, "coconet/current/manifest.json"))).version, fixture.version);
+    assert.equal(await readFile(trace,"utf8"), "setup\nsetup\n");
+  } finally { await rm(root,{recursive:true,force:true}); }
+});
+
+test("automatic upgrade preserves MCP stdin and stdout", async () => {
+  const root = await mkdtemp(join(tmpdir(), "coconet-upgrade-stdio-"));
+  try {
+    const fixture = await createDownloadFixture(root, "success");
+    await seedRuntime(join(root,"data"), "0.30.1");
+    // The newly activated fixture returns JSON; follow it with stdin to prove
+    // no setup subprocess consumed the incoming MCP payload.
+    const setup = join(fixture.root,"cli.mjs");
+    await writeFile(setup, `#!/bin/sh
+mkdir -p "$XDG_DATA_HOME/coconet/current/bin"
+printf '  "version": "7.8.9"\\n' > "$XDG_DATA_HOME/coconet/current/manifest.json"
+printf '#!/bin/sh\\ncat\\n' > "$XDG_DATA_HOME/coconet/current/bin/coconet"
+chmod +x "$XDG_DATA_HOME/coconet/current/bin/coconet"
+`);
+    const payload = '{"jsonrpc":"2.0","id":1,"method":"initialize"}\n';
+    const result = await run(fixture.launcher,["mcp"],{env:fixture.env,stdin:payload});
+    assert.equal(result.code,0,result.stderr);
+    assert.equal(result.stdout,payload);
+  } finally { await rm(root,{recursive:true,force:true}); }
+});
+
+test("legacy explicit update installs once without delegating a second update", async () => {
+  const root = await mkdtemp(join(tmpdir(), "coconet-legacy-update-"));
+  try {
+    const fixture = await createLauncherFixture(root);
+    const data=join(root,"data"), trace=join(root,"trace");
+    await seedRuntime(data,"0.30.1");
+    await writeFile(join(data,"coconet/current/bin/coconet"), "#!/bin/sh\nexit 2\n");
+    const result=await run(fixture.launcher,["update"],{env:launcherEnvironment(data,trace,"install")});
+    assert.equal(result.code,0,result.stderr); assert.equal(result.stdout,"");
+    assert.equal(await readFile(trace,"utf8"),"setup\n");
+  } finally { await rm(root,{recursive:true,force:true}); }
+});
+
+test("terminating only the launcher cancels the upgrade and never runs the original command", {timeout:15000}, async () => {
+  for (const signal of ["SIGINT", "SIGTERM"]) {
+    const root=await mkdtemp(join(tmpdir(),"coconet-upgrade-cancel-"));
+    try {
+      const fixture=await createDownloadFixture(root,"wait-bootstrap");
+      await seedRuntime(join(root,"data"),"0.30.1");
+      let cancelled=false;
+      const result=await run(fixture.launcher,["mcp"],{env:fixture.env,onStderr(chunk,child){
+        if(!cancelled && chunk.includes("fixture bootstrap waiting")){cancelled=true;child.kill(signal);}
+      }});
+      assert.equal(cancelled,true); assert.equal(result.code,signal==="SIGINT"?130:143,result.stderr);
+      assert.equal(result.stdout,"");
+      const pid=Number(await readFile(join(root,"bootstrap-pid"),"utf8"));
+      assert.throws(()=>process.kill(pid,0),{code:"ESRCH"});
+      assert.deepEqual(await readdir(fixture.temporary),[]);
+      assert.equal(JSON.parse(await readFile(join(root,"data/coconet/current/manifest.json"))).version,"0.30.1");
+    } finally {await rm(root,{recursive:true,force:true});}
+  }
+});
+
 async function createDownloadFixture(root, mode) {
   const fixture = await createLauncherFixture(root);
   for (const file of ["cli.mjs", "core.mjs", "progress.mjs"]) {
@@ -361,6 +433,9 @@ async function createLauncherFixture(temporaryRoot, version = "7.8.9") {
   }, null, 2)}\n`, { mode: 0o644 });
   const launcher = join(bin, "coconet");
   await copyFile(launcherPath, launcher);
+  for (const file of ["core.mjs", "compare-version.mjs"]) {
+    await copyFile(join(packageRoot, file), join(root, file));
+  }
   await chmod(launcher, 0o755);
   const runtimeSource = "#!/bin/sh\nprintf 'runtime'; for argument do printf ' <%s>' \"$argument\"; done; printf '\\n'\n";
   await writeFile(join(root, "cli.mjs"), `#!/usr/bin/env node
@@ -413,8 +488,9 @@ function run(command, arguments_, options = {}) {
     const child = spawn(command, arguments_, {
       cwd: options.cwd,
       env: options.env || process.env,
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: [options.stdin === undefined ? "ignore" : "pipe", "pipe", "pipe"],
     });
+    if (options.stdin !== undefined) child.stdin.end(options.stdin);
     let stdout = "";
     let stderr = "";
     child.stdout.setEncoding("utf8");

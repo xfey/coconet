@@ -1,9 +1,31 @@
 package distribution
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
+
+// InstalledVersion reads only release identity. Older bundles need not contain
+// plugins introduced by the current manifest schema. Activation still verifies
+// every file of the candidate through LoadManifest and VerifyBundle.
+func InstalledVersion(root string) (string, error) {
+	data, err := os.ReadFile(filepath.Join(root, ManifestFilename))
+	if err != nil {
+		return "", err
+	}
+	var identity struct {
+		Product string `json:"product"`
+		Version string `json:"version"`
+	}
+	if json.Unmarshal(data, &identity) != nil || identity.Product != "coconet" || !safeReleaseValue.MatchString(identity.Version) {
+		return "", fmt.Errorf("invalid installed Runtime identity")
+	}
+	return identity.Version, nil
+}
 
 var releaseVersion = regexp.MustCompile(`^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$`)
 

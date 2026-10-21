@@ -4,6 +4,32 @@ import { posix } from "node:path";
 
 const safeReleaseValue = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 
+// SemVer ordering matches distribution.CompareVersions. Unknown development
+// versions are left alone; npm installation is never an implicit downgrade.
+export function compareVersions(left, right) {
+  const pattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/u;
+  const a = pattern.exec(left), b = pattern.exec(right);
+  if (!a || !b) return null;
+  const numeric = value => /^\d+$/u.test(value);
+  for (const part of [a[4], b[4]]) {
+    if (part?.split('.').some(id => numeric(id) && id.length > 1 && id[0] === '0')) return null;
+  }
+  const numberOrder = (x, y) => x.length === y.length ? (x > y ? 1 : x < y ? -1 : 0) : (x.length > y.length ? 1 : -1);
+  for (let i = 1; i <= 3; i++) { const order = numberOrder(a[i], b[i]); if (order) return order; }
+  if (a[4] === b[4]) return 0;
+  if (!a[4]) return 1;
+  if (!b[4]) return -1;
+  const x = a[4].split('.'), y = b[4].split('.');
+  for (let i = 0; i < Math.min(x.length, y.length); i++) {
+    if (x[i] === y[i]) continue;
+    const n = numeric(x[i]), m = numeric(y[i]);
+    if (n && m) return numberOrder(x[i], y[i]);
+    if (n !== m) return n ? -1 : 1;
+    return x[i] > y[i] ? 1 : -1;
+  }
+  return x.length > y.length ? 1 : -1;
+}
+
 export function resolveTarget(platform = process.platform, architecture = process.arch) {
   const systems = { darwin: "darwin", linux: "linux" };
   const architectures = { x64: "amd64", arm64: "arm64", amd64: "amd64" };
@@ -139,7 +165,7 @@ export function parseInstallOptions(arguments_, packageVersion) {
       options.help = true;
       continue;
     }
-    if (argument === "--json" || argument === "--skip-agents") {
+    if (argument === "--json" || argument === "--skip-agents" || argument === "--if-newer") {
       options.bootstrapArguments.push(argument);
       continue;
     }

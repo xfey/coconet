@@ -139,3 +139,33 @@ func TestStageOnlyPreservesActiveRuntime(t *testing.T) {
 		t.Fatal("activation failed", err)
 	}
 }
+
+func TestConcurrentStagingReusesIdenticalRelease(t *testing.T) {
+	root := t.TempDir()
+	bundle := fixtureBundle(t, "1.0.0", "shared immutable runtime")
+	manifest, err := LoadManifest(bundle)
+	if err != nil {
+		t.Fatal(err)
+	}
+	release := filepath.Join(root, "release")
+	start := make(chan struct{})
+	results := make(chan error, 4)
+	for i := 0; i < 4; i++ {
+		go func() { <-start; results <- installRelease(bundle, root, release, manifest) }()
+	}
+	close(start)
+	for i := 0; i < 4; i++ {
+		if err := <-results; err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := VerifyBundle(release, manifest); err != nil {
+		t.Fatal(err)
+	}
+	// A different bundle must never be accepted just because it won the race.
+	other := fixtureBundle(t, "1.0.0", "different runtime")
+	otherManifest, _ := LoadManifest(other)
+	if err := installRelease(other, root, release, otherManifest); err == nil {
+		t.Fatal("accepted different release")
+	}
+}

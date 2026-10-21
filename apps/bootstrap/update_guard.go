@@ -13,20 +13,29 @@ import (
 
 // The child's stdin is a lease: parent failure closes the pipe and the Runtime
 // resumes using the unchanged (or successfully activated) current pointer.
-func startInstallationGuard(ctx context.Context, executable, root string, stderr io.Writer) (func() error, error) {
+type installationLease struct {
+	Finish  func() error
+	Current bool
+}
+
+func startInstallationGuard(ctx context.Context, executable, root string, onlyIfNewer bool, stderr io.Writer) (installationLease, error) {
 	root, err := filepath.Abs(root)
 	if err != nil {
-		return nil, err
+		return installationLease{}, err
 	}
-	command := exec.CommandContext(ctx, executable, "_install-guard", root)
+	args := []string{"_install-guard", root}
+	if onlyIfNewer {
+		args = append(args, "--if-newer")
+	}
+	command := exec.CommandContext(ctx, executable, args...)
 	lease, err := command.StdinPipe()
 	if err != nil {
-		return nil, err
+		return installationLease{}, err
 	}
 	output, err := command.StdoutPipe()
 	if err != nil {
 		lease.Close()
-		return nil, err
+		return installationLease{}, err
 	}
 	command.Stderr = stderr
 	command.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
@@ -34,10 +43,11 @@ func startInstallationGuard(ctx context.Context, executable, root string, stderr
 	command.Cancel = func() error { return lease.Close() }
 	if err := command.Start(); err != nil {
 		lease.Close()
-		return nil, err
+		return installationLease{}, err
 	}
 	var ready struct {
-		Ready bool `json:"ready"`
+		Ready   bool `json:"ready"`
+		Current bool `json:"current"`
 	}
 	if err := json.NewDecoder(output).Decode(&ready); err != nil || !ready.Ready {
 		lease.Close()
@@ -45,7 +55,7 @@ func startInstallationGuard(ctx context.Context, executable, root string, stderr
 		if waitErr == nil {
 			waitErr = errors.New("Runtime did not confirm readiness")
 		}
-		return nil, fmt.Errorf("Runtime update preparation did not complete; installation remains unchanged: %w", waitErr)
+		return installationLease{}, fmt.Errorf("Runtime update preparation did not complete; installation remains unchanged: %w", waitErr)
 	}
-	return func() error { _ = lease.Close(); return command.Wait() }, nil
+	return installationLease{Finish: func() error { _ = lease.Close(); return command.Wait() }, Current: ready.Current}, nil
 }

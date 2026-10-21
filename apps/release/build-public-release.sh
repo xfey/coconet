@@ -105,7 +105,7 @@ repeat_root="${staging_directory}/repeat"
 version_stage="${staging_directory}/version-source"
 npm_stage="${staging_directory}/npm-stage"
 mkdir -p "${version_stage}" "${npm_stage}/bin"
-for name in README.md LICENSE cli.mjs cli.test.mjs core.mjs core.test.mjs progress.mjs progress.test.mjs package.json package-lock.json; do
+for name in README.md LICENSE cli.mjs cli.test.mjs core.mjs core.test.mjs compare-version.mjs progress.mjs progress.test.mjs package.json package-lock.json; do
   cp "installers/npm/${name}" "${npm_stage}/${name}"
 done
 cp "installers/npm/bin/coconet" "${npm_stage}/bin/coconet"

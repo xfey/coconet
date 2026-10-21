@@ -66,6 +66,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	installRoot := flags.String("root", defaults.installRoot, "versioned Coconet install root")
 	binDirectory := flags.String("bin-dir", defaults.binDirectory, "user executable directory")
 	noBinLink := flags.Bool("no-bin-link", false, "do not create a separate coconet command link")
+	onlyIfNewer := flags.Bool("if-newer", false, "activate only if no same or newer Runtime is already installed")
 	skipAgents := flags.Bool("skip-agents", os.Getenv("COCONET_SKIP_AGENT_SETUP") == "1", "install Runtime without configuring Agent integrations")
 	jsonOutput := flags.Bool("json", false, "write a machine-readable result")
 	if err := flags.Parse(args[1:]); err != nil || flags.NArg() != 0 {
@@ -97,14 +98,29 @@ func run(args []string, stdout, stderr io.Writer) int {
 	// remains alive until activation succeeds or fails; EOF always resumes it.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	finish, err := guardInstallation(ctx, filepath.Join(result.ReleasePath, "bin", "coconet"), *installRoot, stderr)
+	lease, err := guardInstallation(ctx, filepath.Join(result.ReleasePath, "bin", "coconet"), *installRoot, *onlyIfNewer, stderr)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
 	}
-	options.StageOnly = false
-	activated, installErr := installBundle(options)
-	resumeErr := finish()
+	var activated distribution.InstallResult
+	var installErr error
+	if ctx.Err() != nil {
+		installErr = ctx.Err()
+	} else if lease.Current {
+		// Another launcher may have completed a newer install while this one
+		// downloaded. Read its result while the installation lease is held.
+		current := filepath.Join(*installRoot, "current")
+		var installedVersion string
+		installedVersion, installErr = distribution.InstalledVersion(current)
+		activated = distribution.InstallResult{Version: installedVersion, ReleasePath: current,
+			Executable: filepath.Join(current, "bin", "coconet"), AlreadyExists: true}
+	} else {
+		options.StageOnly = false
+		activated, installErr = installBundle(options)
+		activated.AlreadyExists = result.AlreadyExists
+	}
+	resumeErr := lease.Finish()
 	if installErr != nil {
 		fmt.Fprintln(stderr, installErr)
 		return 1
@@ -113,14 +129,13 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, resumeErr)
 		return 1
 	}
-	activated.AlreadyExists = result.AlreadyExists
 	result = activated
 	output := installOutput{
 		Status: "ok", Version: result.Version, ReleasePath: result.ReleasePath, Executable: result.Executable,
 		AlreadyExists: result.AlreadyExists,
 		Agents:        agentplugin.SetupReport{Status: "skipped", Results: []agentplugin.InstallResult{}},
 	}
-	if !*skipAgents {
+	if !*skipAgents && !lease.Current {
 		output.Agents = setupAgents(filepath.Join(result.ReleasePath, "bin", "coconet"), stderr)
 	}
 	if *jsonOutput {

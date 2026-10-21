@@ -3,7 +3,8 @@
 # Keep the npm command stable while the native Runtime remains versioned under
 # the user's Coconet data root. Node is used only when setup or an upgrade is
 # required; successful daily commands replace this process with the Runtime.
-# Package upgrades never implicitly replace a running Runtime.
+# Installing a newer npm package selects an update for the next invocation.
+# Bootstrap coordinates running work before activating its pinned Runtime.
 
 launcher=$0
 link_depth=0
@@ -66,15 +67,42 @@ runtime_version() {
   LC_ALL=C sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$runtime_manifest" | LC_ALL=C sed -n '1p'
 }
 
+setup_runtime() {
+  # Setup never reads the original command's stdin (notably MCP messages).
+  # Forward signals even when a caller terminates only this launcher PID.
+  "$setup_command" --if-newer </dev/null >&2 &
+  setup_pid=$!
+  trap 'kill -INT "$setup_pid" 2>/dev/null; wait "$setup_pid"; exit 130' INT
+  trap 'kill -TERM "$setup_pid" 2>/dev/null; wait "$setup_pid"; exit 143' TERM
+  wait "$setup_pid"
+  setup_result=$?
+  trap - INT TERM
+  return "$setup_result"
+}
+
 installed_version=$(runtime_version 2>/dev/null || true)
 COCONET_NPM_PACKAGE_ROOT=$package_root
 export COCONET_NPM_PACKAGE_ROOT
 if [ -x "$runtime" ] && [ -n "$installed_version" ]; then
-  # An explicit update may be the first command after upgrading an old npm
-  # launcher. Older Runtimes have no update command; use this package's verified
-  # Bootstrap once, which checks for legacy live work before changing anything.
-  if [ "$#" -eq 1 ] && [ "$1" = "update" ] && ! "$runtime" update --help >/dev/null 2>&1; then
-    "$setup_command" >&2 || exit "$?"
+  if [ "$#" -eq 1 ] && [ "$1" = "update" ]; then
+    if "$runtime" update --help >/dev/null 2>&1; then
+      exec "$runtime" "$@"
+    fi
+    # The old Runtime has no updater. Installing the npm-selected version
+    # completes this explicit update; do not download it a second time.
+    setup_runtime
+    exit "$?"
+  fi
+  if [ "$installed_version" != "$package_version" ] &&
+    [ "$(node "$package_root/compare-version.mjs" "$package_version" "$installed_version")" = "1" ]; then
+    printf 'coconet: Updating Coconet %s -> %s before running your command...\n' "$installed_version" "$package_version" >&2
+    setup_runtime
+    setup_status=$?
+    case $setup_status in
+      0) ;;
+      130|143) exit "$setup_status" ;;
+      *) printf '%s\n' 'coconet: Update did not complete; continuing with the installed Runtime. The next launch will retry.' >&2 ;;
+    esac
   fi
   exec "$runtime" "$@"
 fi
@@ -83,7 +111,7 @@ printf 'coconet: Installing Coconet %s before running your command...\n' "$packa
 
 # Setup is incidental to the requested command, including JSON and MCP
 # commands. Its human-readable result must not enter that command's stdout.
-"$setup_command" >&2
+setup_runtime
 setup_status=$?
 if [ "$setup_status" -ne 0 ]; then
   printf '%s\n' "coconet: Setup did not complete; your command was not run." >&2
@@ -91,7 +119,9 @@ if [ "$setup_status" -ne 0 ]; then
 fi
 
 installed_version=$(runtime_version 2>/dev/null || true)
-if [ ! -x "$runtime" ] || [ "$installed_version" != "$package_version" ]; then
+if [ ! -x "$runtime" ] || [ -z "$installed_version" ] ||
+  { [ "$installed_version" != "$package_version" ] &&
+    [ "$(node "$package_root/compare-version.mjs" "$installed_version" "$package_version")" != "1" ]; }; then
   printf '%s\n' "coconet: setup finished without activating the expected Runtime" >&2
   exit 1
 fi

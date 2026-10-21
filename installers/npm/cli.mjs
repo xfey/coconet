@@ -119,11 +119,13 @@ async function main() {
     progress.stage(options.bootstrapArguments.includes("--skip-agents") || process.env.COCONET_SKIP_AGENT_SETUP === "1"
       ? "Installing Coconet..."
       : "Installing Coconet and configuring Agent integrations...");
-    return await runBootstrap(bootstrap, [
+    const code = await runBootstrap(bootstrap, [
       ...options.bootstrapArguments,
       "--bundle",
       bundleRoot,
     ], signal, progress);
+    signal.throwIfAborted();
+    return code;
   } catch (error) {
     if (interruptedSignal) {
       process.stderr.write("coconet: Setup cancelled.\n");
@@ -249,7 +251,7 @@ function runBootstrap(command, arguments_, signal, progress) {
 
 function printUsage(output = process.stderr) {
   output.write(
-    "usage: coconet internal-setup [install] [--release VERSION] [--base-url HTTPS_URL | --artifact FILE --checksum FILE] [--skip-agents] [--json] [--root DIR] [--bin-dir DIR]\n",
+    "usage: coconet internal-setup [install] [--release VERSION] [--base-url HTTPS_URL | --artifact FILE --checksum FILE] [--skip-agents] [--if-newer] [--json] [--root DIR] [--bin-dir DIR]\n",
   );
 }
 

@@ -142,8 +142,10 @@ func installRelease(bundleRoot, installRoot, releasePath string, manifest Manife
 		return err
 	}
 	if err := os.Rename(staging, releasePath); err != nil {
-		if errors.Is(err, os.ErrExist) {
-			return errors.New("release was installed concurrently; rerun Bootstrap")
+		// Concurrent first launches can stage the same immutable release.
+		// Accept the winner only when every byte matches the verified bundle.
+		if verifyErr := VerifyBundle(releasePath, manifest); verifyErr == nil {
+			return nil
 		}
 		return err
 	}

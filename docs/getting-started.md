@@ -78,21 +78,22 @@ copy and include its sync status.
 
 ## Update the client
 
-Coconet may show a new-version notice in the terminal. To update explicitly:
+Update with npm:
 
 ```sh
-coconet update
+npm install -g coconet
 ```
 
-This updates the global npm package and the Runtime, waiting for active work to
-finish before switching. It does not install automatically or use sudo. npm and
-Runtime versions may differ without triggering another installation. Unchanged
-plugins are left in place; disabled or removed integrations stay that way.
+The next time you run a `coconet` command, it activates the newer Runtime and
+continues your command. You do not need a separate update or stop command.
+Alternatively, `coconet update` updates npm and the Runtime together immediately.
+Neither path requires sudo or changes the server selected for your folders.
 
-When upgrading from a Runtime that cannot wait for active work, the command
-leaves it running and prints instructions to finish processing, stop that Runtime
-and retry. Follow those instructions only after ongoing processing and session
-handoffs have finished.
+Activation waits for active work. Versions 0.30.1 and earlier migrate after
+ongoing session handoffs finish; a summary interrupted during this one-time
+restart may retry. Queued work and connections are retained. If installation
+fails, the existing Runtime remains available and the next launch retries.
+Unchanged plugins stay in place; disabled or removed integrations stay that way.
 
 ## Help and maintenance
 

@@ -7,6 +7,7 @@ import test from "node:test";
 
 import {
   bundleName,
+  compareVersions,
   isSafeArchiveEntry,
   parseChecksum,
   parseInstallOptions,
@@ -165,4 +166,17 @@ test("local archive hash is streamed and verified", async () => {
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("automatic upgrade orders SemVer and preserves unknown versions", () => {
+  for (const [left, right, order] of [
+    ["0.31.2", "0.30.1", 1], ["0.31.1", "0.31.2", -1],
+    ["1.0.0+one", "1.0.0+two", 0], ["1.0.0-rc.2", "1.0.0-rc.10", -1],
+    ["1.0.0", "1.0.0-rc.10", 1], ["1.0.0-alpha", "1.0.0-alpha.1", -1],
+    ["1.0.0-1", "1.0.0-a", -1], ["9007199254740993.0.0", "9007199254740992.0.0", 1],
+    ["dev", "1.0.0", null], ["1.0.0-01", "1.0.0", null], ["01.0.0", "1.0.0", null],
+  ]) {
+    assert.equal(compareVersions(left, right), order, `${left} / ${right}`);
+  }
+  assert.ok(parseInstallOptions(["--if-newer"], "1.0.0").bootstrapArguments.includes("--if-newer"));
 });

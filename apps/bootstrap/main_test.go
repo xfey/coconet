@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -82,8 +84,8 @@ func restoreBootstrapStubs(t *testing.T) {
 	originalInstall := installBundle
 	originalSetup := setupAgents
 	originalGuard := guardInstallation
-	guardInstallation = func(context.Context, string, string, io.Writer) (func() error, error) {
-		return func() error { return nil }, nil
+	guardInstallation = func(context.Context, string, string, bool, io.Writer) (installationLease, error) {
+		return installationLease{Finish: func() error { return nil }}, nil
 	}
 	t.Setenv("COCONET_SKIP_AGENT_SETUP", "")
 	setupAgents = func(string, io.Writer) agentplugin.SetupReport {
@@ -173,11 +175,11 @@ func TestGuardRefusalNeverActivatesStagedRelease(t *testing.T) {
 		staged = true
 		return distribution.InstallResult{ReleasePath: "/staged"}, nil
 	}
-	guardInstallation = func(context.Context, string, string, io.Writer) (func() error, error) {
-		return nil, errors.New("legacy active work")
+	guardInstallation = func(context.Context, string, string, bool, io.Writer) (installationLease, error) {
+		return installationLease{}, errors.New("unreadable active work")
 	}
 	var out bytes.Buffer
-	if run([]string{"install", "--root", t.TempDir(), "--no-bin-link"}, &out, &out) != 1 || !staged || !strings.Contains(out.String(), "legacy active work") {
+	if run([]string{"install", "--root", t.TempDir(), "--no-bin-link"}, &out, &out) != 1 || !staged || !strings.Contains(out.String(), "unreadable active work") {
 		t.Fatal(staged, out.String())
 	}
 }
@@ -191,8 +193,8 @@ func TestActivationFailureReleasesGuardAndSkipsPlugins(t *testing.T) {
 		return distribution.InstallResult{ReleasePath: "/staged"}, nil
 	}
 	released := false
-	guardInstallation = func(context.Context, string, string, io.Writer) (func() error, error) {
-		return func() error { released = true; return nil }, nil
+	guardInstallation = func(context.Context, string, string, bool, io.Writer) (installationLease, error) {
+		return installationLease{Finish: func() error { released = true; return nil }}, nil
 	}
 	setupAgents = func(string, io.Writer) agentplugin.SetupReport {
 		t.Fatal("configured plugins after failed activation")
@@ -201,5 +203,39 @@ func TestActivationFailureReleasesGuardAndSkipsPlugins(t *testing.T) {
 	var out bytes.Buffer
 	if run([]string{"install", "--root", t.TempDir(), "--no-bin-link"}, &out, &out) != 1 || !released {
 		t.Fatal(released, out.String())
+	}
+}
+
+func TestConcurrentInstallSkipsActivationAndPluginSetup(t *testing.T) {
+	restoreBootstrapStubs(t)
+	root := t.TempDir()
+	loadBundleManifest = func(string) (distribution.Manifest, error) { return distribution.Manifest{Version: "1.0.0"}, nil }
+	if err := os.MkdirAll(filepath.Join(root, "current"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "current", "manifest.json"), []byte(`{"product":"coconet","version":"2.0.0"}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	installBundle = func(o distribution.InstallOptions) (distribution.InstallResult, error) {
+		if !o.StageOnly {
+			t.Fatal("overwrote newer installation")
+		}
+		return distribution.InstallResult{ReleasePath: "/staged", Version: "1.0.0"}, nil
+	}
+	released := false
+	guardInstallation = func(_ context.Context, _, _ string, onlyIfNewer bool, _ io.Writer) (installationLease, error) {
+		if !onlyIfNewer {
+			t.Fatal("lost no-downgrade policy")
+		}
+		return installationLease{Current: true, Finish: func() error { released = true; return nil }}, nil
+	}
+	setupAgents = func(string, io.Writer) agentplugin.SetupReport {
+		t.Fatal("repeated plugin setup")
+		return agentplugin.SetupReport{}
+	}
+	var out, errs bytes.Buffer
+	if code := run([]string{"install", "--root", root, "--if-newer", "--json"}, &out, &errs); code != 0 || !released || !strings.Contains(out.String(), `"version":"2.0.0"`) {
+		t.Fatal(code, released, out.String(), errs.String())
 	}
 }
