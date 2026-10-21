@@ -207,12 +207,23 @@ const [npmRoot, artifacts, version] = process.argv.slice(2);
 const { bundleName, resolveTarget } = await import(pathToFileURL(join(npmRoot, "core.mjs")));
 const archive = join(artifacts, `${bundleName(version, resolveTarget())}.tar.gz`);
 const installRoot = join(artifacts, "install-check");
+// --root isolates installed files; the update guard also needs isolated
+// Runtime configuration and activity locks, even when plugin setup is skipped.
+const env = {
+  ...process.env,
+  XDG_CONFIG_HOME: join(installRoot, "config"),
+  XDG_DATA_HOME: join(installRoot, "data"),
+  XDG_CACHE_HOME: join(installRoot, "cache"),
+  COCONET_LOCAL_DAG_HOME: join(installRoot, "local-dag"),
+  COCONET_DISABLE_BACKGROUND_SYNC: "1",
+  COCONET_SKIP_AGENT_SETUP: "1",
+};
 process.umask(0o077);
 for (const [command, args] of [
   [process.execPath, [join(npmRoot, "cli.mjs"), "--artifact", archive, "--checksum", `${archive}.sha256`, "--root", installRoot, "--skip-agents", "--json"]],
   [join(installRoot, "current", "bin", "coconet"), ["version"]],
 ]) {
-  const result = spawnSync(command, args, { stdio: "inherit", timeout: 120_000 });
+  const result = spawnSync(command, args, { env, stdio: "inherit", timeout: 120_000 });
   if (result.error || result.status !== 0) throw new Error("candidate npm installation check failed", { cause: result.error });
 }
 NODE
