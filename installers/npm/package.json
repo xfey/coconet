@@ -1,6 +1,6 @@
 {
   "name": "coconet",
-  "version": "0.31.2-internal.1",
+  "version": "0.31.3-internal.1",
   "private": true,
   "description": "Install the verified Coconet runtime for the current user.",
   "type": "module",

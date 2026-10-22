@@ -5,6 +5,11 @@ processing tasks and minimal audit records. Applying a commit and updating its
 publication state is atomic. Model request/result archives are saved locally
 before publication, separately from shared graph provenance.
 
+Normalized model token counters remain with attempt metadata after diagnostic
+body cleanup. Old retained receipts can be normalized on read; missing historical
+usage stays unknown. Usage queries open stopped databases read-only and use the
+local Runtime endpoint for live stores.
+
 Native and normalized content is immutable and hash verified. Native artifacts
 use compressed chunks so appended snapshots reuse unchanged prefixes. A completed
 replica requires its full verified closure; late downloads cannot resurrect a

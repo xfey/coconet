@@ -2,6 +2,7 @@
 
 - [workgraph](workgraph/README.md): pure graph state transitions and invariants.
 - [graphstore](graphstore/README.md): device persistence, replicas and local search.
+- [modelusage](modelusage/README.md): token, cache and reported cost accounting.
 - [replication](replication/README.md): verified synchronization and temporary transfer.
 - [contracts](contracts/README.md): wire structures, schemas and MCP tool definitions.
 

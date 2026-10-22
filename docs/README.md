@@ -9,6 +9,7 @@
 - [Development](development.md): build, tests and release assembly.
 - [Data sharing](data-sharing.md): what is shared, retained and recoverable.
 - [Troubleshooting](troubleshooting.md): local diagnostics and connection recovery.
+- [Model usage](usage.md): processing attempts and input/output/cache tokens over 7 days, 30 days and all retained history.
 
 Start with the [project README](../README.md). Deployment templates are in
 [deploy](../deploy/README.md); source-level contracts are in

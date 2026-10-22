@@ -7,8 +7,9 @@
   <a href="README.zh-CN.md" title="阅读中文"><img src="docs/assets/readme/language-en.svg" alt="阅读中文" width="168" height="48"></a>
 </p>
 
-Share Agent sessions and build together. Follow your team's work graph, find
-relevant conversations, and pick up where a teammate left off—even in another Agent.
+Keep up with your team's work without extra status reports. Use your Agent as
+usual; Coconet automatically organizes shared progress into a work graph. Find
+the conversations behind a decision and, when needed, continue a teammate's session.
 
 Supports **Codex, Claude Code and Cursor CLI** on macOS and Linux.
 

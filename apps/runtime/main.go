@@ -18,7 +18,7 @@ func main() {
 	ctx := context.Background()
 	cancel := func() {}
 	args := os.Args[1:]
-	if len(args) > 0 && (args[0] == "update" || args[0] == "_install-guard" || args[0] == "_resume-after-update" || args[0] == "agent" || args[0] == "_agent-setup" || args[0] == "_agent-sync" || args[0] == "_local-daemon" || args[0] == "local-dag" || args[0] == "inference" || shouldAutoSyncAgentIntegrations(args)) {
+	if len(args) > 0 && (args[0] == "update" || args[0] == "_install-guard" || args[0] == "_resume-after-update" || args[0] == "agent" || args[0] == "_agent-setup" || args[0] == "_agent-sync" || args[0] == "_local-daemon" || args[0] == "local-dag" || args[0] == "inference" || args[0] == "usage" || shouldAutoSyncAgentIntegrations(args)) {
 		ctx, cancel = signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	}
 	code := run(ctx, args, os.Stdin, os.Stdout, os.Stderr)
@@ -64,6 +64,8 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 		return runHistoryCommand(ctx, args[1:], stdout, stderr)
 	case "diagnostics":
 		return runDiagnostics(ctx, args[1:], stdout, stderr)
+	case "usage":
+		return runUsage(ctx, args[1:], stdout, stderr)
 	case "storage":
 		return runStorage(ctx, args[1:], stdout, stderr)
 	case "local-dag":

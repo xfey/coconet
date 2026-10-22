@@ -26,6 +26,7 @@ Put flags after the command/subcommand. Required positional arguments such as `a
 | [history](#coconet-history) | Import historical sessions from this connected folder |
 | [projection](#coconet-projection) | Inspect processing progress and retry a selected failure |
 | [diagnostics](#coconet-diagnostics) | Inspect and manage local processing records |
+| [usage](#coconet-usage) | Show model usage for the last 7 days, 30 days and all time |
 | [storage](#coconet-storage) | Manage local replicas, limits and offline archives |
 | [session](#coconet-session) | Read or continue a fixed synchronized source |
 | [library](#coconet-library) | List or update collected fixed session sources |
@@ -481,6 +482,26 @@ Apply diagnostic retention rules
 
 ```sh
 coconet diagnostics prune [options]
+```
+
+### `coconet usage`
+
+Show model usage for the last 7 days, 30 days and all time
+
+```sh
+coconet usage
+```
+
+No options needed. Shows each model's processing attempts, input/output tokens, cache reads/writes and a total row for each period.
+
+Includes Coconet background processing across all locally retained projects, servers and accounts on this device. Works from any folder; excludes ordinary Agent chats and other devices.
+
+Input includes cache tokens. Unreported usage stays unknown. Usage counters survive diagnostic cleanup; already-pruned historical usage cannot be recovered.
+
+Unreadable stores produce partial totals and exit status 1. An older running worker may require coconet update.
+
+```sh
+coconet usage
 ```
 
 ### `coconet storage`

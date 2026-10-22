@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
   "channel": "internal",
-  "client_version": "0.31.2-internal.1",
+  "client_version": "0.31.3-internal.1",
   "server_version": "0.31.1-internal.1"
 }

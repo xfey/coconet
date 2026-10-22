@@ -482,6 +482,18 @@ func serveLocalDAG(ctx context.Context, root string, engine *localdag.Engine, bu
 			if failure == nil {
 				value, failure = localStorage(r.Context(), root, engine, action, options)
 			}
+		case r.URL.Path == "/usage":
+			if r.Method != "GET" {
+				http.Error(w, "usage requires GET", 405)
+				return
+			}
+			var since time.Time
+			if raw := r.URL.Query().Get("query"); raw != "" {
+				since, failure = time.Parse(time.RFC3339Nano, raw)
+			}
+			if failure == nil {
+				value, failure = engine.Store.ModelUsage(since)
+			}
 		case strings.HasPrefix(r.URL.Path, "/diagnostics-"):
 			action := strings.TrimPrefix(r.URL.Path, "/")
 			read := action == "diagnostics-status" || action == "diagnostics-list" || action == "diagnostics-export"
@@ -744,7 +756,7 @@ func localDAGClient(ctx context.Context, root, action string, options localDAGCl
 	method := "GET"
 	var body io.Reader
 	switch action {
-	case "document", "state", "graph", "search", "library", "logs", "tasks", "replay", "status", "proposals", "transfers", "inbox", "diagnostics-status", "diagnostics-list", "diagnostics-export", "storage-status":
+	case "document", "state", "graph", "search", "library", "logs", "tasks", "replay", "status", "proposals", "transfers", "inbox", "diagnostics-status", "diagnostics-list", "diagnostics-export", "storage-status", "usage":
 	case "history-preview", "history-list", "history-status", "history-start", "history-pause", "history-resume", "history-retry", "history-forget", "collect", "uncollect", "fork":
 		method = "POST"
 		var payload any = options.Library
@@ -803,7 +815,7 @@ func localDAGClient(ctx context.Context, root, action string, options localDAGCl
 		query.Set("session", options.Source.SessionID)
 		query.Set("version", strconv.Itoa(options.Source.Version))
 	}
-	if action == "search" || action == "diagnostics-list" || action == "graph" || action == "library" {
+	if action == "search" || action == "diagnostics-list" || action == "graph" || action == "library" || action == "usage" {
 		query.Set("query", options.Query)
 		query.Set("limit", strconv.Itoa(options.Limit))
 		query.Set("cursor", options.Cursor)

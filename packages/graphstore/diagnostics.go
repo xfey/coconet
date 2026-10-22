@@ -118,6 +118,9 @@ func putRun(tx *bolt.Tx, run Run) error {
 }
 
 func pruneRunContent(run *Run, now time.Time) {
+	// Small normalized counters survive body retention, including old runs
+	// whose raw provider receipt has not yet been normalized.
+	retainModelUsage(run)
 	if run.Archive == nil {
 		run.Archive = &DiagnosticArchive{PrunedAt: now.UTC().Format(time.RFC3339Nano), InputSHA256: ObjectDigest(run.Input)}
 	}

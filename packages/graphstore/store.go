@@ -16,6 +16,7 @@ import (
 
 	"github.com/xfey/coconet/packages/contentstore"
 	"github.com/xfey/coconet/packages/contracts"
+	"github.com/xfey/coconet/packages/modelusage"
 	"github.com/xfey/coconet/packages/workgraph"
 	bolt "go.etcd.io/bbolt"
 )
@@ -59,6 +60,7 @@ type Run struct {
 	Input           json.RawMessage           `json:"input"`
 	Output          string                    `json:"output,omitempty"`
 	Usage           json.RawMessage           `json:"usage,omitempty"`
+	TokenUsage      *modelusage.Record        `json:"token_usage,omitempty"`
 	Error           string                    `json:"error,omitempty"`
 	Base            int64                     `json:"base"`
 	Source          *workgraph.Source         `json:"source,omitempty"`
@@ -435,6 +437,10 @@ func (s *Store) SaveModelResponse(id, output string, usage json.RawMessage, mode
 			run.Model = model
 		}
 		run.Usage = usage
+		if modelAttempt(*run) {
+			normalized := modelusage.Normalize(run.Provider, run.Model, usage, output)
+			run.TokenUsage = &normalized
+		}
 		if len(output) > 4<<20 || len(usage) > 64<<10 || len(usage) > 0 && !json.Valid(usage) {
 			pruneRunContent(run, time.Now())
 		}

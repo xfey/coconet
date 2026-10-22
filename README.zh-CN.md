@@ -7,7 +7,7 @@
   <a href="README.md" title="Read in English"><img src="docs/assets/readme/language-zh.svg" alt="Read in English" width="168" height="48"></a>
 </p>
 
-和同事共享 Agent session，共同推动工作进展。通过工作图了解团队在做什么、找到相关对话，也可以换一个 Agent，接着同事的会话继续工作。
+无需额外汇报，也能了解同事的工作进展。正常使用 Agent，Coconet 会自动整理并共享工作图，帮助团队找到相关决策与对话依据，需要时接着同事的会话继续工作。
 
 支持 **Codex、Claude Code 和 Cursor CLI**，可在 macOS、Linux 上运行。
 

@@ -3,6 +3,9 @@
 Use macOS or Linux with Node.js 18.17+ and npm. Install and sign in to at least one
 supported Agent: Codex, Claude Code or Cursor CLI.
 
+Cursor support covers its CLI. Cursor desktop sessions, including Remote SSH
+sessions, are outside the supported capture and continuation scope.
+
 ## Connect a folder
 
 Run these commands in the project folder where you work:
@@ -61,6 +64,10 @@ background inference consumes that account’s quota. No extra model key or call
 limit configuration is needed. Clients retain session replicas and search text
 locally; the server coordinates sharing and temporarily relays session content.
 See [data sharing and retention](data-sharing.md) for the full scope.
+
+Use `coconet usage` to inspect this device's background processing tokens over
+the last 7 days, last 30 days and all retained history. See [model usage](usage.md)
+for counting rules and fields the Agent may not report.
 
 ## Share project notes
 

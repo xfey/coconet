@@ -9,6 +9,11 @@ coconet inference status
 coconet diagnostics list
 ```
 
+For background model tokens and cache usage across all locally retained projects,
+run `coconet usage` from any folder. It shows the last 7 days, 30 days and all
+retained history, with a model breakdown in each period. Missing counters are
+unknown, not zero; see [Model usage](usage.md) for reporting details.
+
 The Dashboard shows published progress, not a reliable live indicator of whether
 a device is online or currently running a model. Check the source device's logs
 when progress stalls. Use the Agent registration retry command shown by

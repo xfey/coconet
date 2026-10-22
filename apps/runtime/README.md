@@ -15,6 +15,11 @@ changes. Processing creates fixed inference tasks before invoking an Agent.
 Retries and another device's takeover reuse the saved task inputs; a stale worker
 cannot commit over a newer accepted result. Processing traces remain local.
 
+`coconet usage` reads background model input, output and cache tokens
+across locally retained project/account/server stores. It requires no connected
+directory or sign-in, runs no models and excludes ordinary Agent chats. See
+[usage reporting](../../docs/usage.md) for coverage and retention semantics.
+
 Graph synchronization and content replication run independently. Accepted graph
 references do not imply that every source is already available offline. Search
 uses verified local text; read and fork keep the exact selected source identity.

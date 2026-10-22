@@ -80,6 +80,12 @@ func Runtime() Command {
 		leaf("export", "Export one processing record", "--run ID --output FILE [--include-content] [options]", "Export excludes private content unless explicitly requested. Review any export before sharing it."),
 		leaf("prune", "Apply diagnostic retention rules", "[options]"),
 	}, Examples: []string{"coconet diagnostics list --limit 20", "coconet diagnostics export --run RUN_ID --output ./diagnostic.json"}}
+	usage := Command{Name: "usage", Summary: "Show model usage for the last 7 days, 30 days and all time", Notes: []string{
+		"No options needed. Shows each model's processing attempts, input/output tokens, cache reads/writes and a total row for each period.",
+		"Includes Coconet background processing across all locally retained projects, servers and accounts on this device. Works from any folder; excludes ordinary Agent chats and other devices.",
+		"Input includes cache tokens. Unreported usage stays unknown. Usage counters survive diagnostic cleanup; already-pruned historical usage cannot be recovered.",
+		"Unreadable stores produce partial totals and exit status 1. An older running worker may require coconet update.",
+	}, Examples: []string{"coconet usage"}}
 	storage := Command{Name: "storage", Summary: "Manage local replicas, limits and offline archives", Usage: "<command> [options]", Options: []Option{root, project,
 		option("file", "FILE", "", "Required for export/restore: absolute path to a private replica archive"),
 		option("max-mib", "N", "16384", "configure: session-content limit, 16-1048576 MiB; omitted values preserve existing settings"),
@@ -121,7 +127,7 @@ func Runtime() Command {
 	return Command{Name: "coconet", Summary: "Coconet · share and continue AI sessions with your team", Usage: "<command> [options]", Children: []Command{
 		connect, {Name: "status", Summary: "Show account, project, uploads and Dashboard link", Usage: "[--verbose]", Options: []Option{boolean("verbose", "Show connection and local processing details")}},
 		leaf("disconnect", "Disconnect this folder; preserve native history and local session copies", ""),
-		login, logout, whoami, servers, agent, inference, history, projection, diagnostics, storage, session, library, fork, account,
+		login, logout, whoami, servers, agent, inference, history, projection, diagnostics, usage, storage, session, library, fork, account,
 		{Name: "health", Summary: "Show machine-readable Runtime and Agent health", Usage: "[--json]", Options: []Option{json}, Notes: []string{"Output is JSON with or without --json."}},
 		{Name: "update", Summary: "Update npm and Runtime to the latest stable client", Notes: []string{"Updates without sudo and waits for active processing and handoffs before activation. You can also run npm install -g coconet; the next coconet invocation activates its newer Runtime. Legacy workers migrate automatically after active handoffs finish; an interrupted summary may retry. Unchanged plugins stay in place."}},
 		leaf("version", "Show the installed version (aliases: --version, -v)", ""), uninstall, init,
